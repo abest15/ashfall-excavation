@@ -4,7 +4,12 @@ const AVC=[0x4a5a3a,0x6a4a2a,0x3a4a6a,0x6a2e2a], AVCSS=['#c9b56a','#e08a3a','#6a
 const esc=t=>String(t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 function NP(){ return NET.role==='host'?1+Object.values(NET.remotes).filter(r=>r.st).length:NET.role==='client'?(NET.np||1):1; }
 const LOCALNET=/[?&]net=local/.test(location.search);
-function loadPeer(){ return new Promise((res,rej)=>{ if(window.Peer) return res(); const sc=document.createElement('script'); sc.src='https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js'; sc.onload=()=>window.Peer?res():rej(new Error('missing')); sc.onerror=()=>rej(new Error('blocked')); document.head.appendChild(sc); }); }
+// local bundled copy first (multi-file web build + desktop app), CDN as fallback (single-file build)
+function loadPeer(){ const srcs=['assets/peerjs.min.js','https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js'];
+  return new Promise((res,rej)=>{ if(window.Peer) return res(); let i=0;
+    const next=()=>{ if(i>=srcs.length) return rej(new Error('blocked')); const sc=document.createElement('script'); sc.src=srcs[i++];
+      sc.onload=()=>window.Peer?res():next(); sc.onerror=()=>{ sc.remove(); next(); }; document.head.appendChild(sc); };
+    next(); }); }
 // stand-in for PeerJS over BroadcastChannel, so two tabs on one machine can be tested together (?net=local)
 function localPeer(id){ const bc=new BroadcastChannel('ashfall-local'), me=id||('c'+Math.random().toString(36).slice(2,8)); const pr={id:me,h:{},conns:{},on(ev,fn){ this.h[ev]=fn; },connect(to){ const c=mk(to); bc.postMessage({k:'open',from:me,to}); setTimeout(()=>c._f('open'),60); return c; },destroy(){ for(const k in pr.conns) bc.postMessage({k:'close',from:me,to:k}); bc.close(); }};
   function mk(peer){ const c={peer,h:{},on(ev,fn){ this.h[ev]=fn; },send(d){ bc.postMessage({k:'data',from:me,to:peer,d}); },close(){ bc.postMessage({k:'close',from:me,to:peer}); },_f(ev,a){ this.h[ev]&&this.h[ev](a); }}; pr.conns[peer]=c; return c; }
