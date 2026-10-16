@@ -17,7 +17,7 @@ const ORIGIN = 'app://ashfall';
 // traffic is not governed by CSP.
 const CSP = [
   "default-src 'self'",
-  "script-src 'self' https://unpkg.com",
+  "script-src 'self' 'wasm-unsafe-eval' https://unpkg.com",   // wasm-unsafe-eval: the sim core (assets/sim.wasm)
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "font-src 'self' data: https://fonts.gstatic.com",
   "img-src 'self' data: blob:",
