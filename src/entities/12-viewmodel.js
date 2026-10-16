@@ -150,8 +150,8 @@ function rlTracks(style,empty){
   else if(style==='bolt'){
     T.B=[[0,0,0],[.14,0,0],[.2,1,0],[.27,1,1],[.76,1,1],[.83,1,0],[.88,0,0]];
     T.R=[[0,'grip'],[.1,'grip'],[.15,'knob'],[.86,'knob'],[.94,'grip'],[1,'grip']];
-    T.H=[[0,'home'],[.25,'home'],[.33,'low'],[.4,'low'],[.5,'top',0,.06,0],[.53,'top',0,.025,0],[.62,'top',0,-.02,0],[.68,'top',0,.05,.02],[.8,'home'],[1,'home']];
-    T.G=[[0,...Z6],[.12,-.03,.03,.02,.12,.08,.25],[.5,-.04,.03,.02,.15,.08,.3],[.62,-.04,.02,.02,.1,.08,.32],[.8,-.03,.03,.02,.12,.08,.25],[.92,-.01,.01,0,.03,0,.05],[1,...Z6]];
+    T.H=[[0,'home'],[.25,'home'],[.33,'low'],[.4,'low'],[.5,'top',-.03,.045,.03,0,0,-.9],[.53,'top',-.01,.022,.02,0,0,-.9],[.62,'top',-.01,-.02,.02,0,0,-.9],[.68,'top',-.04,.03,.04,0,0,-.9],[.8,'home'],[1,'home']];
+    T.G=[[0,...Z6],[.12,.03,-.03,.02,.1,-.05,.3],[.5,.035,-.04,.02,.12,-.05,.34],[.62,.035,-.045,.02,.08,-.05,.36],[.8,.03,-.03,.02,.1,-.05,.3],[.92,.01,-.01,0,.03,0,.05],[1,...Z6]];
     T.M={pull:-1,rel:-1,hide:-1,grab:.4,ins:.53,seat:.62,gone:.64,off:[0,-.03,0],sink:true};
     T.E=[[.27,'out'],[.6,'in'],[.85,'rack']]; }
   else if(style==='box'){
@@ -238,7 +238,7 @@ function updateVM(dt){
   if(w&&w.reloadEnd&&w.rlStart!==undefined){
     if(VM.rlId!==w.rlId){ VM.rlId=w.rlId; VM.ev={}; VM.inspect=0; }
     { const k0=w.rlShell?(w.rlPh==='in'?clamp((GT-w.rlA)/Math.max(.05,w.rlB-w.rlA),0,1):w.rlPh==='out'?1-clamp((GT-w.rlA)/Math.max(.05,w.rlB-w.rlA),0,1):1):clamp((GT-w.rlStart)/Math.max(.05,w.rlDur),0,1);
-      const env=w.rlShell?k0*k0*(3-2*k0):clamp(Math.min(k0/.14,(1-k0)/.12),0,1), e=env*env*(3-2*env), lift=st==='gauntlet'||st==='rod'?[0,0,0]:st==='pistol'||st==='revolver'?[-.04,.05,.06]:[-.06,.07,.02]; x+=lift[0]*e; y+=lift[1]*e; z+=lift[2]*e; }
+      const env=w.rlShell?k0*k0*(3-2*k0):clamp(Math.min(k0/.14,(1-k0)/.12),0,1), e=env*env*(3-2*env), lift=st==='gauntlet'||st==='rod'||st==='bolt'?[0,0,0]:st==='pistol'||st==='revolver'?[-.04,.05,.06]:[-.06,.07,.02]; x+=lift[0]*e; y+=lift[1]*e; z+=lift[2]*e; }
     if(w.rlShell){ shellAnim(w,ud,cfg); x+=_g6[0]; y+=_g6[1]; z+=_g6[2]; rxr+=_g6[3]; ryr+=_g6[4]; rzr+=_g6[5]; pumpAmt=Math.max(pumpAmt,VM.pumpR||0); }
     else { rk=clamp((GT-w.rlStart)/Math.max(.05,w.rlDur),0,1); const T=rlT(st,!!w.rlEmpty);
       kfs(T.G,rk,_g6); x+=_g6[0]; y+=_g6[1]; z+=_g6[2]; rxr+=_g6[3]; ryr+=_g6[4]; rzr+=_g6[5];
@@ -268,7 +268,7 @@ function updateVM(dt){
   VM.rodFlare=Math.max(0,(VM.rodFlare||0)-dt*3);
   if(ud.glow||ud.bulb){ const ready=w?clamp(1-(w.next-GT)/Math.max(.05,statsOf(w).rate),0,1):1;
     if(ud.glow){ ud.glow.scale.setScalar(1+Math.sin(GT*6)*.08+VM.rodFlare*1.4); ud.glow.material.opacity=(w&&w.up?.3:.2)+ready*.12+VM.rodFlare*.5; }
-    if(ud.bulb){ ud.bulb.material.opacity=(.3+.55*ready)*(.8+Math.random()*.2); ud.bulb.scale.setScalar(1+VM.rodFlare*.6); } }
+    if(ud.bulb){ ud.bulb.material.opacity=(.3+.55*ready)*(.8+Math.random()*.2)*(1-.75*ae); ud.bulb.scale.setScalar((1+VM.rodFlare*.6)*(1-.35*ae)); } }
   if(rod){ if(ud.crystal) ud.crystal.scale.set(1+VM.rodFlare*.5,1+VM.rodFlare*.5,1.8+VM.rodFlare*.8);
     if(ud.rings) ud.rings.forEach((r,i)=>{ r.rotation.x+=dt*(i?2.2:-1.6)*(1+VM.rodFlare*4); r.rotation.y+=dt*(i?-1.1:1.4); });
     if(ud.plume) ud.plume.scale.set(1,1+Math.random()*.4+VM.rodFlare,1);

@@ -201,7 +201,7 @@ function buildGun(id,up,override){
   else if(t==='ion'){ const cop=override||(up?L({color:0x7a2a20,emissive:0x3a0804}):L({color:0x9a6a3a})), glowC=up?0xff5a4a:0x6aff7a;
     gp(g,[[.02,-.02],[.062,-.02],[.09,-.128],[.05,-.138],[.026,-.06]],.034,wo); gtg(g,.019,.0035,dk,0,-.022,.02); gb(g,.005,.02,.006,st,0,-.02,.024,.35);
     gc(g,.032,.16,cop,0,.02,-.04,14); gc(g,.036,.03,dk,0,.02,.05,14); gc(g,.03,.1,dk,0,.02,-.17,12,.026);
-    for(let i=0;i<4;i++){ const r=.056-i*.007; gc(g,r,.01,cop,0,.02,.0-i*.042,16); }
+    for(let i=0;i<4;i++){ const r=.043-i*.005; gc(g,r,.008,cop,0,.012,.0-i*.042,16); }
     const dish=new THREE.Mesh(new THREE.ConeGeometry(.042,.05,14,1,true),dk); dish.rotation.x=Math.PI/2; dish.position.set(0,.02,-.25); g.add(dish);
     gs(g,.012,glow(glowC),0,.02,-.235); gb(g,.012,.04,.05,dk,0,.068,.0);
     ud.crystal=gc(g,.011,.15,glow(glowC),0,.064,-.07,8); gc(g,.016,.008,cop,0,.064,.005,10); gc(g,.016,.008,cop,0,.064,-.145,10);
@@ -210,7 +210,7 @@ function buildGun(id,up,override){
     ud.sight={y:.128,z:.03}; ud.rh=[.002,-.064,.044]; ud.lh=[-.026,-.075,.044]; ud.style='cell'; mz=-.27; my=.02; }
   else if(t==='dynamo'){ const wo2=override||(up?GM.upWood:GM.wood), cop=override||L({color:0xb07a40}), glowC=up?0xff8a6a:0xcfe8ff;
     gp(g,[[.1,.03],[.4,.016],[.42,.0],[.42,-.11],[.38,-.12],[.2,-.06],[.1,-.04]],.05,wo2); gb(g,.054,.14,.016,dk,0,-.05,.425);
-    gb(g,.07,.09,.3,dk,0,.02,-.08); gb(g,.074,.02,.24,cop,0,.07,-.08);
+    gb(g,.07,.09,.3,dk,0,.02,-.08); gb(g,.074,.02,.24,dk,0,.07,-.08); for(const sx of [-1,1]) gb(g,.006,.022,.24,cop,sx*.036,.07,-.08);
     gp(g,[[.03,-.025],[.075,-.025],[.105,-.14],[.065,-.15],[.04,-.07]],.036,wo2); gtg(g,.021,.004,dk,0,-.03,.03);
     for(const sx of [-1,1]) gc(g,.012,.42,cop,sx*.035,.03,-.38,6); for(let i=0;i<4;i++){ const r=new THREE.Mesh(new THREE.TorusGeometry(.045,.008,5,14),cop); r.position.set(0,.03,-.26-i*.07); g.add(r); }
     gc(g,.016,.08,dk,0,.03,-.6,8);

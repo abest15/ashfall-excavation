@@ -65,12 +65,12 @@ function switchTo(i){ if(PU.gatling>0||i===P.cur||!P.weapons[i]) return; const w
 function inspectWeapon(){ const w=curW(); if(!w||w.reloadEnd||P.swapT>0||P.ads>.1||VM.inspect>0||state!=='play') return; VM.inspect=INSPECT_T; }
 function cycleWeapon(dir){ const n=P.weapons.length; if(n<2) return; switchTo((P.cur+dir+n)%n); }
 function melee(){ if(P.meleeT>0||P.revive>0||state!=='play'||P.downed||P.dead) return; const res=P.bless.has('knife'); P.meleeT=res?.5:.62; VM.melee=KN.T; P.meleePending=true; updateKnifeLook(); KN.root.visible=true; sfx.swing(); if(res) sfx.ring();
-  const t=meleeTarget(3.6); if(t&&t.d>1.5){ P.lungeT=.16; P.lx=(t.z.g.position.x-P.pos.x)/t.d; P.lz=(t.z.g.position.z-P.pos.z)/t.d; } }
+  const t=meleeTarget(3.6); if(t&&t.d>1.5){ P.lungeT=.16; P.lungeZ=t.z; P.lx=(t.z.g.position.x-P.pos.x)/t.d; P.lz=(t.z.g.position.z-P.pos.z)/t.d; } }
 function meleeTarget(range){ const fx=-Math.sin(P.yaw), fz=-Math.cos(P.yaw); let best=null,bd=range;
   for(const z of zombies){ if(z.dead||z.rise>0) continue; const dx=z.g.position.x-P.pos.x, dz=z.g.position.z-P.pos.z, d=Math.hypot(dx,dz); if(d<bd&&d>1e-3&&(dx*fx+dz*fz)/d>.45){ best=z; bd=d; } }
   return best?{z:best,d:bd}:null; }
 function meleeHit(){ const res=P.bless.has('knife'); const fx=-Math.sin(P.yaw), fz=-Math.cos(P.yaw); const reach=res?3:2.4; const hits=[];
-  for(const z of zombies){ if(z.dead||z.rise>0) continue; const dx=z.g.position.x-P.pos.x, dz=z.g.position.z-P.pos.z, d=Math.hypot(dx,dz); if(d<reach+(z.boss?.6:0)&&d>1e-3&&(dx*fx+dz*fz)/d>(res?.2:.4)) hits.push({z,d}); }
+  for(const z of zombies){ if(z.dead||z.rise>0) continue; const dx=z.g.position.x-P.pos.x, dz=z.g.position.z-P.pos.z, d=Math.hypot(dx,dz); if(d<reach+(z.boss?.6:0)&&(d<.7||(dx*fx+dz*fz)/d>(res?.2:.4))) hits.push({z,d}); }
   if(!hits.length) return; hits.sort((a,b)=>a.d-b.d);
   for(const h of hits.slice(0,res?4:1)){ const z=h.z; hitZombie(z,res?(z.boss?1500:Math.max(3000,z.maxHp*.5)):(z.boss?250:150),1,'melee'); spawnParticles(z.g.position.clone().setY(1.4),res?'relic':'blood',6); }
   sfx.stab(); hitMarker(false); P.rcP=(P.rcP||0)+.01; rumble(.5,.5,90); }

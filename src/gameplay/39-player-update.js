@@ -33,7 +33,9 @@ function updatePlayer(dt){
   if(sliding){ const dec=Math.max(0,1-dt*1.6); P.hv.x*=dec; P.hv.z*=dec; P.hv.x+=(tx-P.hv.x)*dt*.6; P.hv.z+=(tz-P.hv.z)*dt*.6; if(Math.hypot(P.hv.x,P.hv.z)<2.5) P.slideT=0; }
   else { const a=(P.grounded?MOVE.accel:MOVE.airAccel)*dt, dx=tx-P.hv.x, dz=tz-P.hv.z, dl=Math.hypot(dx,dz); if(dl<=a){ P.hv.x=tx; P.hv.z=tz; } else { P.hv.x+=dx/dl*a; P.hv.z+=dz/dl*a; } }
   const px=P.pos.x, pz=P.pos.z; P.pos.x+=P.hv.x*dt; P.pos.z+=P.hv.z*dt;
-  if(P.lungeT>0){ P.lungeT-=dt; P.pos.x+=P.lx*10*dt; P.pos.z+=P.lz*10*dt; }
+  if(P.lungeT>0){ P.lungeT-=dt; let st=10*dt; const lz=P.lungeZ; // a knife lunge stops short of its target instead of carrying you through it
+    if(lz&&!lz.dead){ const d=Math.hypot(lz.g.position.x-P.pos.x,lz.g.position.z-P.pos.z); st=Math.min(st,Math.max(0,d-.95)); }
+    P.pos.x+=P.lx*st; P.pos.z+=P.lz*st; if(P.lungeT<=0) P.lungeZ=null; }
   collide(P.pos,.4);
   const moved=Math.hypot(P.pos.x-px,P.pos.z-pz);
   // gravity, jump and landing
