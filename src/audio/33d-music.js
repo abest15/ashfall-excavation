@@ -10,7 +10,7 @@ const MX={on:false,g:null,bed:null,timer:null,next:0,step:0,inten:0,hollow:false
   main:{bpm:92,prog:[[50,53,57,64],[46,50,53,60],[43,46,50,57],[45,50,52,57]]},
   cave:{bpm:66,prog:[[42,49,54,60],[44,49,52,59],[40,47,52,56],[42,48,54,61]]},
   start(){ const a=AU.ctx; if(!a||!AU.music||this.on) return; this.on=true; const t=a.currentTime;
-    this.g=a.createGain(); this.g.gain.value=.0001; this.g.gain.setTargetAtTime(1,t,1.2); this.g.connect(AU.music);
+    this.g=a.createGain(); this.g.gain.value=.0001; this.g.gain.setTargetAtTime(.6,t,1.2); this.g.connect(AU.music);
     // shared echo for plucks/bells
     const dl=a.createDelay(1.5), fb=a.createGain(), lp=a.createBiquadFilter(), eo=a.createGain(); dl.delayTime.value=60/this.main.bpm*.75; fb.gain.value=.32; lp.type='lowpass'; lp.frequency.value=2200; eo.gain.value=.5;
     dl.connect(lp); lp.connect(fb); fb.connect(dl); lp.connect(eo); eo.connect(this.g); this.echo=dl;
@@ -37,11 +37,11 @@ const MX={on:false,g:null,bed:null,timer:null,next:0,step:0,inten:0,hollow:false
     if(state!==prev){ if(state==='end'){ this.stop(); this.hush(); this.sting('victory'); } else if(state==='menu'){ this.stop(true); this.hush(); } else if(state==='over') this.stop(); }
     if(state==='play'&&!this.on) this.start();
     else if(state!=='play'&&state!=='paused'&&this.on) this.stop();
-    if(!this.on) return; const t=a.currentTime; this.setMood(t);
+    if(!this.on) return; const t=a.currentTime; dt=clamp(t-(this.lastT||t),0,.25); this.lastT=t; this.setMood(t);
     const tg=this.target(), r=tg>this.inten?.22:.08; this.inten+=clamp(tg-this.inten,-r*dt,r*dt); const I=this.inten, bed=this.bed;
     bed.dg.gain.setTargetAtTime((this.hollow?.06:.045)+I*.05,t,.3); bed.df.frequency.setTargetAtTime(180+I*I*1400,t,.4);
     bed.pg.gain.setTargetAtTime(clamp((I-.15)*.07,0,.05)+(this.hollow?.012:0),t,.6); bed.pf.frequency.setTargetAtTime(600+I*1600,t,.6);
-    this.g.gain.setTargetAtTime(state==='paused'?.35:1,t,.3); },
+    this.g.gain.setTargetAtTime(state==='paused'?.2:.6,t,.3); },
   tick(){ const a=AU.ctx; if(!a||!this.on) return; const sp=60/this.M.bpm/4; if(this.next<a.currentTime-.3) this.next=a.currentTime+.05;
     while(this.next<a.currentTime+.35){ try{ this.stepAt(this.next,this.step); }catch(e){ AU.errs++; AU.lastErr='music: '+e; } this.next+=sp; this.step++; } },
   // ---- instruments (each note is a few nodes that free themselves)
