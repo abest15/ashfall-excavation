@@ -1,7 +1,7 @@
 /* ---------- reset ---------- */
 function newGame(){
   for(const z of zombies) scene.remove(z.g); zombies.length=0; zparts=[];
-  projs.forEach(q=>scene.remove(q.m)); projs.length=0; PUPS.forEach(q=>scene.remove(q.g)); PUPS.length=0; pickups.forEach(q=>scene.remove(q.m)); pickups.length=0;
+  projs.forEach(q=>scene.remove(q.m)); projs.length=0; PUPS.forEach(q=>pupFree(q.g)); PUPS.length=0; pickups.forEach(q=>scene.remove(q.m)); pickups.length=0;
   DOORS.forEach(d=>{ d.open=false; d.anim=0; d.g.visible=true; d.g.position.y=0; d.col.on=true; addSolid(d.hit); });
   for(const k in ZONES) ZONES[k].open=(k==='A'||k==='H');
   POWER.on=false; GEN.lever.rotation.z=.6; bulbs.forEach((b,i)=>b.material.color.set(i===0?0xf2cb78:0x3a3326)); tonicPanels.forEach(t=>t.pm.emissiveIntensity=t.T.noPower?.9:.12); forgeLight.intensity=0; FORGE.mouth.material.color.set(0x3a1a0c);

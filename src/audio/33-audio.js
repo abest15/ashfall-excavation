@@ -8,8 +8,12 @@ const AU={ctx:null,live:0,peakLive:0,errs:0,lastErr:'',area:null,out:null,em:nul
 let VOLK=1;
 const AU_MAXLIVE=240; // hard cap on concurrently playing source nodes (oscillators + buffer sources)
 const auVols=()=>({m:SETTINGS.music==null?.8:clamp(+SETTINGS.music||0,0,1), s:SETTINGS.sfx==null?1:clamp(+SETTINGS.sfx||0,0,1), v:SETTINGS.vol==null?.7:clamp(+SETTINGS.vol||0,0,1)});
-function auTrack(s){ AU.live++; if(AU.live>AU.peakLive) AU.peakLive=AU.live; s.onended=auEnded; return s; }
-function auEnded(){ AU.live--; }
+// live one-shot sources: a Set holds a strong ref (so 'ended' always fires) plus a start time, and
+// anything older than AU_MAXAGE is pruned in audioFrame so a lost 'ended' can never wedge the cap
+const AU_LIVE=new Map(), AU_MAXAGE=12;
+function auTrack(s){ AU_LIVE.set(s,AU.ctx?AU.ctx.currentTime:0); AU.live=AU_LIVE.size; if(AU.live>AU.peakLive) AU.peakLive=AU.live; s.onended=auEnded; return s; }
+function auEnded(){ AU_LIVE.delete(this); AU.live=AU_LIVE.size; }
+function auPrune(t){ for(const [s,t0] of AU_LIVE){ if(t-t0>AU_MAXAGE) AU_LIVE.delete(s); } AU.live=AU_LIVE.size; }
 const auBusy=()=>AU.live>=AU_MAXLIVE;
 const auDst=()=>AU.em||AU.out||AU.fx;
 
@@ -107,7 +111,7 @@ function ambienceMode(m){ if(!AU.ctx) return; const t=AU.ctx.currentTime, H=m===
 
 // ---- per-frame update (called from the main loop): volumes, listener, reverb area, world one-shots, score
 const _auF=new V3(), _auU=new V3(); let auPrevState='menu', auAmbT=3;
-function audioFrame(dt){ const a=AU.ctx; if(!a||!AU.fx) return; const t=a.currentTime;
+function audioFrame(dt){ const a=AU.ctx; if(!a||!AU.fx) return; const t=a.currentTime; auPrune(t);
   try{
     const V=auVols(), o=AU.vols; if(V.m!==o.m){ AU.music.gain.setTargetAtTime(V.m,t,.05); o.m=V.m; } if(V.s!==o.s){ AU.sfxG.gain.setTargetAtTime(V.s,t,.05); o.s=V.s; } if(V.v!==o.v){ AU.master.gain.setTargetAtTime(V.v,t,.05); o.v=V.v; }
     // route the title-screen music through the music bus so the Music slider applies to it too

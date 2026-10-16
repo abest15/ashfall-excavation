@@ -57,7 +57,7 @@ function hostMsg(c,m){ let cn=NET.conns[c.peer];
     case 'power': if(!POWER.on){ powerOn(); bcast({t:'power'}); } break;
     case 'plank': { const W=WINDOWS[m.w]; if(W){ NET.credit=id; rebuildPlank(W); NET.credit=null; } break; }
     case 'trap': if(POWER.on&&TRAP.t<=0&&TRAP.cd<=0){ TRAP.t=22; sfx.fire(); bcast({t:'trap'}); } break;
-    case 'grab': { const i=PUPS.findIndex(q=>q.id===m.id); if(i>=0){ const q=PUPS[i]; scene.remove(q.g); PUPS.splice(i,1); pupShared(q.type,id); } break; }
+    case 'grab': { const i=PUPS.findIndex(q=>q.id===m.id); if(i>=0){ const q=PUPS[i]; pupFree(q.g); PUPS.splice(i,1); pupShared(q.type,id); } break; }
     case 'lure': spawnLure(new V3(m.p[0],m.p[1],m.p[2]),new V3(m.v[0],m.v[1],m.v[2])); break;
     case 'shoot': { const w={id:m.w,up:!!m.up}; if(m.k==='bell') ringBell(); else if(m.k==='reson') hitReson(m.i); else if(m.k==='crystal') hitCrystal(m.i); else if(m.k==='valve') hitValve(m.i,w); else if(m.k==='wraith') hitWraith(w); else if(m.k==='gate'&&HL.gateOpen) victory(); break; }
     case 'revive': if(m.target==='h') gotRevived(rp.name); else sendTo(m.target,{t:'revived',by:rp.name}); break; } }
@@ -124,7 +124,7 @@ function updateNetZombies(dt){ for(const z of zombies){ const g=z.g, p=g.positio
 function updateNetPups(dt){ const arr=(NET.lastSnap&&NET.lastSnap.pu)||[], seen=new Set();
   for(const [id,type,x,z] of arr){ seen.add(id); let q=NPU.get(id); if(!q){ q={g:pupVisual(type,x,z),asked:false}; NPU.set(id,q); } q.g.rotation.y+=dt*2; q.g.position.y=1+Math.sin(GT*3+id)*.15;
     if(!q.asked&&!P.downed&&!P.dead&&Math.hypot(x-P.pos.x,z-P.pos.z)<1.5){ q.asked=true; toHost({t:'grab',id}); } }
-  for(const [id,q] of NPU) if(!seen.has(id)){ scene.remove(q.g); NPU.delete(id); }
+  for(const [id,q] of NPU) if(!seen.has(id)){ pupFree(q.g); NPU.delete(id); }
   if(PU.sale>0) PU.sale-=dt; if(PU.gatling>0){ PU.gatling-=dt; if(PU.gatling<=0){ PU.gat=null; P.swapT=.4; buildVM(); toast('The Gatling burns out'); } } }
 function updateNetLures(dt){ const arr=(NET.lastSnap&&NET.lastSnap.lu)||[], seen=new Set();
   for(const [id,x,y,z,act] of arr){ seen.add(id); let q=NLU.get(id); if(!q){ q={g:buildLure(),tick:0,last:new V3(x,y,z)}; q.g.position.set(x,y,z); scene.add(q.g); NLU.set(id,q); } const g=q.g, k=Math.min(1,dt*12); g.position.x+=(x-g.position.x)*k; g.position.y+=(y-g.position.y)*k; g.position.z+=(z-g.position.z)*k; q.last.copy(g.position);

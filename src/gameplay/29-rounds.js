@@ -10,7 +10,7 @@ function updateRounds(dt){
     R.spawnT-=dt; const alive=aliveCount();
     if(R.spawnT<=0&&R.toSpawn>0&&alive<maxAlive()){ let kind='walker';
       if(R.hound) kind='hound';
-      else if(R.n>=2&&!Q.frag.marked&&!R.markedDone&&R.toSpawn<R.total-2){ kind='marked'; R.markedDone=true; }
+      else if(R.n>=2&&!Q.frag.marked&&!R.markedDone&&!pickups.some(k=>k.key==='marked')&&R.toSpawn<R.total-2){ kind='marked'; R.markedDone=true; }
       else if(R.n>=7&&Math.random()<Math.min(.14,.03+R.n*.005)) kind='burster';
       spawnZombie(kind); R.toSpawn--; R.spawnT=R.hound?Math.max(.6,1.4-R.n*.03):Math.max(.45,2.1-R.n*.12); }
     if(R.bossDue&&R.toSpawn<R.total*.6){ R.bossDue=false; spawnZombie('boss'); }
@@ -28,7 +28,7 @@ function startWave(w){ HL.wave=w; HL.inBreak=false; HL.pups=0; HL.toSpawn=Math.r
   HL.primeT=w===4?3.5:0; banner(`Hollow wave ${w} of 4`,w===4?'Something vast stirs':w===3?'The ash hounds have your scent':'They climb from the crystal'); if(w===3) sfx.howl(); }
 function primeDown(){ rite(); HL.lit=null; for(const z of zombies) if(!z.dead) killZombie(z,'body',true); HL.toSpawn=0; HL.gateOpen=true; HL.gate.visible=true; sfx.portal(); banner('The Warden Prime falls','A gate of light opens at the center'); }
 function enterHollow(){
-  bcast({t:'mode',m:'hollow'}); mode='hollow'; for(const z of zombies){ scene.remove(z.g); } zombies.length=0; zparts=[]; projs.forEach(q=>scene.remove(q.m)); projs.length=0; PUPS.forEach(q=>scene.remove(q.g)); PUPS.length=0;
+  bcast({t:'mode',m:'hollow'}); mode='hollow'; for(const z of zombies){ scene.remove(z.g); } zombies.length=0; zparts=[]; projs.forEach(q=>scene.remove(q.m)); projs.length=0; PUPS.forEach(q=>pupFree(q.g)); PUPS.length=0;
   P.pos.set(HX,0,HZ+17); P.yaw=0; P.pitch=0; setAtmosphere('hollow'); ambienceMode('hollow'); flashScreen('#bff3ff');
   HL.inBreak=true; HL.breakT=6; HL.wave=0; setRoundHud('—',false); banner('The Hollow Below','Survive four waves to find the way out'); }
 function victory(){ if(NET.role==='host') bcast({t:'victory'}); rite(); state='end'; try{ document.exitPointerLock&&document.exitPointerLock(); }catch(e){} flashScreen('#ffffff'); sfx.portal();

@@ -7,9 +7,11 @@ function dropPup(x,z,type){ type=type||pickPup(); PUPS.push({g:pupVisual(type,x,
 function pupVisual(type,x,z){ const D=PUP_DEF[type]; const g=new THREE.Group(); g.position.set(x,1,z); scene.add(g);
   const ring=new THREE.Mesh(new THREE.TorusGeometry(.42,.06,6,22),B({color:D.c})); g.add(ring); const ring2=new THREE.Mesh(new THREE.TorusGeometry(.42,.03,6,22),M.add(D.c,.6)); ring2.rotation.y=Math.PI/2; g.add(ring2);
   const lab=makeLabel(D.t,{sx:.9,size:76,color:D.css,fog:false}); g.add(lab); return g; }
+// drops build fresh geometry + a canvas label each time, so free them when the drop goes away
+function pupFree(g){ scene.remove(g); g.traverse(o=>{ if(o.geometry&&!o.isSprite) o.geometry.dispose(); if(o.material&&o.material.map) o.material.map.dispose(); }); }
 function updatePups(dt){ for(let i=PUPS.length-1;i>=0;i--){ const q=PUPS[i]; q.life-=dt; q.g.rotation.y+=dt*2; q.g.position.y=1+Math.sin(GT*3+i)*.15; q.g.visible=q.life>6||Math.sin(GT*18)>0;
-  if(!P.downed&&!P.dead&&Math.hypot(q.g.position.x-P.pos.x,q.g.position.z-P.pos.z)<1.5){ pupShared(q.type,'h'); scene.remove(q.g); PUPS.splice(i,1); continue; }
-  if(q.life<=0){ scene.remove(q.g); PUPS.splice(i,1); } }
+  if(!P.downed&&!P.dead&&Math.hypot(q.g.position.x-P.pos.x,q.g.position.z-P.pos.z)<1.5){ pupShared(q.type,'h'); pupFree(q.g); PUPS.splice(i,1); continue; }
+  if(q.life<=0){ pupFree(q.g); PUPS.splice(i,1); } }
   if(PU.double>0) PU.double-=dt; if(PU.insta>0) PU.insta-=dt; if(PU.freeze>0) PU.freeze-=dt; if(PU.sale>0) PU.sale-=dt;
   if(PU.gatling>0){ PU.gatling-=dt; if(PU.gatling<=0){ PU.gat=null; P.swapT=.4; buildVM(); toast('The Gatling burns out'); } } }
 function applyPup(t){ sfx.pup();

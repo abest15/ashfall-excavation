@@ -14,6 +14,9 @@
     "build:test": "cross-env ASHFALL_TEST=1 ASHFALL_OUT=.test node tools/build.mjs",
     "dev": "node tools/serve.mjs",
     "test": "playwright test -c tests/playwright.config.js",
+    "test:qa": "cross-env ASHFALL_QA=1 playwright test -c tests/playwright.config.js soak coop-soak",
+    "test:all": "cross-env ASHFALL_QA=1 playwright test -c tests/playwright.config.js",
+    "test:perf": "playwright test -c tests/playwright.config.js perf-budget",
     "icons": "node tools/make-icons.mjs",
     "desktop": "npm run build:prod && electron .",
     "dist:win": "npm run build:prod && electron-builder --win nsis portable --publish never",
@@ -41,7 +44,7 @@
   "build": {
     "appId": "com.furnacelantern.ashfall",
     "productName": "Ashfall Excavation",
-    "copyright": "Copyright © 2026 Furnace Lantern Games",
+    "copyright": "Copyright \u00a9 2026 Furnace Lantern Games",
     "artifactName": "Ashfall-Excavation-${version}-${os}-${arch}.${ext}",
     "directories": {
       "output": "release",

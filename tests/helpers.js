@@ -59,3 +59,32 @@ export async function tickUntil(page, cond, maxSeconds = 60, each = '') {
 }
 
 export const KEEP_ALIVE = 'g.P.hp=g.P.maxHp; g.P.invuln=5; g.P.downed=false;';
+
+// Opens two pages in one context over the local transport, hosts on the first, joins on the second and starts.
+// Returns { host, client, hostErrors, clientErrors }.
+export async function hostAndJoin(context) {
+  const host = await context.newPage(), client = await context.newPage();
+  const hostErrors = await openGame(host, '?net=local');
+  const clientErrors = await openGame(client, '?net=local');
+  await toMainMenu(host);
+  await host.click('#m-coop');
+  await host.fill('#mp-name', 'Hosty');
+  await host.click('#mp-host');
+  await expect(host.locator('#mp-roomcode')).toHaveText(/^[A-Z]{5}$/);
+  const code = (await host.locator('#mp-roomcode').textContent()).trim();
+  await toMainMenu(client);
+  await client.click('#m-coop');
+  await client.fill('#mp-name', 'Clienty');
+  await client.fill('#mp-code', code);
+  await client.click('#mp-join');
+  await expect(client.locator('#mp-status')).toContainText(/Connected/i);
+  await expect(host.locator('#mp-players li')).toHaveCount(2);
+  await host.click('#mp-start');
+  for (const p of [host, client]) {
+    await expect.poll(async () => {
+      if (await p.locator('#firstrun').isVisible().catch(() => false)) await p.click('#fr-go').catch(() => {});
+      return p.evaluate(() => window.__G.state);
+    }, { timeout: 90_000 }).toBe('play');
+  }
+  return { host, client, hostErrors, clientErrors };
+}
