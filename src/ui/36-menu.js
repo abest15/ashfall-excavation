@@ -54,7 +54,7 @@ function menuZReset(m,first){ m.z.g.position.set(rand(64,82),0,rand(-24,-2)); if
 MENUZ.forEach(m=>menuZReset(m,true));
 function updateMenuScene(dt,t){ updateColossus(dt); updateRain(dt); lodeParts.cap.rotation.y+=dt*.6; CRATE.beam.material.opacity=.06; for(const f of FLAMES) f.scale.y=.75+Math.random()*.5;
   const cp=COL.g.position, sw=Math.sin(t*.00025); camera.position.set(45+sw*1.2,2.2+Math.sin(t*.0004)*.25,-11+Math.cos(t*.0002)*2); camera.lookAt(cp.x*.6+70*.4,7.5,cp.z*.6-12*.4-13);
-  for(const m of MENUZ){ const g=m.z.g; g.visible=true; const dx=46-g.position.x, dz=-11-g.position.z, d=Math.hypot(dx,dz); g.position.x+=dx/d*m.sp*dt; g.position.z+=dz/d*m.sp*dt; g.rotation.y=Math.atan2(dx,dz); m.ph+=dt*m.sp*3.2; const s=Math.sin(m.ph)*.5; m.z.legL.rotation.x=s; m.z.legR.rotation.x=-s; m.z.armL.rotation.x=-1.35+Math.sin(m.ph*.5)*.15; m.z.armR.rotation.x=-1.35-Math.sin(m.ph*.5+1)*.15; if(d<5) menuZReset(m); }
+  for(const m of MENUZ){ const g=m.z.g; g.visible=true; const dx=46-g.position.x, dz=-11-g.position.z, d=Math.hypot(dx,dz); g.position.x+=dx/d*m.sp*dt; g.position.z+=dz/d*m.sp*dt; g.rotation.y=Math.atan2(dx,dz); animZombie(m.z,dt,true,m.sp,-1); if(d<5) menuZReset(m); }
   LT.t-=dt; if(LT.t<=0){ LT.t=rand(9,20); LT.f=.45; if(AU.ctx) sfx.thunder(rand(.4,1.4)); }
   if(LT.f>0){ LT.f-=dt; const k=(LT.f>.33||(LT.f>.12&&LT.f<.2))?1:0; hemi.intensity=.85+k*1.8; sky.material.color.setScalar(1+k*2); if(LT.f<=0){ hemi.intensity=.85; sky.material.color.setScalar(1); } } }
 function hideMenuScene(){ for(const m of MENUZ) m.z.g.visible=false; }

@@ -1,4 +1,8 @@
 /* ================= expanded world: dressing, chapel, no man's land, windows, trap ================= */
+const CH_SHAFTS=[];
+function VOL_MAT2(col,op){ return new THREE.ShaderMaterial({ uniforms:{col:{value:new THREE.Color(col)},op:{value:op}}, transparent:true, depthWrite:false, blending:THREE.AdditiveBlending, side:THREE.DoubleSide,
+  vertexShader:'varying float vH; varying vec3 vN; varying vec3 vV; void main(){ vH=uv.y; vec4 mv=modelViewMatrix*vec4(position,1.); vN=normalize(normalMatrix*normal); vV=normalize(-mv.xyz); gl_Position=projectionMatrix*mv; }',
+  fragmentShader:'uniform vec3 col; uniform float op; varying float vH; varying vec3 vN; varying vec3 vV; void main(){ float e=abs(dot(normalize(vN),normalize(vV))); gl_FragColor=vec4(col*op*pow(e,1.5)*(.3+.7*vH),1.); }' }); }
 const FLAME_MAT=new THREE.MeshBasicMaterial({color:0xff8a3a,transparent:true,opacity:.8,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide});
 // duckboards and puddles
 // slatted duckboards: two runners and cross slats, all instanced
@@ -16,10 +20,31 @@ function wireRow(x1,z1,x2,z2){ const len=Math.hypot(x2-x1,z2-z1), n=Math.max(1,M
   for(let i=0;i<=len;i+=3){ const k=i/len; cyl(.04,.05,1.1,M.wood,x1+(x2-x1)*k,.55,z1+(z2-z1)*k,4); } }
 wireRow(64,-28.3,80,-28.3); wireRow(97.8,-26,97.8,-16); wireRow(62,3.4,76,3.4); wireRow(-28.3,-28,-28.3,-22);
 { const wm=new THREE.InstancedMesh(new THREE.TorusGeometry(.42,.02,3,10),M.wire,wireMats.length); wireMats.forEach((m,i)=>wm.setMatrixAt(i,m)); scene.add(wm); }
-// shell craters
-for(const [x,z,r] of [[62,-12,3.6],[78,-26,3],[94,-18,3.2],[72,1,2.4],[46,-20,2.6],[83,-11,2.4]]){ const d=new THREE.Mesh(new THREE.CircleGeometry(r,18),M.pitDark); d.rotation.x=-Math.PI/2; d.position.set(x,.04,z); scene.add(d);
-  const rim=new THREE.Mesh(new THREE.TorusGeometry(r,.45,4,18),M.mud); rim.rotation.x=Math.PI/2; rim.scale.z=.5; rim.position.set(x,.08,z); scene.add(rim);
-  const w=new THREE.Mesh(new THREE.CircleGeometry(r*.55,14),puddleM); w.rotation.x=-Math.PI/2; w.position.set(x,.05,z); scene.add(w); }
+// shell craters: raised, churned rims (one merged mesh), dark blasted floors and water in the bottom
+{ const rimB=GB(), pitB=GB(), wetB=GB(), S=SEG;
+  for(const [x,z,r] of [[62,-12,3.6],[78,-26,3],[94,-18,3.2],[72,1,2.4],[46,-20,2.6],[83,-11,2.4],[55,-25,2.2],[88,-2,2.8],[66,-21,1.9],[92,-27.5,1.8],[50,-5,1.8],[77,-5,2.1],[58,1.5,1.6]]){
+    const prof=[[r*.55,.02],[r*.8,.18],[r*.97,.42],[r*1.12,.38],[r*1.35,.14],[r*1.6,0]].map(q=>new THREE.Vector2(q[0],q[1]));
+    rimB.add(new THREE.LatheGeometry(prof,S(20,12)),0xffffff,{p:[x,0,z],r:[0,rand(0,6),0],jit:.18,paint:(c,px,py,pz)=>{ if(py>.3) c.multiplyScalar(1.12); else if(py<.1&&Math.hypot(px-x,pz-z)<r) c.multiplyScalar(.55); }});
+    pitB.add(new THREE.CircleGeometry(r*.85,S(18,10)),0xffffff,{p:[x,.035,z],r:[-Math.PI/2,0,0],paint:(c,px,py,pz)=>{ const d=Math.hypot(px-x,pz-z)/(r*.85); c.multiplyScalar(.35+d*.5); }});
+    if(Math.random()<.8) wetB.add(new THREE.CircleGeometry(r*rand(.4,.6),S(14,8)),0xffffff,{p:[x+rand(-.3,.3),.05,z+rand(-.3,.3)],r:[-Math.PI/2,0,0]});
+    for(let i=0;i<(QUAL?5:2);i++){ const a=rand(0,6.28), d=r*rand(1.1,1.8); rimB.add(new THREE.DodecahedronGeometry(rand(.15,.4)),0x8a8070,{p:[x+Math.cos(a)*d,.08,z+Math.sin(a)*d],s:[1,.5,1]}); } }
+  const rimTex=mudTex.clone(); rimTex.needsUpdate=true; rimTex.repeat.set(5,1);
+  scene.add(new THREE.Mesh(rimB.done(),L({map:rimTex,vertexColors:true,side:THREE.DoubleSide}))); scene.add(new THREE.Mesh(pitB.done(),L({map:mudTex,vertexColors:true,color:0x5a4a3a}))); scene.add(new THREE.Mesh(wetB.done(),puddleM)); }
+// dead-grass tufts and battlefield debris, instanced (Medium and High)
+if(QUAL){ const tuftTex=(()=>{ const c=document.createElement('canvas'); c.width=c.height=64; const g=c.getContext('2d');
+    for(let i=0;i<26;i++){ const x=rand(14,50), h=rand(24,58); g.strokeStyle=pick(['#8a7a52','#6a5a3a','#9a8a62','#5a4a30']); g.lineWidth=rand(1,2.2); g.beginPath(); g.moveTo(x,64); g.quadraticCurveTo(x+rand(-6,6),64-h*.6,x+rand(-14,14),64-h); g.stroke(); }
+    const t=new THREE.CanvasTexture(c); return t; })();
+  const tg=GB(); for(let i=0;i<3;i++) tg.add(new THREE.PlaneGeometry(.6,.45),0xffffff,{p:[0,.22,0],r:[0,i*Math.PI/3,0],sway:(x,y)=>clamp(y/.45+.5,0,1)*.5});
+  const TUFTS=batch(tg.done(),swayMat(L({map:tuftTex,alphaTest:.45,side:THREE.DoubleSide,vertexColors:true})),{cell:30});
+  const ROCKS=batch(new THREE.DodecahedronGeometry(.18),L({map:stoneTex}),{cell:30}), JUNK=batch(new THREE.BoxGeometry(1,1,1),L({map:plankTex}),{cell:30}), CANS=batch(new THREE.CylinderGeometry(.06,.06,.16,7),L({color:0xffffff,shininess:30}),{cell:30});
+  const open=(x,z)=>!(x>30&&x<60&&z>5&&z<30)&&!(x>-10&&x<10&&z>30&&z<50)&&!(Math.abs(x)<1&&z>6&&z<29)&&!(z>15.6&&z<17.4&&x>-19&&x<27)&&!(x>140);
+  const area=[[-29,29,6,29],[-29,9,-29,4],[11,39,-29,4],[41,99,-29,4],[-9,9,31,49]];
+  for(const [x0,x1,z0,z1] of area){ const n=Math.round((x1-x0)*(z1-z0)*(QUAL===2?.11:.06));
+    for(let i=0;i<n;i++){ const x=rand(x0,x1), z=rand(z0,z1); if(!open(x,z)) continue; const r=Math.random();
+      if(r<.62) batchAdd(TUFTS,x,0,z,rand(0,6),rand(.6,1.4),new THREE.Color().setHSL(.1+rand(-.02,.02),rand(.25,.4),rand(.35,.6)).getHex());
+      else if(r<.86) batchAdd(ROCKS,x,.04,z,rand(0,6),[rand(.6,1.8),rand(.4,.9),rand(.6,1.8)],new THREE.Color().setHSL(.08,.08,rand(.4,.6)).getHex(),rand(0,3),rand(0,3));
+      else if(r<.95) batchAdd(JUNK,x,.025,z,rand(0,6),[rand(.4,1.2),.04,rand(.08,.16)],new THREE.Color().setHSL(.08,.3,rand(.3,.55)).getHex(),0,rand(-.1,.1));
+      else batchAdd(CANS,x,.05,z,rand(0,6),1,pick([0x5a4a3a,0x6a3a24,0x4a5040]),Math.PI/2,0); } } }
 // wrecked tank: one merged, vertex-painted mesh, tilted and half sunk into the mud
 const metalTex=makeTex(128,(g,s)=>{ g.fillStyle='#bdbdb5'; g.fillRect(0,0,s,s); speckle(g,s,900,['#8a8a80','#d0d0c8','#7a6a58','#6a4a30'],1,4);
   for(let i=0;i<12;i++){ g.fillStyle=`rgba(110,60,30,${rand(.2,.45)})`; g.beginPath(); g.ellipse(rand(0,s),rand(0,s),rand(4,18),rand(3,12),rand(0,3),0,7); g.fill(); }
@@ -65,7 +90,32 @@ function drawSym(g,s,k,bg){ g.fillStyle=bg; g.fillRect(0,0,s,s); g.strokeStyle='
   else if(k===2){ for(let i=0;i<10;i++){ const a=-Math.PI/2+i*Math.PI/5, rr=i%2?r*.5:r*1.25, px=c+Math.cos(a)*rr, py=c+Math.sin(a)*rr; if(i) g.lineTo(px,py); else g.moveTo(px,py); } g.closePath(); g.fill(); }
   else { g.moveTo(c-r*1.4,c); g.quadraticCurveTo(c,c-r*1.3,c+r*1.4,c); g.quadraticCurveTo(c,c+r*1.3,c-r*1.4,c); g.stroke(); g.beginPath(); g.arc(c,c,r*.42,0,Math.PI*2); g.fill(); } }
 { const ft=stoneTex.clone(); ft.needsUpdate=true; ft.repeat.set(9,7); const fl=new THREE.Mesh(new THREE.PlaneGeometry(29.4,24.4),L({map:ft,color:0x8d877c})); fl.rotation.x=-Math.PI/2; fl.position.set(45,.03,17.5); scene.add(fl);
-  for(const zc of [11,24]) for(let i=0;i<4;i++){ const x=41.5+i*3; box(.8,.48,4.4,M.wood,x,.42,zc,{solid:true,col:true}); box(.14,.95,4.4,M.wood,x+.42,.62,zc,{}); }
+  { const pb=GB(), wd=0x6a4a2e, dk=0x4a321e, S=SEG;
+    for(const zc of [11,24]) for(let i=0;i<4;i++){ const x=41.5+i*3, hb=box(.8,.48,4.4,M.wood,x,.42,zc,{solid:true,col:true}); hb.visible=false; const broken=i===2&&zc===24, tilt=broken?.5:rand(-.03,.03), ry=rand(-.05,.05);
+      const P_=(geo,col,p,r)=>pb.add(geo,col,{p:[x+p[0],p[1],zc+p[2]],r:[r?r[0]:0,ry+(r?r[1]:0),tilt+(r?r[2]:0)],grime:.2});
+      P_(new THREE.BoxGeometry(.5,.06,4.2),wd,[0,.46,0]); P_(new THREE.BoxGeometry(.06,.5,4.2),dk,[-.27,.72,0],[0,0,-.12]); P_(new THREE.BoxGeometry(.05,.1,4.2),wd,[-.29,.98,0],[0,0,-.12]);
+      for(const e of [-2.15,2.15]){ P_(new THREE.BoxGeometry(.6,.85,.07),dk,[-.04,.45,e]); P_(new THREE.CylinderGeometry(.3,.3,.07,S(10,6),1,false,0,Math.PI),dk,[-.04,.87,e],[Math.PI/2,0,Math.PI/2]); }
+      P_(new THREE.BoxGeometry(.16,.06,4.1),dk,[.36,.14,0]); for(const zz of [-1.3,0,1.3]) P_(new THREE.BoxGeometry(.4,.4,.05),dk,[0,.22,zz]); }
+    const pm=new THREE.Mesh(pb.done(),L({map:plankTex,vertexColors:true})); scene.add(pm); }
+  // broken stained-glass windows (one atlas, one draw call) with coloured light falling into the nave
+  { const gc=document.createElement('canvas'); gc.width=256; gc.height=256; const g=gc.getContext('2d'), cols=['#8a1a1a','#1a3a8a','#c89a2a','#2a6a3a','#6a2a7a','#c8602a'];
+    for(let w=0;w<2;w++){ const ox=w*128; g.save(); g.beginPath(); g.moveTo(ox+14,256); g.lineTo(ox+14,80); g.quadraticCurveTo(ox+14,14,ox+64,4); g.quadraticCurveTo(ox+114,14,ox+114,80); g.lineTo(ox+114,256); g.closePath(); g.fillStyle='#120e0a'; g.fill(); g.clip();
+      for(let i=0;i<60;i++){ const x=ox+rand(10,118), y=rand(0,256); g.fillStyle=pick(cols); g.beginPath(); g.moveTo(x,y); for(let k=0;k<4;k++) g.lineTo(x+rand(-22,22),y+rand(-22,22)); g.closePath(); g.fill(); }
+      g.strokeStyle='#0c0a08'; g.lineWidth=3; for(let i=0;i<40;i++){ g.beginPath(); g.moveTo(ox+rand(10,118),rand(0,256)); g.lineTo(ox+rand(10,118),rand(0,256)); g.stroke(); }
+      g.fillStyle='#d8c070'; g.beginPath(); g.arc(ox+64,70,18,0,7); g.fill(); g.strokeStyle='#0c0a08'; g.stroke();
+      for(let i=0;i<4;i++){ g.fillStyle='#070912'; g.beginPath(); const x=ox+rand(20,108), y=rand(60,240); g.moveTo(x,y); for(let k=0;k<6;k++) g.lineTo(x+rand(-20,20),y+rand(-20,20)); g.closePath(); g.fill(); }
+      g.restore(); g.strokeStyle='#3a3530'; g.lineWidth=6; g.beginPath(); g.moveTo(ox+14,256); g.lineTo(ox+14,80); g.quadraticCurveTo(ox+14,14,ox+64,4); g.quadraticCurveTo(ox+114,14,ox+114,80); g.lineTo(ox+114,256); g.stroke(); }
+    const gt=new THREE.CanvasTexture(gc); const wins=[[59.38,9,-Math.PI/2,0],[59.38,26,-Math.PI/2,1],[43.5,5.62,0,1],[56.5,5.62,0,0]];
+    const wb=GB(); for(const [x,z,ry,v] of wins){ const pg=new THREE.PlaneGeometry(1.2,2.4), uv=pg.attributes.uv; for(let i=0;i<uv.count;i++) uv.setX(i,(uv.getX(i)+v)/2); wb.add(pg,0xffffff,{p:[x,3.5,z],r:[0,ry,0]}); }
+    scene.add(new THREE.Mesh(wb.done(),new THREE.MeshBasicMaterial({map:gt,color:0x9a9088})));
+    if(QUAL>=1){ const pb=GB(); for(const [x,z,ry,v] of wins){ const pg=new THREE.PlaneGeometry(1.6,3.4), uv=pg.attributes.uv; for(let i=0;i<uv.count;i++) uv.setX(i,(uv.getX(i)+v)/2);
+        const nx=ry===0?0:-1, nz=ry===0?1:0; pb.add(pg,0xffffff,{p:[x+nx*2.2,.07,z+nz*2.2],r:[-Math.PI/2,0,ry===0?0:Math.PI/2]});
+        const shaft=new THREE.Mesh(new THREE.CylinderGeometry(.45,.9,4.2,10,1,true),VOL_MAT2(pick([0xc86a3a,0x5a6ac8,0xc8a040]),.07)); shaft.position.set(x+nx*1.1,1.9,z+nz*1.1); shaft.rotation.set(ry===0?-.52:0,0,ry===0?0:-.52); scene.add(shaft); CH_SHAFTS.push(shaft); }
+      const pool=new THREE.Mesh(pb.done(),new THREE.MeshBasicMaterial({map:gt,transparent:true,opacity:.22,blending:THREE.AdditiveBlending,depthWrite:false})); scene.add(pool); CH_SHAFTS.push(pool); } }
+  // rubble heaps along the walls
+  { const rb=GB(); for(const [x,z,n] of [[31.8,8,9],[58.3,28.3,12],[45,28.6,6],[58.6,6.6,8],[33,26,7]]) for(let i=0;i<n;i++) rb.add(new THREE.DodecahedronGeometry(rand(.15,.45)),new THREE.Color().setHSL(.08,.06,rand(.35,.55)).getHex(),{p:[x+rand(-.9,.9),rand(0,.35)*(1-i/n),z+rand(-.9,.9)],r:[rand(0,3),rand(0,3),0]});
+    rb.add(new THREE.BoxGeometry(2.6,.18,.18),0x4a321e,{p:[57.5,.5,27.5],r:[0,.6,.35]}); rb.add(new THREE.BoxGeometry(2,.15,.15),0x4a321e,{p:[32.5,.35,8.5],r:[0,-.4,.2]});
+    scene.add(new THREE.Mesh(rb.done(),L({map:stoneTex,vertexColors:true}))); }
   box(1.6,1.1,4,M.stone,57.6,.55,17.5,{solid:true,col:true}); box(1.75,.06,4.2,L({color:0x5a1e1a}),57.6,1.13,17.5,{});
   box(.3,3.2,7.2,M.stone,59.3,3.3,17.5,{}); box(.36,.3,7.6,M.brass,59.2,4.95,17.5,{});
   for(let k=0;k<4;k++){ const c=document.createElement('canvas'); c.width=c.height=128; const tex=new THREE.CanvasTexture(c);

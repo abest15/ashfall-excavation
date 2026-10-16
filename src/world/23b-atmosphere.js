@@ -26,6 +26,25 @@ const ATM={cones:[],shafts:[],fog:[],t:0};
   const cg=new THREE.SphereGeometry(94,QUAL?32:20,8,0,Math.PI*2,0,Math.PI*.47), cc=[], cp=cg.attributes.position; for(let i=0;i<cp.count;i++){ const v=new V3(cp.getX(i),cp.getY(i),cp.getZ(i)).normalize(); const md=Math.max(0,v.dot(MOON_DIR)); const k=.32+Math.pow(md,5)*.9, hz=clamp(v.y*4,0,1); cc.push(k*(.9+.2*(1-hz)),k*(.86+.1*(1-hz)),k*.95); }
   cg.setAttribute('color',new THREE.Float32BufferAttribute(cc,3));
   const clouds=new THREE.Mesh(cg,new THREE.MeshBasicMaterial({map:ct,alphaMap:ct,vertexColors:true,color:0x6c6a72,transparent:true,opacity:.9,side:THREE.BackSide,fog:false,depthWrite:false})); clouds.renderOrder=-8; clouds.frustumCulled=false; sky.add(clouds); ATM.clouds=clouds; }
+// distant skyline (part of the sky, ignores fog): shattered tree trunks, a ruined farmhouse and a broken windmill on a low ridge,
+// with artillery flashes flickering behind it
+{ const W=QUAL?2048:1024, H=W/8, c=document.createElement('canvas'); c.width=W; c.height=H; const g=c.getContext('2d'), k=W/2048*2.2, base=H*.86;
+  g.fillStyle='#0b0908'; g.beginPath(); g.moveTo(0,H); let y=base; for(let x=0;x<=W;x+=8*k){ y=clamp(y+rand(-2,2)*k,base-14*k,base+6*k); g.lineTo(x,y); } g.lineTo(W,H); g.closePath(); g.fill();
+  const trunk=(x,h,w)=>{ g.beginPath(); g.moveTo(x-w,base+4); g.lineTo(x-w*.6,base-h); g.lineTo(x-w*.1,base-h-rand(2,8)*k); g.lineTo(x+w*.3,base-h+rand(0,6)*k); g.lineTo(x+w*.7,base-h*.9); g.lineTo(x+w,base+4); g.fill();
+    if(Math.random()<.6){ g.lineWidth=w*.4; g.strokeStyle='#0b0908'; g.beginPath(); g.moveTo(x,base-h*.6); g.lineTo(x+rand(-1,1)*h*.4,base-h*.6-rand(4,16)*k); g.stroke(); } };
+  for(let i=0;i<55;i++) trunk(rand(0,W),rand(10,44)*k,rand(1.2,3)*k);
+  const house=(x)=>{ const w=70*k, h=34*k; g.fillRect(x,base-h,w,h+6); g.beginPath(); g.moveTo(x-4*k,base-h); g.lineTo(x+w*.35,base-h-24*k); g.lineTo(x+w*.5,base-h-14*k); g.lineTo(x+w*.62,base-h-20*k); g.lineTo(x+w*.7,base-h); g.fill();
+    g.fillRect(x+w*.78,base-h-22*k,8*k,22*k); g.fillStyle='#1c120a'; for(let i=0;i<3;i++) g.fillRect(x+8*k+i*20*k,base-h+10*k,8*k,10*k); g.fillStyle='#0b0908'; };
+  house(W*.18); house(W*.63);
+  const mill=(x)=>{ g.beginPath(); g.moveTo(x-10*k,base); g.lineTo(x-6*k,base-50*k); g.lineTo(x+6*k,base-50*k); g.lineTo(x+10*k,base); g.fill(); g.lineWidth=3*k; g.strokeStyle='#0b0908';
+    for(const a of [.4,2.0,3.5]){ g.beginPath(); g.moveTo(x,base-46*k); g.lineTo(x+Math.cos(a)*30*k,base-46*k+Math.sin(a)*30*k); g.stroke(); } };
+  mill(W*.41); mill(W*.88);
+  for(let x=0;x<W;x+=rand(10,30)*k){ g.fillRect(x,base-rand(4,9)*k,1.5*k,10*k); }
+  const t=new THREE.CanvasTexture(c); t.wrapS=THREE.RepeatWrapping;
+  const sk=new THREE.Mesh(new THREE.CylinderGeometry(86,86,16,QUAL?48:28,1,true),new THREE.MeshBasicMaterial({map:t,transparent:true,side:THREE.BackSide,fog:false,depthWrite:false,color:0xffffff}));
+  sk.position.y=3.2; sk.renderOrder=-7; sk.frustumCulled=false; sky.add(sk);
+  ATM.boom=[]; for(let i=0;i<5;i++){ const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:(()=>{ const cc=document.createElement('canvas'); cc.width=cc.height=64; const gg=cc.getContext('2d'), gr=gg.createRadialGradient(32,32,0,32,32,32); gr.addColorStop(0,'rgba(255,220,160,1)'); gr.addColorStop(.3,'rgba(255,140,60,.5)'); gr.addColorStop(1,'rgba(255,90,30,0)'); gg.fillStyle=gr; gg.fillRect(0,0,64,64); return new THREE.CanvasTexture(cc); })(),color:0xffffff,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,fog:false,opacity:0}));
+    sp.renderOrder=-7.5; sp.frustumCulled=false; sky.add(sp); ATM.boom.push({sp,t:0}); } }
 // soft-edged additive volume (light cone / moon shaft): bright near the source, fading with distance and toward silhouette edges
 const VOL_MAT=(col,op,shaft)=>new THREE.ShaderMaterial({ uniforms:{col:{value:new THREE.Color(col)},op:{value:op},sh:{value:shaft?1:0}}, transparent:true, depthWrite:false, blending:THREE.AdditiveBlending, side:THREE.DoubleSide,
   vertexShader:'varying float vH; varying vec3 vN; varying vec3 vV; void main(){ vH=uv.y; vec4 mv=modelViewMatrix*vec4(position,1.); vN=normalize(normalMatrix*normal); vV=normalize(-mv.xyz); gl_Position=projectionMatrix*mv; }',
@@ -72,6 +91,8 @@ function updateAtmos(dt){ ATM.t+=dt; const main=mode==='main'&&!P.inCabin;
   if(ATM.clouds) ATM.clouds.rotation.y+=dt*.003;
   for(const c of ATM.cones){ const on=main&&c.l.intensity>.05; c.m.visible=c.halo.visible=c.pool.visible=on; if(on){ const f=c.l.intensity/1.1; c.m.material.uniforms.op.value=.2*f; } }
   for(const s of ATM.shafts) s.visible=main;
+  if(typeof CH_SHAFTS!=='undefined') for(const s of CH_SHAFTS) s.visible=main;
+  if(ATM.boom) for(const b of ATM.boom){ if(b.t>0){ b.t-=dt; const f=Math.max(0,b.t/b.d); b.sp.material.opacity=main?f*(Math.random()<.3?.6:1):0; } else if(main&&Math.random()<dt*.12){ const a=rand(0,6.28), r=90; b.d=b.t=rand(.25,.7); b.sp.position.set(Math.cos(a)*r,rand(1.5,4),Math.sin(a)*r); b.sp.scale.set(rand(10,22),rand(6,12),1); } }
   for(const f of ATM.fog){ f.visible=mode!=='cabin'&&!P.inCabin; const u=f.material.uniforms; u.time.value=ATM.t; u.cam.value.copy(camera.position); f.position.x=camera.position.x; f.position.z=camera.position.z; u.col.value.set(mode==='hollow'?0x2a3456:0x4a453e); }
   if(ATM.ripple) ATM.ripple.offset.set(ATM.t*.013,ATM.t*.021);
   if(QUAL===2){ const fx=-Math.sin(camera.rotation.y), fz=-Math.cos(camera.rotation.y); const tx=1/(48/sun.shadow.mapSize.x); _sc.set(Math.round((camera.position.x+fx*10)*tx)/tx,0,Math.round((camera.position.z+fz*10)*tx)/tx);

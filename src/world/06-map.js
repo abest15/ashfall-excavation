@@ -39,13 +39,14 @@ function layBags(b,x,y0,z,len,horiz,rows,courses,depth){ const n=Math.max(1,Math
 const STONES=batch(new THREE.BoxGeometry(1,1,1),L({map:stoneTex}),{shadow:QUAL===2,cell:30});
 // wall pieces are merged per material and per 40 m cell (world-space UVs keep the texture scale), so the whole
 // trench network costs a handful of draw calls instead of one per piece
-const WALLSETS={earth:{tex:earthTex,col:0xffffff,u:4,v:3.4},stone:{tex:stoneTex,col:0x8f8a80,u:4,v:3.4},cap:{tex:stoneTex,col:0x77736b,u:4,v:3.4},sand:{tex:sandTex,col:0xffffff,u:1.6,v:.5}};
+const WALLSETS={earth:{tex:plankRevTex,col:0xffffff,u:4,v:3.4},iron:{tex:ironTex,col:0xc8c4bc,u:2.4,v:3.4},wicker:{tex:wickerTex,col:0xffffff,u:2.2,v:1.7},bags:{tex:sandTex,col:0xe0d8c8,u:1.6,v:.9},stone:{tex:stoneTex,col:0x8f8a80,u:4,v:3.4},cap:{tex:stoneTex,col:0x77736b,u:4,v:3.4},sand:{tex:sandTex,col:0xffffff,u:1.6,v:.5}};
 const WALLGEO=new Map();
 function wallPiece(k,w,h,d,x,y,z){ const g=new THREE.BoxGeometry(w,h,d); g.translate(x,y,z); const p=g.attributes.position, n=g.attributes.normal, uv=g.attributes.uv, S_=WALLSETS[k];
   for(let i=0;i<p.count;i++){ const ax=Math.abs(n.getX(i)), ay=Math.abs(n.getY(i)); if(ay>.5) uv.setXY(i,p.getX(i)/S_.u,p.getZ(i)/S_.u); else if(ax>.5) uv.setXY(i,p.getZ(i)/S_.u,p.getY(i)/S_.v); else uv.setXY(i,p.getX(i)/S_.u,p.getY(i)/S_.v); }
   const key=k+'|'+Math.floor(x/40)+','+Math.floor(z/40); if(!WALLGEO.has(key)) WALLGEO.set(key,[]); WALLGEO.get(key).push(g); }
 function flushWalls(){ const mats={}; for(const [key,list] of WALLGEO){ const k=key.split('|')[0], S_=WALLSETS[k]; if(!mats[k]){ const t=S_.tex.clone(); t.needsUpdate=true; t.repeat.set(1,1); mats[k]=L({map:t,color:S_.col}); }
     const m=new THREE.Mesh(mergeGeos(list),mats[k]); m.geometry.deleteAttribute('sway'); m.geometry.deleteAttribute('color'); m.castShadow=m.receiveShadow=QUAL===2; scene.add(m); addSolid(m); } WALLGEO.clear(); }
+const REVPOSTS=batch(new THREE.CylinderGeometry(.08,.1,3.5,6),L({color:0xffffff,map:plankTex}),{cell:40}), PICKETS=batch(new THREE.CylinderGeometry(.03,.04,.9,5),L({color:0xffffff}),{cell:40}), WIRECOIL=batch(new THREE.TorusGeometry(.3,.012,3,10),L({color:0xffffff}),{cell:40});
 // walls
 const postMats=[];
 function wall(x1,z1,x2,z2,ops=[],o={}){
@@ -53,8 +54,14 @@ function wall(x1,z1,x2,z2,ops=[],o={}){
   const T=1.2,H=o.h||3.4, horiz=z1===z2, len=horiz?Math.abs(x2-x1):Math.abs(z2-z1);
   const lo=horiz?Math.min(x1,x2):Math.min(z1,z2), a0=lo-T/2, a1=lo+len+T/2, fx=horiz?z1:x1;
   const tex=o.stone?stoneTex:earthTex, tint=o.stone?0x8f8a80:0xffffff;
-  const piece=(s0,s1,y0,y1)=>{ const l=s1-s0, h=y1-y0; if(l<=.02||h<=.02) return; const c=(s0+s1)/2;
-    wallPiece(o.stone?'stone':'earth',horiz?l:T,h,horiz?T:l,horiz?c:fx,y0+h/2,horiz?fx:c); };
+  const seg=(k,s0,s1,y0,y1)=>{ const l=s1-s0, h=y1-y0, c=(s0+s1)/2; wallPiece(k,horiz?l:T,h,horiz?T:l,horiz?c:fx,y0+h/2,horiz?fx:c); };
+  // earthen walls alternate revetment types in 3-7 m sections; window surrounds stay planked
+  const piece=(s0,s1,y0,y1)=>{ const l=s1-s0, h=y1-y0; if(l<=.02||h<=.02) return; if(o.stone) return seg('stone',s0,s1,y0,y1);
+    if(y0>0||y1<H||l<3) return seg('earth',s0,s1,y0,y1);
+    const kinds=QUAL?['earth','earth','iron','wicker','bags']:['earth','earth','iron']; let a=s0;
+    while(a<s1-.01){ let b=Math.min(s1,a+rand(3,7)); if(s1-b<1.5) b=s1; const k=pick(kinds); seg(k,a,b,y0,y1);
+      if(QUAL&&k!=='earth'){ const at=b-.12; for(const side of [-1,1]) batchAdd(REVPOSTS,horiz?at:fx+side*.66,H/2,horiz?fx+side*.66:at,rand(-.2,.2),[1,1,1],0x4a3420,rand(-.05,.05),rand(-.05,.05)); }
+      a=b; } };
   let cur=a0; for(const c of ops.slice().sort((p,q)=>p-q)){ piece(cur,c-1.1,0,H); piece(c-1.1,c+1.1,0,.9); piece(c-1.1,c+1.1,2.5,H); cur=c+1.1; } piece(cur,a1,0,H);
   const cx=(x1+x2)/2, cz=(z1+z2)/2, w=horiz?len+T:T, d=horiz?T:len+T; addCol(cx,cz,w,d);
   if(o.stone){ wallPiece('cap',w+.3,.35,d+.3,cx,H+.17,cz);
@@ -64,7 +71,11 @@ function wall(x1,z1,x2,z2,ops=[],o={}){
   if(QUAL===2){ const hb=box(w+0.35,0.5,d+0.35,M.sand,cx,H+0.22,cz,{solid:true}); hb.visible=false; box(w+.1,.12,d+.1,M.hill,cx,H+.06,cz,{}); layBags(TOPBAGS,cx,H+.08,cz,(horiz?w:d)+.2,horiz,2,1,.62); layBags(TOPBAGS,cx,H+.08+.15,cz,(horiz?w:d)-.2,horiz,1,1,0); }
   else wallPiece('sand',w+0.35,0.5,d+0.35,cx,H+0.22,cz);
   for(let k=0;k<=len;k+=6){ const along=lo+k; if(ops.some(c=>Math.abs(c-along)<1.5)) continue; const px=horiz?along:x1, pz=horiz?z1:along;
-    for(const side of [-1,1]){ const m=new THREE.Matrix4(); m.makeTranslation(px+(horiz?0:side*0.68),1.9,pz+(horiz?side*0.68:0)); postMats.push(m);} }
+    for(const side of [-1,1]){ const m=new THREE.Matrix4().makeRotationFromEuler(new THREE.Euler(rand(-.06,.06),rand(0,3),rand(-.06,.06))); m.setPosition(px+(horiz?0:side*0.68),1.9,pz+(horiz?side*0.68:0)); postMats.push(m);} }
+  // barbed-wire pickets along some wall tops (Medium and High)
+  if(QUAL&&Math.random()<.7){ const L_=(horiz?w:d)-1, n=Math.floor(L_/2.6); for(let i=0;i<=n;i++){ const a=-L_/2+i*L_/Math.max(1,n), px=horiz?cx+a:cx, pz=horiz?cz:cz+a, yb=H+(QUAL===2?.4:.45);
+      batchAdd(PICKETS,px,yb+.45,pz,rand(0,3),[1,rand(.85,1.1),1],0x3a2a1a,rand(-.12,.12),rand(-.12,.12));
+      if(i<n) for(let j=0;j<4;j++){ const t=(j+.5)/4, wx=horiz?px+t*L_/n:px, wz=horiz?pz:pz+t*L_/n; batchAdd(WIRECOIL,wx,yb+.55+rand(-.05,.05),wz,horiz?Math.PI/2:0,rand(.85,1.1),0x3a3a3a,rand(-.2,.2)); } } }
 }
 wall(-10,30,-10,50,[40]); wall(10,30,10,50); wall(-10,50,10,50,[2]);
 wall(-30,30,-3,30); wall(3,30,30,30,[25]);
@@ -77,7 +88,7 @@ wall(30,30,60,30,[34,46],{stone:true,h:5}); wall(60,5,60,30,[],{stone:true,h:5})
 // no man's land
 wall(40,-30,100,-30,[60,85]); wall(100,-30,100,5,[-12]); wall(60,5,100,5,[80]);
 flushWalls();
-{ const pm=new THREE.InstancedMesh(new THREE.CylinderGeometry(0.09,0.11,3.8,5),M.wood,postMats.length); postMats.forEach((m,i)=>pm.setMatrixAt(i,m)); scene.add(pm); }
+{ const pm=new THREE.InstancedMesh(new THREE.CylinderGeometry(0.09,0.11,3.8,5),M.wood,postMats.length); postMats.forEach((m,i)=>pm.setMatrixAt(i,m)); pm.frustumCulled=false; scene.add(pm); }
 
 // distant scenery
 for(let i=0;i<26;i++){ const a=i/26*Math.PI*2, r=rand(112,145); const h=rand(10,26); const m=new THREE.Mesh(new THREE.ConeGeometry(rand(16,30),h,6),M.hill); m.position.set(Math.cos(a)*r+30,h/2-2,Math.sin(a)*r+5); scene.add(m); }
