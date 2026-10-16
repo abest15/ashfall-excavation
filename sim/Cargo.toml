@@ -1,0 +1,23 @@
+[package]
+name = "ashfall-sim"
+version = "0.1.0"
+edition = "2021"
+publish = false
+description = "Ashfall Excavation crowd simulation core: collision world, nav grid + flow fields, crowd steering (wasm32)"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+path = "src/lib.rs"
+
+# No dependencies: plain #[no_mangle] extern "C" exports over static linear memory, no allocator.
+
+[profile.release]
+opt-level = "z"
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true
+debug = false
+
+[profile.dev]
+panic = "abort"
