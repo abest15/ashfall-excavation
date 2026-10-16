@@ -1,0 +1,11 @@
+{
+  "name": "ashfall-excavation",
+  "version": "0.9.0",
+  "private": true,
+  "description": "Ashfall Excavation: a round-based co-op zombie survival game.",
+  "type": "module",
+  "scripts": {
+    "build": "node tools/build.mjs",
+    "dev": "node tools/serve.mjs"
+  }
+}

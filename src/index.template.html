@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Ashfall Excavation</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Black+Ops+One&family=Special+Elite&family=Barlow+Condensed:wght@500;600;700&display=swap" rel="stylesheet">
+<!--STYLES-->
+</head><body>
+<canvas id="c" aria-label="Game view"></canvas>
+
+<div id="hud" hidden>
+  <div id="vig"></div><div id="dmg"></div><div id="hurtflash"></div>
+  <div id="cross"><i></i><i></i><i></i><i></i></div><div id="hitm"></div>
+  <div id="pups"></div>
+  <div id="bossbar" hidden><div class="lbl" id="bossname">Iron Warden</div><div class="bar"><i id="bossfill"></i></div></div>
+  <div id="journal"><div class="jh">Field journal <span>J to fold</span></div><div id="jtext"></div><ul id="jlist"></ul></div>
+  <div id="prompt" hidden></div>
+  <div id="toast"></div>
+  <div id="banner"></div>
+  <div id="rcol"><div id="items"></div><div id="team"></div></div>
+  <div id="reviving" hidden>Second Wind…</div>
+  <div id="bl">
+    <div id="perks"></div>
+    <div id="hpbar"><i id="hpfill"></i><i id="shfill"></i></div>
+    <div id="roundrow"><div id="round"></div><div id="points">500<div id="ppop"></div></div></div>
+  </div>
+  <div id="br">
+    <div id="wnote"></div>
+    <div id="wname">Service Pistol</div>
+    <div id="ammo"><b id="mag">8</b> <span id="res">/ 64</span></div>
+    <div id="slots"></div>
+  </div>
+</div>
+
+<div id="menu" class="overlay front">
+  <canvas id="embers"></canvas><div class="grain" id="grain"></div>
+  <div id="splash" role="button" tabindex="0" aria-label="Press any key to begin">
+    <svg class="emblem" viewBox="0 0 200 200" aria-hidden="true">
+      <defs><radialGradient id="eg" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#bff6ff"/><stop offset=".45" stop-color="#2aa8c0"/><stop offset="1" stop-color="#0a2a33" stop-opacity="0"/></radialGradient></defs>
+      <g class="ring"><circle cx="100" cy="100" r="88" fill="none" stroke="#c9a35a" stroke-width="7" stroke-dasharray="11 6"/></g>
+      <circle cx="100" cy="100" r="74" fill="none" stroke="#7a3a1e" stroke-width="3"/>
+      <circle cx="100" cy="100" r="46" fill="url(#eg)" class="core"/>
+      <path d="M100 20 L113 70 L100 61 L87 70 Z M100 180 L87 130 L100 139 L113 130 Z M20 100 L70 87 L61 100 L70 113 Z M180 100 L130 113 L139 100 L130 87 Z" fill="#c9a35a"/>
+      <path d="M100 72 L119 100 L100 128 L81 100 Z" fill="#e6fcff"/>
+    </svg>
+    <h1 class="logo"><span class="l1">ASHFALL</span><span class="l2">EXCAVATION</span></h1>
+    <p class="tagline">DIG SITE 7 · NORTHERN FRONT · 1918</p>
+    <p class="press" id="press">PRESS ANY KEY</p>
+  </div>
+  <div id="front-main" hidden>
+    <aside class="side">
+      <div class="minilogo"><svg viewBox="0 0 200 200" aria-hidden="true"><circle cx="100" cy="100" r="86" fill="none" stroke="#c9a35a" stroke-width="10" stroke-dasharray="12 7"/><circle cx="100" cy="100" r="44" fill="url(#eg)"/><path d="M100 72 L119 100 L100 128 L81 100 Z" fill="#e6fcff"/></svg><div><b>ASHFALL</b><span>EXCAVATION</span></div></div>
+      <nav class="mnav" aria-label="Main menu">
+        <button id="play" class="mbtn primary" type="button">Solo</button>
+        <button id="restart" class="mbtn" type="button" hidden>Restart</button>
+        <button id="m-coop" class="mbtn" type="button" data-panel="p-coop">Co-op</button>
+        <button class="mbtn" type="button" data-panel="p-opts">Options</button>
+        <button class="mbtn" type="button" data-panel="p-ctrl">Controls</button>
+        <button class="mbtn" type="button" data-panel="p-intel">Field intel</button>
+        <button id="m-quit" class="mbtn" type="button" hidden>Quit to title</button>
+      </nav>
+      <div class="dogtag"><b>SERVICE RECORD</b><span id="best">No rounds survived yet</span></div>
+    </aside>
+    <section class="panel" id="p-opts" hidden>
+      <h2 class="ph">Options</h2><span class="stamp">FIELD ISSUE</span>
+      <div class="set">
+        <label for="s-sens">Look sensitivity <output id="o-sens"></output><input id="s-sens" type="range" min="0.3" max="3" step="0.1"></label>
+        <label for="s-fov">Field of view <output id="o-fov"></output><input id="s-fov" type="range" min="65" max="100" step="1"></label>
+        <label for="s-vol">Volume <output id="o-vol"></output><input id="s-vol" type="range" min="0" max="1" step="0.05"></label>
+        <label for="s-scale">Graphics
+          <select id="s-scale"><option value="0.55">Low · fastest, simple look</option><option value="0.75">Medium · smooth lighting and film look</option><option value="1">High · best look, needs a decent GPU</option></select>
+        </label>
+        <label for="s-diff">Difficulty
+          <select id="s-diff"><option value="rec">Recruit · gentler dead</option><option value="vet">Veteran · the intended fight</option><option value="hard">Hardened · no mercy</option></select>
+        </label>
+      </div>
+      <p class="note" id="padnote">No controller found. Plug in an Xbox or PlayStation controller and press any button on it.</p>
+    </section>
+    <section class="panel" id="p-ctrl" hidden>
+      <h2 class="ph">Controls</h2><span class="stamp">STANDING ORDERS</span>
+      <h2>Keyboard and mouse</h2>
+      <dl class="keys">
+        <dt>W A S D</dt><dd>Move · Shift to sprint · Space to jump</dd>
+        <dt>Mouse</dt><dd>Look · Left click fire · Right click aim</dd>
+        <dt>E</dt><dd>Buy, open, drink, dig, use</dd>
+        <dt>Hold E</dt><dd>Rebuild a boarded window · revive a teammate</dd>
+        <dt>R</dt><dd>Reload</dd>
+        <dt>1 · 2 · 3 · Wheel</dt><dd>Switch weapon (3 with Packmule Tonic)</dd>
+        <dt>F · V</dt><dd>Knife slash, lunges at nearby dead</dd>
+        <dt>G</dt><dd>Throw a Clockwork Lure</dd>
+        <dt>J</dt><dd>Fold the field journal</dd>
+        <dt>Esc</dt><dd>Pause menu</dd>
+      </dl>
+      <h2>Controller</h2>
+      <dl class="keys">
+        <dt>Left stick</dt><dd>Move · Click to sprint</dd>
+        <dt>Right stick</dt><dd>Look</dd>
+        <dt>RT · LT</dt><dd>Fire · Aim</dd>
+        <dt>A</dt><dd>Jump</dd>
+        <dt>X</dt><dd>Use, buy, open (hold to rebuild or revive) · Reload when nothing is nearby</dd>
+        <dt>Y</dt><dd>Switch weapon</dd>
+        <dt>B · RB</dt><dd>Knife slash</dd>
+        <dt>LB</dt><dd>Throw a Clockwork Lure</dd>
+        <dt>Start · Back</dt><dd>Pause · Fold the journal</dd>
+      </dl>
+    </section>
+    <section class="panel" id="p-intel" hidden>
+      <h2 class="ph">Field intel</h2><span class="stamp">EYES ONLY</span>
+      <p class="lede">The dig crew struck something black and humming under the mud. Then the dead started climbing out of the trenches.</p>
+      <p class="lede">Hold out round after round. Board the windows, open the site, restore the power, and forge your guns into something worse. Finish the old rite the diggers started: ride the Colossus that stalks No Man's Land, read the chapel's glass, build a storm in your fist, and bring the giant down. Somewhere under the dig is a way out.</p>
+      <h2>Rumors from the line</h2>
+      <p class="lede">The relic crate sometimes coughs up weapons nobody issued: a pistol that spits green fire, a rifle that throws lightning from one corpse to the next. The quartermaster sells wind-up drummers the dead cannot resist.</p>
+      <p id="loaderr" hidden>The 3D engine failed to load. Check your connection and reload the page.</p>
+    </section>
+    <section class="panel" id="p-coop" hidden>
+      <h2 class="ph">Co-op</h2><span class="stamp">UP TO 4 DIGGERS</span>
+      <label class="fld">Your name <input id="mp-name" maxlength="14" placeholder="Digger" autocomplete="off"></label>
+      <div class="mprow"><button id="mp-host" class="btn primary" type="button">Host a game</button></div>
+      <div class="mprow"><input id="mp-code" class="code" maxlength="5" placeholder="CODE" autocomplete="off" aria-label="Room code"><button id="mp-join" class="btn" type="button">Join</button></div>
+      <div id="mp-lobby" hidden>
+        <p class="eyebrow">Room code · share it with your friends</p>
+        <div class="mprow"><div id="mp-roomcode" class="bigcode">-----</div><button id="mp-copy" class="btn" type="button">Copy</button></div>
+        <ul id="mp-players"></ul>
+        <div class="mprow"><button id="mp-start" class="btn primary" type="button" hidden>Start the dig</button><button id="mp-leave" class="btn" type="button">Leave</button></div>
+      </div>
+      <p id="mp-status" class="note"></p>
+      <p class="note">The host's computer runs the zombies, so the strongest machine should host. More players means more and tougher dead. Players connect directly to each other; a few school or office networks block that.</p>
+    </section>
+    <div class="ticker"><b>FIELD REPORT</b><span id="ticker"></span></div>
+  </div>
+</div>
+
+<div id="over" class="overlay" hidden>
+  <div class="card">
+    <p class="eyebrow" id="over-eyebrow">The line broke</p>
+    <h1 id="over-title">Overrun on round 1</h1>
+    <p class="lede" id="over-lede"></p>
+    <div class="stats">
+      <div><b id="st-round">1</b><span>Round</span></div>
+      <div><b id="st-kills">0</b><span>Kills</span></div>
+      <div><b id="st-heads">0</b><span>Headshots</span></div>
+      <div><b id="st-time">0:00</b><span>Time</span></div>
+      <div><b id="st-rites">0/12</b><span>Rites</span></div>
+    </div>
+    <div class="row"><button id="again" class="btn primary" type="button">Dig again</button><span class="meta">Controller: press A</span></div>
+  </div>
+</div>
+
+<!--SCRIPTS-->
+</body></html>

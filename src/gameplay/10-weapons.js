@@ -1,0 +1,26 @@
+/* ---------- weapons ---------- */
+const WD={
+  pistol:{name:'Service Pistol',up:'Cinder Talon',type:'pistol',dmg:45,rate:.16,mag:8,res:64,rl:1.5,spread:.012,head:2.5,upMul:4,snd:'pistol'},
+  carbine:{name:'Trench Carbine',up:'Dreadnought',type:'rifle',dmg:150,rate:.75,mag:5,res:50,rl:2.4,spread:.003,head:3,pierce:2,cost:600,snd:'rifle'},
+  smg:{name:'Field SMG',up:'Hornet Swarm',type:'smg',dmg:55,rate:.075,auto:true,mag:32,res:192,rl:2,spread:.03,head:2,cost:1200,snd:'smg'},
+  shotgun:{name:'Pump Shotgun',up:'Mudslide',type:'shotgun',dmg:48,rate:.8,mag:6,res:42,rl:3,pellets:8,spread:.075,head:1.5,cost:1500,snd:'shotgun'},
+  lmg:{name:'Light Machine Gun',up:'Iron Torrent',type:'lmg',dmg:85,rate:.09,auto:true,mag:75,res:300,rl:4,spread:.035,head:2.2,box:true,snd:'lmg'},
+  revolver:{name:'Heavy Revolver',up:'Judgement',type:'pistol',dmg:280,rate:.35,mag:6,res:48,rl:2.8,spread:.01,head:3,pierce:2,box:true,snd:'rifle'},
+  autorifle:{name:'Assault Rifle',cost:1800,up:'Red Tempest',type:'smg',dmg:95,rate:.1,auto:true,mag:30,res:240,rl:2.2,spread:.022,head:2.5,box:true,snd:'smg'},
+  marksman:{name:'Marksman Rifle',up:'Longwatch',type:'rifle',dmg:480,rate:.9,mag:6,res:48,rl:3,spread:0,head:4,pierce:3,box:true,snd:'rifle'},
+  rod:{name:'Lodestone Rod',up:'Awakened Rod',type:'rod',dmg:900,rate:.55,mag:12,res:60,rl:2.5,spread:0,head:1,pierce:5,beam:true,snd:'rod',
+       upStats:{dmg:2800,mag:20,res:140,pierce:10,rate:.42,chain:true}},
+  cannon:{name:'Cinder Cannon',up:'Sunfall',type:'cannon',dmg:650,rate:.95,mag:4,res:24,rl:3.2,spread:.004,head:1,splash:4.2,box:true,snd:'cannon',
+       upStats:{dmg:1700,mag:6,res:48,splash:5.6,rate:.8}},
+  ion:{name:'Ion Blaster',up:'Ion Annihilator',type:'ion',dmg:1100,rate:.28,mag:20,res:160,rl:2.6,spread:.004,head:1.2,splash:3.2,proj:true,pcol:0x6aff7a,box:true,snd:'ion',upStats:{dmg:2600,mag:40,res:200,splash:4.2,pcol:0xff5a4a}},
+  dynamo:{name:'Dynamo Rifle',up:'Dynamo Rifle Mk II',type:'dynamo',dmg:1e6,rate:1.25,mag:3,res:9,rl:3.4,spread:0,head:1,jump:10,box:true,snd:'dynamo',upStats:{mag:6,res:18,jump:24}},
+  gauntlet:{name:'Tempest Gauntlet',type:'gauntlet',dmg:800,rate:.3,mag:14,res:84,rl:2,spread:0,head:1.5,pierce:3,beam:true,arc:true,chain:true,chainN:5,chainMul:.75,bcol:0xffd27a,snd:'zap'},
+  gatling:{name:'Ember Gatling',type:'gatling',dmg:420,rate:.05,auto:true,mag:999,res:0,rl:1,spread:.03,head:2,pierce:2,snd:'lmg'},
+};
+const BOX_POOL=['lmg','revolver','autorifle','marksman','shotgun','smg','carbine','cannon','ion','dynamo'];
+function statsOf(w){ const d=WD[w.id]; const s=Object.assign({},d); s.pellets=d.pellets||1; s.pierce=d.pierce||1;
+  if(w.up){ if(d.upStats) Object.assign(s,d.upStats); else { s.dmg=d.dmg*(d.upMul||2.4); s.mag=Math.round(d.mag*1.5); s.res=d.res*2; s.pierce=s.pierce+1; } s.name=d.up; }
+  return s; }
+function mkInst(id,up=false){ const s=statsOf({id,up}); return {id,up,mag:s.mag,res:s.res,next:0,reloadEnd:0}; }
+const curW=()=>PU.gatling>0&&PU.gat?PU.gat:(P.weapons[P.cur]||null);
+const maxSlots=()=>P.perks.has('mule')?3:2;
