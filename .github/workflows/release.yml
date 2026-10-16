@@ -53,6 +53,11 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # sim.wasm is rebuilt from sim/ (without Rust the build falls back to the committed sim/prebuilt/sim.wasm)
+      - uses: dtolnay/rust-toolchain@1.97.0
+        with:
+          targets: wasm32-unknown-unknown
+
       - name: Set version from tag
         shell: bash
         run: npm version "${TAG#v}" --no-git-tag-version --allow-same-version

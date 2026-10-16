@@ -20,6 +20,7 @@ window.__G=(function(){
   v('hitValve',()=>hitValve); v('rebuildPlank',()=>rebuildPlank); v('openDoor',()=>openDoor); v('wraithDone',()=>wraithDone);
   v('updateInteract',()=>updateInteract); v('throwLure',()=>throwLure); v('spawnLure',()=>spawnLure); v('pickBox',()=>pickBox);
   v('zvoice',()=>zvoice); v('pause',()=>pause); v('victory',()=>victory); v('sfx',()=>sfx);
+  v('WSIM',()=>WSIM); v('colliders',()=>colliders); v('collide',()=>collide); v('route',()=>route); v('zoneOf',()=>zoneOf); v('updateZombies',()=>updateZombies);
   Object.defineProperties(G,{
     curInter:{get(){ return curInter; },enumerable:true},
     state:{get(){ return state; },enumerable:true},
