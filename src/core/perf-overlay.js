@@ -9,7 +9,7 @@ function perfBuild(){ if(PERF.el) return; const d=document.createElement('div');
   d.style.cssText='position:fixed;top:8px;left:8px;z-index:2147483000;pointer-events:none;background:rgba(8,6,4,.78);color:#e8dcc0;font:11px/1.35 ui-monospace,Consolas,Menlo,monospace;padding:6px 9px;border:1px solid rgba(201,163,90,.55);border-radius:4px;white-space:pre;min-width:190px;text-shadow:0 1px 0 #000';
   document.body.appendChild(d); PERF.el=d; }
 function perfToggle(on){ PERF.on=on===undefined?!PERF.on:!!on; perfBuild(); PERF.el.hidden=!PERF.on;
-  renderer.info.autoReset=!PERF.on; renderer.info.reset(); PERF.frames=0; PERF.acc=0; PERF.worst=0; PERF.showT=0;
+  renderer.info.autoReset=!PERF.on; renderer.info.reset(); PERF.frames=0; PERF.acc=0; PERF.worst=0; PERF.showT=0; if(PERF.on) PERF.el.textContent=perfText();
   try{ localStorage.setItem('ashfall:perf',PERF.on?'1':'0'); }catch(e){} }
 addEventListener('keydown',e=>{ if(e.code!=='F3') return; e.preventDefault(); perfToggle(); },true);
 function perfRow(k,v){ return (k+'          ').slice(0,10)+v+'\n'; }
