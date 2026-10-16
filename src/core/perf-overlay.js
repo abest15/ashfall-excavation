@@ -1,5 +1,6 @@
 /* ---------- performance overlay (F3) · lane 5 ----------
-   FPS, frame time, draw calls, triangles, zombie count, quality, network role and ping.
+   FPS, frame time, draw calls, triangles, zombie count, zombie simulation path (WASM/JS) and its cost, quality,
+   network role and ping.
    Reads only; it never changes game state. Toggle with F3 (remembered per browser).
    Network ping shows when the co-op code provides NET.ping (milliseconds); otherwise "n/a".
    Also fills an element with id "game-version" with GAME_VERSION if the menu provides one. */
@@ -23,6 +24,7 @@ function perfText(){ const zs=typeof zombies!=='undefined'?zombies:[]; let alive
     perfRow('tris',PERF.tris>=1e6?(PERF.tris/1e6).toFixed(2)+' M':(PERF.tris/1e3).toFixed(1)+' k')+
     perfRow('geo/tex',mem.geometries+' / '+mem.textures)+
     perfRow('zombies',alive+' alive')+
+    (typeof WSIM!=='undefined'?perfRow('sim',wsimLabel()):'')+
     perfRow('quality',qn+' · '+sz.x+'x'+sz.y)+
     perfRow('state',state+(typeof mode!=='undefined'?' · '+mode:''))+
     perfRow('net',net)+

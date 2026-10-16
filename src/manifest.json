@@ -7,6 +7,7 @@
   "engine/03-textures.js",
   "engine/04-materials.js",
   "engine/04b-geometry.js",
+  "engine/05b-wasm-sim.js",
   "world/05-world-containers.js",
   "world/06-map.js",
   "world/07-expanded-world-dressing-chapel-no-man-s-.js",

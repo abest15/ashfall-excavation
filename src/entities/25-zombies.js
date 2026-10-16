@@ -129,6 +129,7 @@ function zTarget(p){ let best=null,bd=1e9; const cand=[]; if(!(P.downed||P.dead|
   for(const c of cand){ const d=Math.hypot(c.x-p.x,c.z-p.z); if(d<bd){ bd=d; best=c; } } return best||{x:P.pos.x,z:P.pos.z,id:'h',remote:false,none:true}; }
 function hurtTarget(t,d,src){ if(t.remote) sendTo(t.id,{t:'hurt',d,s:[+src.x.toFixed(1),+src.z.toFixed(1)]}); else hurtPlayer(d,src); }
 function updateZombies(dt){
+  const WS=wsimBegin(dt); // true: locomotion runs in the WASM core this frame (05b-wasm-sim.js)
   const pz=zoneOf(P.pos.x,P.pos.z)||P.zone; P.zone=pz;
   for(const z of zombies){
     const g=z.g, p=g.position;
@@ -142,7 +143,8 @@ function updateZombies(dt){
     const TG=zTarget(p);
     const lu=lureFor(p), tgx=lu?lu.p.x:TG.x, tgz=lu?lu.p.z:TG.z, tzone=lu?(zoneOf(lu.p.x,lu.p.z)||pz):(zoneOf(TG.x,TG.z)||pz);
     const zf=zoneOf(p.x,p.z); let tx=tgx, tz=tgz;
-    if(zf&&tzone&&zf!==tzone){ const r=route(zf,tzone); if(r){ const d=r.door; const dd=Math.hypot(p.x-d.x,p.z-d.z); if(dd<2.6){ const nc=ZONES[r.next].c; const vx=nc.x-d.x, vz=nc.z-d.z, l=Math.hypot(vx,vz)||1; tx=d.x+vx/l*4; tz=d.z+vz/l*4; } else { tx=d.x; tz=d.z; } } z.tx=tx; z.tz=tz; }
+    if(WS){ const a=wsimAim(z,p,tgx,tgz); tx=a.x; tz=a.z; }
+    else if(zf&&tzone&&zf!==tzone){ const r=route(zf,tzone); if(r){ const d=r.door; const dd=Math.hypot(p.x-d.x,p.z-d.z); if(dd<2.6){ const nc=ZONES[r.next].c; const vx=nc.x-d.x, vz=nc.z-d.z, l=Math.hypot(vx,vz)||1; tx=d.x+vx/l*4; tz=d.z+vz/l*4; } else { tx=d.x; tz=d.z; } } z.tx=tx; z.tz=tz; }
     else if(!zf){ tx=z.tx; tz=z.tz; if(Math.hypot(tx-p.x,tz-p.z)<.5){ tx=tgx; tz=tgz; } }
     const dpx=TG.x-p.x, dpz=TG.z-p.z, dP=TG.none?1e9:Math.hypot(dpx,dpz);
     let dx=tx-p.x, dz=tz-p.z; let dl=Math.hypot(dx,dz)||1; dx/=dl; dz/=dl;
@@ -153,7 +155,7 @@ function updateZombies(dt){
     if(z.swing>0){ z.swing-=dt; moving=false; if(!z.hitDone&&z.swing<.22){ z.hitDone=true; if(z.kind==='burster'){ killZombie(z,'self'); continue; } if(dP<z.reach+.35) hurtTarget(TG,z.dmg,p); } }
     else if(dP<z.reach&&z.cd<=0&&(TG.remote||P.revive<=0)){ z.swing=.45; z.hitDone=false; z.cd=.95; moving=false; zvoice(z,'attack'); }
     else if(dP<z.reach*.8) moving=false;
-    if(moving){ const zs=z.speed*(PU.freeze>0?.35:1);
+    if(!(WS&&wsimAgent(z,moving,tgx,tgz,lu))&&moving){ const zs=z.speed*(PU.freeze>0?.35:1);
       let sx=0,sz=0; for(const o of zombies){ if(o===z||o.dead||o.rise>0||o.wstate) continue; const ox=p.x-o.g.position.x, oz=p.z-o.g.position.z, od=ox*ox+oz*oz; const rr_=(z.boss||o.boss)?1.6:.7; if(od<rr_*rr_&&od>1e-4){ const k=(rr_-Math.sqrt(od))/rr_; sx+=ox*k*2; sz+=oz*k*2; } }
       if(z.nudge>0){ z.nudge-=dt; sx+=-dz*z.nside*1.2; sz+=dx*z.nside*1.2; }
       p.x+=(dx*zs+sx)*dt; p.z+=(dz*zs+sz)*dt;
@@ -167,5 +169,6 @@ function updateZombies(dt){
     if(z.kind==='hound'){ animHound(z,dt,moving,z.speed,swT); g.rotation.x=swT>=0?-.3*Math.sin(swT*Math.PI):0; continue; }
     animZombie(z,dt,moving,z.speed*(PU.freeze>0?.35:1),swT);
   }
+  wsimEnd(WS,dt);
   for(let i=zombies.length-1;i>=0;i--) if(zombies[i].gone) zombies.splice(i,1);
 }
