@@ -3,6 +3,7 @@ const NAV={rep:{},padShown:null};
 function navVisible(el){ if(!el||el.disabled||el.closest('[hidden]')) return false; const r=el.getBoundingClientRect(); return r.width>0&&r.height>0; }
 function openPanel(){ return document.querySelector('#front-main .panel:not([hidden])'); }
 function navScope(){
+  if(!$('firstrun').hidden) return $('firstrun');
   if(LOAD.on) return null;
   if(BOOT.on) return 'boot';
   if(!$('over').hidden) return $('over');
@@ -34,6 +35,7 @@ function navAct(act){ const sc=navScope(); if(!sc) return false;
   const a=document.activeElement, inside=sc.contains(a), inPanel=sc.classList.contains('panel');
   if(act==='back'){
     if(sc===$('over')) return true;
+    if(sc===$('firstrun')){ $('fr-go').click(); return true; }
     if(inPanel){ showPanel(null); navFocus(panelBtn(sc.id),true); return true; }
     if(openPanel()){ showPanel(null); return true; }
     if(state==='paused'){ $('play').click(); return true; }
@@ -41,6 +43,7 @@ function navAct(act){ const sc=navScope(); if(!sc) return false;
   if(!inside){ const f=navItems(sc)[0]; if(f) navFocus(f); return true; }
   if(act==='ok'){
     if(a.tagName==='SELECT'){ selStep(a,1); return true; }
+    if(a.type==='checkbox'){ a.click(); uiSfx('tick'); return true; }
     if(a.tagName==='INPUT'){ if(a.type!=='range'){ if(a.id==='mp-code') $('mp-join').click(); else navMove(sc,'down'); } return true; }
     if(a.dataset.panel){ enterPanel(a.dataset.panel); return true; }
     a.click(); return true; }
@@ -58,7 +61,7 @@ const NAVKEYS={ArrowUp:'up',ArrowDown:'down',ArrowLeft:'left',ArrowRight:'right'
 addEventListener('keydown',e=>{ navHint();
   const sc=navScope(); if(!sc) return;
   if(sc==='boot'||sc==='splash'){ if(e.repeat||e.ctrlKey||e.metaKey||e.altKey||/^F\d+$/.test(e.key)||e.key==='Tab') return; e.preventDefault(); navAct('ok'); return; }
-  const a=document.activeElement, text=a&&a.tagName==='INPUT'&&a.type!=='range';
+  const a=document.activeElement, text=a&&a.tagName==='INPUT'&&a.type!=='range'&&a.type!=='checkbox';
   let act=NAVKEYS[e.code]||NAVKEYS[e.key]; if(!act) return;
   if(text&&(act==='left'||act==='right'||(act==='back'&&e.key==='Backspace')||(act==='ok'&&a.id==='mp-code'))) return; // the co-op code box joins on Enter by itself
   if(e.repeat&&(act==='ok'||act==='back')) return;

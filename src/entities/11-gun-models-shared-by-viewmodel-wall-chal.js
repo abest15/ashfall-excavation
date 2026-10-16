@@ -8,7 +8,7 @@ const GM={
   rodWood:L({color:0x2e2218}), rodBand:L({color:0xb08a44}), chalk:B({color:0xd8d2c2,transparent:true,opacity:.8}),
   dark:L({color:0x222326}), steel:L({color:0x74777b}), poly:L({color:0x3a3d33}), brass:L({color:0xb8924a}), shell:L({color:0x8a2a1e}),
   upDark:L({color:0x1a1411,emissive:0x3a1204}), upSteel:L({color:0x5a4438,emissive:0x5a2008}),
-  lens:L({color:0x2a4a5a,transparent:true,opacity:.22,depthWrite:false}), bore:B({color:0x0a0806}),
+  lens:L({color:0x2a4a5a,transparent:true,opacity:.12,depthWrite:false}), bore:B({color:0x0a0806}),
 };
 const RB=new Map();
 function roundBox(w,h,d){ const k=w+'|'+h+'|'+d; let geo=RB.get(k); if(geo) return geo; const b=Math.min(w,h,d)*.12, w2=w-2*b, h2=h-2*b, rr=Math.min(w2,h2)*.18, sh=new THREE.Shape();
@@ -69,7 +69,7 @@ function buildGun(id,up,override){
   }
   else if(id==='revolver'){
     gb(g,.034,.064,.11,me,0,.012,-.008); gb(g,.022,.012,.12,me,0,.048,-.006); gb(g,.03,.02,.04,me,0,-.008,.05);
-    const cr=grp(-.006,-.016,-.008); ud.crane=cr; const cy=grp(.006,.031,0,cr); ud.cyl=cy;
+    const cr=grp(-.006,-.016,-.008); ud.crane=cr; const cy=grp(.006,.031,0,cr); ud.cyl=cy; ud.chamber=[0,0,.05];
     gc(cy,.03,.072,st,0,0,0,14); for(let i=0;i<6;i++){ const a=i/6*Math.PI*2+Math.PI/6; gb(cy,.009,.004,.05,dk,Math.cos(a)*.029,Math.sin(a)*.029,0,0,0,a+Math.PI/2);
       const a2=i/6*Math.PI*2; gc(cy,.0065,.003,bore,Math.cos(a2)*.017,Math.sin(a2)*.017,-.036,6); gc(cy,.0062,.003,br,Math.cos(a2)*.017,Math.sin(a2)*.017,.036,6); }
     gc(cy,.008,.08,dk,0,0,0,8);
@@ -117,10 +117,10 @@ function buildGun(id,up,override){
     const mg=grp(0,-.07,-.09); ud.mag=mg; gb(mg,.03,.11,.06,dk,0,0,0,.05); gb(mg,.036,.01,.068,dk,0,-.058,.003);
     // scope with lens and fine reticle
     for(const z of [.0,-.12]){ gb(g,.03,.03,.014,dk,0,.05,z); gb(g,.012,.01,.02,dk,0,.04,z); }
-    gc(g,.016,.22,dk,0,.075,-.06,14); gc(g,.024,.06,dk,0,.075,-.19,14,.016); gc(g,.021,.05,dk,0,.075,.07,14,.016);
+    const tube=(r,len,z,r2)=>gm(g,gGeo('o'+r+'|'+len+'|'+r2,()=>{ const c=new THREE.CylinderGeometry(r2||r,r,len,14,1,true); c.rotateX(Math.PI/2); return c; }),dk,0,.075,z); tube(.016,.22,-.06); tube(.024,.06,-.19,.016); tube(.021,.05,.07,.016);
     gv(g,.01,.02,dk,0,.098,-.06,10); const tu=gv(g,.009,.02,dk,.022,.075,-.06,10); tu.rotation.z=Math.PI/2;
     gcircle(g,.02,ln,0,.075,.096); const fl=gcircle(g,.022,ln,0,.075,-.221); fl.rotation.y=Math.PI;
-    const rt=override||B({color:0x050505}); gb(g,.034,.0012,.001,rt,0,.075,-.15); gb(g,.0012,.034,.001,rt,0,.075,-.15); gb(g,.0022,.0022,.001,glow(0xff3a20),0,.075,-.1495);
+    const rt=override||B({color:0x050505}); gb(g,.034,.0025,.001,rt,0,.075,-.15); gb(g,.0025,.034,.001,rt,0,.075,-.15); gb(g,.004,.004,.001,glow(0xff3a20),0,.075,-.1495); gm(g,gGeo('rr',()=>new THREE.RingGeometry(.0158,.019,24)),rt,0,.075,.09);
     const bo=grp(0,0,0); ud.bolt=bo; ud.boltTravel=.05; gb(bo,.022,.012,.012,st,.032,.022,.05);
     ud.sight={y:.075,z:.1,scope:true}; ud.rh=[.002,-.075,.08]; ud.lh=[0,-.03,-.33]; ud.style='mag'; ud.eject=[.024,.03,-.03]; mz=-.87; my=.014;
   }
@@ -229,7 +229,7 @@ function buildGun(id,up,override){
     const ba=grp(0,-.03,-.06); ud.barrel=ba; gc(ba,.06,.5,me,0,.07,-.19,14); gc(ba,.068,.04,ac,0,.07,-.39,14); gc(ba,.068,.03,ac,0,.07,-.02,14);
     gc(ba,.072,.05,dk,0,.07,-.45,14,.062); gcircle(ba,.044,bore,0,.07,-.4755).rotation.y=Math.PI; for(let i=0;i<4;i++) gc(ba,.066,.012,dk,0,.07,-.12-i*.05,14);
     gb(ba,.005,.012,.006,dk,0,.138,-.42); gb(ba,.03,.03,.04,dk,0,.012,-.02);
-    const sh=grp(0,.07,.045,ba); ud.mag=sh; gc(sh,.05,.03,br,0,0,0,12); gc(sh,.052,.006,br,0,0,.016,12);
+    const sh=grp(0,.04,-.015); ud.mag=sh; ud.chamber=[0,.07,.045]; gc(sh,.05,.03,br,0,0,0,12); gc(sh,.052,.006,br,0,0,.016,12);
     gb(g,.1,.11,.12,me,0,.035,.02); gb(g,.104,.03,.06,dk,0,.075,.04);
     for(const sx of [-1,1]) gb(g,.006,.026,.01,dk,sx*.01,.1,.06);
     gp(g,[[.03,-.02],[.08,-.02],[.11,-.15],[.07,-.16],[.04,-.08]],.04,wo); gtg(g,.022,.004,dk,0,-.03,.03); gb(g,.006,.022,.006,st,0,-.03,.034,.35);
@@ -242,5 +242,14 @@ function buildGun(id,up,override){
     for(let i=0;i<5;i++) round_(g,br,br,-.05+i*.012,.07,.0,.05,.007);
     ud.spin=sp; ud.style='none'; mz=-.66; }
   const muzzle=new THREE.Object3D(); muzzle.position.set(0,my,mz); g.add(muzzle); ud.muzzle=muzzle;
+  if(override) mergeOneMaterial(g,override);
   return g;
 }
+// single-material builds (chalk outlines, displays) collapse into one mesh: one draw call instead of ~80
+function mergeOneMaterial(g,mat){ g.updateMatrixWorld(true); const inv=new THREE.Matrix4().copy(g.matrixWorld).invert(), pos=[], nor=[], m4=new THREE.Matrix4(), nm=new THREE.Matrix3(), v=new V3(), drop=[];
+  g.traverse(o=>{ if(!o.isMesh||!o.visible) return; let p_=o.parent, vis=true; while(p_&&p_!==g){ if(!p_.visible) vis=false; p_=p_.parent; } if(!vis) return;
+    const geo=o.geometry.index?o.geometry.toNonIndexed():o.geometry, P_=geo.attributes.position, N_=geo.attributes.normal; m4.multiplyMatrices(inv,o.matrixWorld); nm.getNormalMatrix(m4);
+    for(let i=0;i<P_.count;i++){ v.fromBufferAttribute(P_,i).applyMatrix4(m4); pos.push(v.x,v.y,v.z); if(N_){ v.fromBufferAttribute(N_,i).applyMatrix3(nm).normalize(); nor.push(v.x,v.y,v.z); } else nor.push(0,1,0); }
+    if(geo!==o.geometry) geo.dispose(); drop.push(o); });
+  for(const o of drop) o.parent.remove(o);
+  const mg=new THREE.BufferGeometry(); mg.setAttribute('position',new THREE.Float32BufferAttribute(pos,3)); mg.setAttribute('normal',new THREE.Float32BufferAttribute(nor,3)); g.add(new THREE.Mesh(mg,mat)); }

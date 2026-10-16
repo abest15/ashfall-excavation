@@ -30,6 +30,11 @@ export async function toMainMenu(page) {
 // Clicks Solo and waits through any loading screen until the game is running.
 export async function startSolo(page) {
   await page.click('#play');
+  // first-run tips card appears once on the first Solo start; dismiss it if it shows
+  await expect.poll(async () => {
+    if (await page.locator('#firstrun').isVisible()) await page.click('#fr-go');
+    return page.evaluate(() => window.__G.state);
+  }, { timeout: 90_000 }).toBe('play');
   await expect.poll(() => page.evaluate(() => window.__G.state), { timeout: 90_000 }).toBe('play');
   await expect(page.locator('#hud')).toBeVisible();
 }

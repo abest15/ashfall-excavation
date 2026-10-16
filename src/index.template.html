@@ -140,9 +140,12 @@
         <button class="mbtn" type="button" data-panel="p-ctrl" data-desc="Keyboard, mouse and controller layouts.">Controls</button>
         <button class="mbtn" type="button" data-panel="p-intel" data-desc="What the dig crew found, and what came after.">Field intel</button>
         <button id="m-quit" class="mbtn" type="button" hidden data-desc="Leave this run and return to the title screen.">Quit to title</button>
+        <button class="mbtn" type="button" data-panel="p-credits" data-desc="The people and the open tools behind the dig.">Credits</button>
+        <button id="m-desk" class="mbtn" type="button" hidden data-desc="Close the game and return to your desktop.">Quit to desktop</button>
       </nav>
       <p class="mdesc" id="mdesc">Hold the dig alone against the dead.</p>
       <div class="dogtag"><b>SERVICE RECORD</b><span id="best">No rounds survived yet</span></div>
+      <p class="verline">Furnace Lantern Games <span id="game-version"></span></p>
     </aside>
     <section class="panel" id="p-opts" hidden>
       <h2 class="ph">Options</h2><span class="stamp">FIELD ISSUE</span>
@@ -222,6 +225,21 @@
       <p id="mp-status" class="note"></p>
       <p class="note">The host's computer runs the zombies, so the strongest machine should host. More players means more and tougher dead. Players connect directly to each other; a few school or office networks block that.</p>
     </section>
+    <section class="panel" id="p-credits" hidden>
+      <h2 class="ph">Credits</h2><span class="stamp">ROLL CALL</span>
+      <div class="credits">
+        <svg class="cr-mark" viewBox="0 0 200 260" aria-hidden="true"><use href="#fl-mark"/></svg>
+        <p class="cr-studio">A Furnace Lantern Games production</p>
+        <h2>Furnace Lantern Games</h2>
+        <dl class="cr-list"><dt>Design and direction</dt><dd>Furnace Lantern Games</dd><dt>Programming</dt><dd>Furnace Lantern Games</dd><dt>Art and models</dt><dd>Built in code, piece by piece</dd><dt>Music and sound</dt><dd>Synthesised live in your browser, no recordings</dd><dt>Story and writing</dt><dd>Furnace Lantern Games</dd></dl>
+        <h2>Open source</h2>
+        <dl class="cr-list"><dt>Three.js r128</dt><dd>3D engine · MIT License · © 2010-2021 three.js authors</dd><dt>PeerJS</dt><dd>Co-op connections · MIT License · © PeerJS contributors</dd></dl>
+        <h2>Typefaces</h2>
+        <dl class="cr-list"><dt>Saira Stencil One</dt><dd>SIL Open Font License 1.1</dd><dt>Special Elite</dt><dd>Apache License 2.0</dd><dt>Barlow Condensed</dt><dd>SIL Open Font License 1.1</dd></dl>
+        <p class="note">Fonts are served by Google Fonts. Full license texts ship with each project.</p>
+        <p class="cr-thanks">Thank you for holding the line.</p>
+      </div>
+    </section>
     <div class="navhint" id="navhint"></div>
     <div class="ticker"><b>FIELD REPORT</b><span id="ticker"></span></div>
   </div>
@@ -240,6 +258,22 @@
   <svg class="ld-spin" viewBox="0 0 200 260" aria-hidden="true"><use href="#fl-mark"/></svg>
 </div>
 <div id="veil" hidden></div>
+<div id="firstrun" hidden role="dialog" aria-labelledby="fr-title">
+  <div class="fr-page">
+    <p class="fr-eye">Field journal · first page</p>
+    <h2 id="fr-title">Before your first night</h2>
+    <p class="fr-hand">Whoever finds this: the last crew left in a hurry. Here is what kept me breathing.</p>
+    <ol class="fr-list">
+      <li><b>Windows first.</b> Hold <kbd>E</kbd> at a broken window to nail the boards back. The dead come through the gaps.</li>
+      <li><b>Points buy everything.</b> Hits and kills pay. Spend them on doors, wall guns, tonics and the relic crate.</li>
+      <li><b>Find the generator.</b> Throw its lever and the tonic machines and the Forge wake up.</li>
+      <li><b>Aim high.</b> Headshots pay more and end fights faster. The knife <kbd>F</kbd> lunges when you run dry.</li>
+      <li><b>Read this journal.</b> Its corner of the screen lists what the dig is hiding. Fold it with <kbd>J</kbd>.</li>
+    </ol>
+    <p class="fr-margin">Scrawled in the margin: <i>the bell, the candles and the chapel glass are not decoration. Neither is the giant.</i></p>
+    <div class="fr-row"><button id="fr-go" class="btn primary" type="button">Start the dig</button><label class="fr-chk"><input id="fr-never" type="checkbox" checked> Don't show again</label></div>
+  </div>
+</div>
 
 <div id="over" class="overlay" hidden>
   <div class="card">

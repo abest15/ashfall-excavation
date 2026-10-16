@@ -27,6 +27,7 @@ function loadThenPlay(fresh){ if(LOAD.on) return; LOAD.on=true; initAudio(); sto
     fill.style.width=(shown*100).toFixed(1)+'%'; pct.textContent=Math.round(shown*100)+'%';
     if(shown<1){ requestAnimationFrame(frameStep); return; }
     lab.textContent='Ready'; LOAD.warm=true;
-    setTimeout(()=>{ startPlay(); LOAD.on=false; L.classList.add('out'); setTimeout(()=>{ L.hidden=true; L.classList.remove('out'); },650); },160); }
+    const go=()=>{ startPlay(); LOAD.on=false; L.classList.add('out'); setTimeout(()=>{ L.hidden=true; L.classList.remove('out'); },650); };
+    if(fresh&&NET.role==='solo'&&firstRunPending()) setTimeout(()=>firstRunShow(go),160); else setTimeout(go,160); }
   requestAnimationFrame(frameStep); }
 function veilIn(){ const v=$('veil'); v.classList.remove('fade'); v.hidden=false; void v.offsetWidth; v.classList.add('fade'); setTimeout(()=>{ v.hidden=true; v.classList.remove('fade'); },900); }
