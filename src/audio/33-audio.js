@@ -6,6 +6,8 @@
    All impulse responses and samples are synthesized at runtime; there are no audio files. */
 const AU={ctx:null,live:0,peakLive:0,errs:0,lastErr:'',area:null,out:null,em:null,hint:null,vols:{m:-1,s:-1,v:-1},cvA:0,ir:{},emFx:[],emVo:[]};
 let VOLK=1;
+// bus trims set by the measured loudness pass (see report): fx bus, ambience bus, Hollow / cabin drones, cabin furnace
+const AU_TRIM={fx:.42,amb:.62,hdrone:.016,cdrone:.012,furn:.09};
 const AU_MAXLIVE=240; // hard cap on concurrently playing source nodes (oscillators + buffer sources)
 const auVols=()=>({m:SETTINGS.music==null?.8:clamp(+SETTINGS.music||0,0,1), s:SETTINGS.sfx==null?1:clamp(+SETTINGS.sfx||0,0,1), v:SETTINGS.vol==null?.7:clamp(+SETTINGS.vol||0,0,1)});
 // live one-shot sources: a Set holds a strong ref (so 'ended' always fires) plus a start time, and
@@ -44,8 +46,8 @@ function makeIR(name){ const a=AU.ctx, D=IRDEF[name], sr=a.sampleRate, len=Math.
     if(D.ring) for(const f of D.ring){ const w=2*Math.PI*f*(1+(ch?.004:-.004))/sr, n=Math.min(len,Math.floor(.35*sr)); for(let i=0;i<n;i++) d[i]+=Math.sin(w*i)*.05*Math.exp(-i/sr*11); } }
   return b; }
 function irFor(name){ return AU.ir[name]||(AU.ir[name]=makeIR(name)); }
-function setArea(name){ if(!AU.cv||AU.area===name) return; AU.area=name; const a=AU.ctx, t=a.currentTime, cur=AU.cv[AU.cvA], nxt=AU.cv[1-AU.cvA];
-  if(nxt.area!==name){ nxt.c.buffer=irFor(name); nxt.area=name; }
+function setArea(name){ if(!AU.cv||AU.area===name) return; const a=AU.ctx, t=a.currentTime, cur=AU.cv[AU.cvA], nxt=AU.cv[1-AU.cvA];
+  if(nxt.area!==name){ if(t-(AU.cvT||-9)<1.6) return; nxt.c.buffer=irFor(name); nxt.area=name; } AU.area=name; AU.cvT=t;
   cur.g.gain.setTargetAtTime(0,t,.25); nxt.g.gain.setTargetAtTime(1,t,.25); AU.cvA=1-AU.cvA; AU.wet.gain.setTargetAtTime(IRDEF[name].wet,t,.3); }
 function areaNow(){ if(mode==='hollow') return 'hollow'; if(P.inCabin) return 'cabin'; if(state==='menu') return 'open'; const z=zoneOf(P.pos.x,P.pos.z); return z==='E'?'chapel':z==='A'?'bunker':'open'; }
 
@@ -59,11 +61,12 @@ function occlusion(x,z){ if(mode==='hollow') return 0; if(P.inCabin) return .75;
 // claim an emitter at world position pos; d = distance, maxD = audible range (0 = no extra attenuation). Returns the emitter or null.
 function emitAt(pos,d,maxD,pool,dur,steal){ const a=AU.ctx; if(!a||!AU.emFx.length) return null; const list=pool==='voice'?AU.emVo:AU.emFx, t=a.currentTime;
   let em=null; for(const e of list) if(e.until<=t){ em=e; break; }
-  if(!em){ if(!steal) return null; em=list.reduce((p,q)=>q.until<p.until?q:p); if(em.srcs) for(const s of em.srcs){ try{ s.stop(t+.02); }catch(e){} } }
-  em.until=t+dur; em.follow=null; em.srcs=null; em.proj=null; auPos(em.pn,pos.x,(pos.y||0)+1.2,pos.z);
+  let stolen=false; if(!em){ if(!steal) return null; em=list.reduce((p,q)=>q.until<p.until?q:p); stolen=true; if(em.srcs) for(const s of em.srcs){ try{ s.stop(t+.017); }catch(e){} } }
+  em.t0=stolen?t+.017:t; em.until=t+dur; em.follow=null; em.srcs=null; em.proj=null; auPos(em.pn,pos.x,(pos.y||0)+1.2,pos.z);
   const r=maxD?clamp(d/maxD,0,1):clamp(d/90,0,1), occ=occlusion(pos.x,pos.z);
   em.lp.frequency.setValueAtTime(Math.max(320,17000*Math.pow(.1,r*1.15)*(1-occ*.82)),t);
-  em.wet.gain.setValueAtTime(.12+r*.9+occ*.4,t); em.inp.gain.setValueAtTime(1-occ*.4,t); return em; }
+  em.wet.gain.setValueAtTime(.12+r*.9+occ*.4,t); const ig=em.inp.gain, g=1-occ*.4; ig.cancelScheduledValues(t);
+  if(stolen){ ig.setValueAtTime(ig.value,t); ig.linearRampToValueAtTime(0,t+.015); ig.linearRampToValueAtTime(g,t+.03); } else ig.setValueAtTime(g,t); return em; }
 
 // positional one-shot: plays sfx[name](arg) at pos with distance attenuation, panning, distance low-pass and occlusion
 function sfxAt(name,pos,maxD,arg){ if(!AU.ctx||!AU.fx||!sfx[name]) return; const d=Math.hypot(pos.x-P.pos.x,pos.z-P.pos.z); if(d>maxD) return;
@@ -77,13 +80,14 @@ function initAudio(){ if(AU.ctx){ if(AU.ctx.state==='suspended') AU.ctx.resume()
   AU.mix=a.createGain(); AU.mix.gain.value=.62; // headroom trim; the compressors' automatic make-up gain brings level back
   const comp=a.createDynamicsCompressor(); comp.threshold.value=-16; comp.knee.value=10; comp.ratio.value=3; comp.attack.value=.005; comp.release.value=.25;
   const lim=a.createDynamicsCompressor(); lim.threshold.value=-4; lim.knee.value=1; lim.ratio.value=20; lim.attack.value=.001; lim.release.value=.1;
-  AU.master=a.createGain(); AU.master.gain.value=V.v; const clip=a.createWaveShaper(); const cc=new Float32Array(1024); for(let i=0;i<1024;i++){ const x=i/511.5-1, ax=Math.abs(x); cc[i]=ax<.8?x:Math.sign(x)*(.8+.2*Math.tanh((ax-.8)/.2)); } clip.curve=cc;
-  AU.mix.connect(comp); comp.connect(lim); lim.connect(AU.master); AU.master.connect(clip); clip.connect(a.destination); AU.comp=comp; AU.lim=lim; AU.clip=clip;
+  AU.mvol=a.createGain(); AU.mvol.gain.value=V.v; AU.master=a.createGain(); AU.master.gain.value=V.v; AU.master.connect(AU.mix);
+  const sub=a.createBiquadFilter(); sub.type='highpass'; sub.frequency.value=28; sub.Q.value=.7; AU.sub=sub; const clip=a.createWaveShaper(); const cc=new Float32Array(1024); for(let i=0;i<1024;i++){ const x=i/511.5-1, ax=Math.abs(x); cc[i]=ax<.8?x:Math.sign(x)*(.8+.2*Math.tanh((ax-.8)/.2)); } clip.curve=cc;
+  AU.mix.connect(sub); sub.connect(comp); comp.connect(lim); lim.connect(AU.mvol); AU.mvol.connect(clip); clip.connect(a.destination); AU.comp=comp; AU.lim=lim; AU.clip=clip;
   // buses
   AU.music=a.createGain(); AU.music.gain.value=V.m; AU.music.connect(AU.mix);
   AU.sfxG=a.createGain(); AU.sfxG.gain.value=V.s; AU.sfxG.connect(AU.mix);
-  AU.fx=a.createGain(); AU.fx.connect(AU.sfxG); AU.ui=a.createGain(); AU.ui.gain.value=.85; AU.ui.connect(AU.sfxG);
-  AU.voice=a.createGain(); AU.voice.gain.value=.9; AU.voice.connect(AU.sfxG); AU.amb=a.createGain(); AU.amb.connect(AU.sfxG);
+  AU.fx=a.createGain(); AU.fx.gain.value=AU_TRIM.fx; AU.fx.connect(AU.sfxG); AU.ui=a.createGain(); AU.ui.gain.value=.85; AU.ui.connect(AU.sfxG);
+  AU.voice=a.createGain(); AU.voice.gain.value=.9; AU.voice.connect(AU.sfxG); AU.amb=a.createGain(); AU.amb.gain.value=0; AU.amb.gain.setTargetAtTime(AU_TRIM.amb,a.currentTime,.8); AU.amb.connect(AU.sfxG);
   AU.vols={m:V.m,s:V.s,v:V.v};
   // reverb: sends -> high-pass -> area wet level -> two convolvers crossfaded on area change -> sfx group
   AU.verbIn=a.createGain(); const hp=a.createBiquadFilter(); hp.type='highpass'; hp.frequency.value=180; AU.wet=a.createGain(); AU.wet.gain.value=.16;
@@ -100,27 +104,27 @@ function initAudio(){ if(AU.ctx){ if(AU.ctx.state==='suspended') AU.ctx.resume()
   const src=a.createBufferSource(); src.buffer=AU.noise; src.loop=true;
   const wf=a.createBiquadFilter(); wf.type='lowpass'; wf.frequency.value=420; AU.wind=a.createGain(); AU.wind.gain.value=.07; src.connect(wf); wf.connect(AU.wind); AU.wind.connect(AU.amb);
   const wl=a.createOscillator(); wl.frequency.value=.07; const wlg=a.createGain(); wlg.gain.value=160; wl.connect(wlg); wlg.connect(wf.frequency); wl.start();
-  const rf=a.createBiquadFilter(); rf.type='highpass'; rf.frequency.value=3500; AU.rain=a.createGain(); AU.rain.gain.value=.03; src.connect(rf); rf.connect(AU.rain); AU.rain.connect(AU.amb);
+  const rf=a.createBiquadFilter(); rf.type='highpass'; rf.frequency.value=1800; const rl=a.createBiquadFilter(); rl.type='lowpass'; rl.frequency.value=5500; rl.Q.value=.5; const rl2=a.createBiquadFilter(); rl2.type='lowpass'; rl2.frequency.value=6500; rl2.Q.value=.5; AU.rain=a.createGain(); AU.rain.gain.value=.045; src.connect(rf); rf.connect(rl); rl.connect(rl2); rl2.connect(AU.rain); AU.rain.connect(AU.amb);
   AU.drone=a.createGain(); AU.drone.gain.value=0; AU.drone.connect(AU.amb);
   for(const f of [55,55.6,82.4]){ const o=a.createOscillator(); o.type='sine'; o.frequency.value=f; o.connect(AU.drone); o.start(); }
   const ff=a.createBiquadFilter(); ff.type='bandpass'; ff.frequency.value=160; ff.Q.value=.8; AU.furnace=a.createGain(); AU.furnace.gain.value=0; src.connect(ff); ff.connect(AU.furnace); AU.furnace.connect(AU.amb);
   src.start(); setArea('open'); ambienceMode(mode);
   if(typeof gunWarm==='function') gunWarm('pistol',false);
 }
-function ambienceMode(m){ if(!AU.ctx) return; const t=AU.ctx.currentTime, H=m==='hollow', C=m==='cabin'; AU.wind.gain.setTargetAtTime(H?.025:C?.01:.07,t,.5); AU.rain.gain.setTargetAtTime(H||C?0:.03,t,.5); AU.drone.gain.setTargetAtTime(H?.08:C?.04:0,t,.8); AU.furnace.gain.setTargetAtTime(C?.16:0,t,.6); }
+function ambienceMode(m){ if(!AU.ctx) return; const t=AU.ctx.currentTime, H=m==='hollow', C=m==='cabin'; AU.wind.gain.setTargetAtTime(H?.025:C?.01:.07,t,.5); AU.rain.gain.setTargetAtTime(H||C?0:.045,t,.5); AU.drone.gain.setTargetAtTime(H?AU_TRIM.hdrone:C?AU_TRIM.cdrone:0,t,.8); AU.furnace.gain.setTargetAtTime(C?AU_TRIM.furn:0,t,.6); }
 
 // ---- per-frame update (called from the main loop): volumes, listener, reverb area, world one-shots, score
 const _auF=new V3(), _auU=new V3(); let auPrevState='menu', auAmbT=3;
 function audioFrame(dt){ const a=AU.ctx; if(!a||!AU.fx) return; const t=a.currentTime; auPrune(t);
   try{
-    const V=auVols(), o=AU.vols; if(V.m!==o.m){ AU.music.gain.setTargetAtTime(V.m,t,.05); o.m=V.m; } if(V.s!==o.s){ AU.sfxG.gain.setTargetAtTime(V.s,t,.05); o.s=V.s; } if(V.v!==o.v){ AU.master.gain.setTargetAtTime(V.v,t,.05); o.v=V.v; }
+    const V=auVols(), o=AU.vols; if(V.m!==o.m){ AU.music.gain.setTargetAtTime(V.m,t,.05); o.m=V.m; } if(V.s!==o.s){ AU.sfxG.gain.setTargetAtTime(V.s,t,.05); o.s=V.s; } if(V.v!==o.v){ AU.mvol.gain.setTargetAtTime(V.v,t,.05); o.v=V.v; }
     // route the title-screen music through the music bus so the Music slider applies to it too
-    if(typeof MUS!=='undefined'&&MUS.g&&MUS.g._auRouted!==true){ try{ MUS.g.disconnect(); }catch(e){} MUS.g.connect(AU.music); MUS.g._auRouted=true; }
+    if(typeof MUS!=='undefined'&&MUS.g&&MUS.g._auRouted!==true&&MUS.own!==false){ try{ MUS.g.disconnect(); }catch(e){} MUS.g.connect(AU.music); MUS.g._auRouted=true; }
     const L=a.listener, c=camera.position; _auF.set(0,0,-1).applyQuaternion(camera.quaternion); _auU.set(0,1,0).applyQuaternion(camera.quaternion);
     if(L.positionX){ L.positionX.value=c.x; L.positionY.value=c.y; L.positionZ.value=c.z; L.forwardX.value=_auF.x; L.forwardY.value=_auF.y; L.forwardZ.value=_auF.z; L.upX.value=_auU.x; L.upY.value=_auU.y; L.upZ.value=_auU.z; }
     else { L.setPosition(c.x,c.y,c.z); L.setOrientation(_auF.x,_auF.y,_auF.z,_auU.x,_auU.y,_auU.z); }
-    for(const e of AU.emFx.concat(AU.emVo)){ if(e.proj&&(typeof projs==='undefined'||projs.indexOf(e.proj)<0)){ if(e.srcs) for(const s of e.srcs){ try{ s.stop(t+.06); }catch(er){} } e.proj=null; e.follow=null; e.srcs=null; e.until=Math.min(e.until,t+.1); }
-      if(e.follow&&e.until>t){ const p=e.follow; auPos(e.pn,p.x,(p.y||0)+1.4,p.z); } }
+    for(const e of AU.emFx.concat(AU.emVo)){ if(e.proj&&(typeof projs==='undefined'||projs.indexOf(e.proj)<0)){ e.inp.gain.cancelScheduledValues(t); e.inp.gain.setTargetAtTime(0,t,.012); if(e.srcs) for(const s of e.srcs){ try{ s.stop(t+.08); }catch(er){} } e.proj=null; e.follow=null; e.srcs=null; e.until=Math.min(e.until,t+.1); }
+      if(e.follow&&e.until>t){ const p=e.follow, pn=e.pn; if(pn.positionX){ pn.positionX.setTargetAtTime(p.x,t,.03); pn.positionY.setTargetAtTime((p.y||0)+1.4,t,.03); pn.positionZ.setTargetAtTime(p.z,t,.03); } else auPos(pn,p.x,(p.y||0)+1.4,p.z); } }
     setArea(areaNow());
     if(state==='play'){ if(typeof zSteps==='function') zSteps(dt); auWorld(dt); }
     if(typeof gunPrefetch==='function') gunPrefetch(dt);

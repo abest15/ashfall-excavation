@@ -15,7 +15,7 @@ const GUNP={
   shotgun:  {len:1.3,lv:1,  click:[3000,.2], snap:[2600,.05,.3],  crack:[1400,.5,.48,140,'lowpass',1],    body:[80,35,.15,'square',.1],     thump:[72,30,.3,.75],  tail:[1.2,420,.15], fg:440, cycle:'pump'},
   lmg:      {len:.65,lv:.66,click:[4400,.15],snap:[3800,.025,.22],crack:[2100,.7,.12,350,'lowpass',.66],  body:[100,48,.07,'sawtooth',.12], thump:[110,42,.1,.5],  tail:[.6,520,.08],  fg:660, auto:1,shell:1},
   gatling:  {len:.45,lv:.48,click:[7000,.1], snap:[5200,.018,.18],crack:[2700,.9,.06,600,'lowpass',.5],   body:[170,80,.04,'square',.07],   thump:[140,60,.05,.3], tail:[.4,900,.05],  fg:1320,auto:1,shell:1},
-  cannon:   {len:1.9,lv:1,  click:[2500,.25],snap:[2000,.06,.3],  crack:[900,.5,.7,80,'lowpass',1],      body:[60,30,.25,'square',.12],    thump:[52,26,.55,.85], tail:[1.6,300,.2],  fg:330},
+  cannon:   {len:1.9,lv:1,  click:[2500,.25],snap:[2000,.06,.3],  crack:[900,.5,.7,80,'lowpass',1],      body:[60,30,.25,'square',.12],    thump:[52,32,.55,.85], tail:[1.6,300,.2],  fg:330},
   rod:      {len:1.1,lv:.8, fn:'rod',fg:660},
   ion:      {len:.6, lv:.62,fn:'ion',fg:980},
   dynamo:   {len:1.7,lv:.9, fn:'dynamo',fg:440},
@@ -147,7 +147,7 @@ const sfx={
   portal:()=>{ tn(110,3,'sine',.3,0,440,.5); [1318.5,1568,1760,2093].forEach((f,i)=>tn(f,2.5,'sine',.08,.3+i*.15)); nz(2.5,800,1,.3,'bandpass',0,5000); },
   dig:()=>{ nz(.25,500,1,.4); nz(.25,400,1,.35,'lowpass',.3); nz(.1,1800,2,.06,'bandpass',.05); },
   // explosion: transient crack, saturated body, sub drop, debris patter, long rolling tail
-  boom:()=>{ nz(.05,5000,.7,.5,'highpass'); nz(1.1,700,.6,.9,'lowpass',0,50); tn(48,.9,'sine',.6,0,22,.004); tn(90,.25,'square',.08,0,40); nz(2.2,240,.5,.22,'lowpass',.08,40);
+  boom:()=>{ nz(.05,5000,.7,.5,'highpass'); nz(1.1,700,.6,.9,'lowpass',0,50); tn(48,.9,'sine',.6,0,31,.004); tn(90,.25,'square',.08,0,40); nz(2.2,240,.5,.22,'lowpass',.08,40);
     for(let i=0;i<4;i++) nz(.05,rand(1500,3500),2,.05,'bandpass',.2+Math.random()*.6); },
   ring:()=>{ tn(1320,.6,'sine',.08); tn(1980,.4,'sine',.05,.02); },
   tone:f=>{ tn(f,2.2,'sine',.28,0,null,.01); tn(f*2,1.2,'triangle',.07); tn(f*3.01,.8,'sine',.03); },
@@ -157,7 +157,7 @@ const sfx={
   howl:()=>{ tn(300,1.8,'sawtooth',.08,0,620,.4); tn(310,1.6,'sine',.12,.1,560,.4); nz(1.6,500,2,.15,'bandpass'); },
   houndSpawn:()=>{ nz(.25,3000,2,.25,'bandpass',0,600); tn(160,.3,'square',.06,0,60); },
   // Colossus footfall: sub impact, ground rumble, iron clank and a hydraulic hiss (positioned at the foot by colStomp)
-  stomp:v=>{ if(v<=.02) return; nz(1.4,260,.7,.85*v,'lowpass',0,40); tn(38,1.2,'sine',.7*v,0,22); tn(jt(160),.35,'square',.06*v,.03,70); nz(.18,jt(1300),4,.12*v,'bandpass',.04); nz(.6,4500,1,.05*v,'highpass',.2,2500); },
+  stomp:v=>{ if(v<=.02) return; nz(1.4,260,.7,.85*v,'lowpass',0,40); tn(42,1.2,'sine',.7*v,0,31); tn(jt(160),.35,'square',.06*v,.03,70); nz(.18,jt(1300),4,.12*v,'bandpass',.04); nz(.6,4500,1,.05*v,'highpass',.2,2500); },
   tear:()=>{ nz(.25,1800,2,.35,'bandpass',0,500); tn(140,.15,'square',.08,0,70); },
   board:()=>{ nz(.08,900,3,.4,'bandpass'); tn(220,.06,'square',.08); nz(.06,1200,3,.3,'bandpass',.14); },
   bell:()=>{ [220,440.5,553,661,880].forEach((f,i)=>tn(f,3.2-i*.4,'sine',[.22,.12,.08,.06,.04][i],0,null,.004)); },

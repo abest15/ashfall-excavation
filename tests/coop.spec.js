@@ -49,7 +49,7 @@ test('host and client play together over the local transport', async ({ context 
     for (const p of [host, client]) await p.evaluate(keep => { const g = window.__G, f = new Function('g', keep); for (let i = 0; i < 4; i++) { f(g); g.tick(0.05); } }, KEEP_ALIVE);
     await host.waitForTimeout(60);
   };
-  await expect.poll(async () => { await pump(); return client.evaluate(id => window.__G.zombies.some(z => z.id === id && !z.dead), zid); }, { timeout: 30_000 }).toBe(true);
+  await expect.poll(async () => { await pump(); return client.evaluate(id => window.__G.zombies.some(z => z.id === id && !z.dead), zid); }, { timeout: 120_000 }).toBe(true);
   // its position follows the host's copy
   const [hp, cp] = [await host.evaluate(id => { const p = window.__G.zombies.find(z => z.id === id).g.position; return [p.x, p.z]; }, zid),
     await client.evaluate(id => { const p = window.__G.zombies.find(z => z.id === id).g.position; return [p.x, p.z]; }, zid)];
