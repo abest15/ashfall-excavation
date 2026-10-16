@@ -23,6 +23,7 @@ function pollPad(dt){
     if(hit(3)) cycleWeapon(1);
     if(hit(1)||hit(5)) melee();
     if(hit(4)) throwLure();
+    if(hit(11)) crouchPress(); if(hit(13)) inspectWeapon();
     if(hit(8)||hit(12)){ journalMin=!journalMin; $('journal').classList.toggle('min',journalMin); }
     if(hit(9)){ PAD.prev=now; pause(); return; }
   } else {

@@ -3,7 +3,7 @@
 function scoreRows(){ const coop=NET.role!=='solo', won=state==='end', rows=[];
   const remotes=coop?Object.values(NET.remotes).filter(r=>r&&r.st):[], earnedAll=remotes.length>0&&remotes.every(r=>typeof r.st.er==='number');
   const st=(dn,dd)=>won?'Escaped':dd?'Fallen':dn?'Down':'Standing';
-  rows.push({name:coop?(NET.name||'You'):'You',me:true,score:coop&&!earnedAll?(P.points||0):(P.earned||P.points||0),kills:P.kills||0,heads:P.heads||0,status:st(P.downed,P.dead),color:coop?AVCSS[NET.myColor|0]||AVCSS[0]:null});
+  rows.push({name:coop?(NET.name||'You'):'You',me:true,score:coop&&!earnedAll?(P.points||0):(P.earned||P.points||0),kills:P.kills||0,heads:P.heads||0,status:st(P.downed,P.dead||(!coop&&state==='over')),color:coop?AVCSS[NET.myColor|0]||AVCSS[0]:null});
   for(const r of remotes){ const s=r.st; rows.push({name:r.name||'Digger',score:(earnedAll?s.er:s.pts)||0,kills:s.kills??s.k,heads:s.heads??s.hs,status:st(s.dn,s.dd),color:AVCSS[r.color|0]}); }
   rows.sort((a,b)=>b.score-a.score); return rows; }
 function buildBoard(){ const tb=$('board-rows'); if(!tb) return; const esc2=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])), num=v=>typeof v==='number'?v.toLocaleString():'—';

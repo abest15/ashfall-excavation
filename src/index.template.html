@@ -4,14 +4,16 @@
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Black+Ops+One&family=Special+Elite&family=Barlow+Condensed:wght@500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Saira+Stencil+One&family=Special+Elite&family=Barlow+Condensed:wght@500;600;700&display=swap" rel="stylesheet">
 <!--STYLES-->
 </head><body>
 <canvas id="c" aria-label="Game view"></canvas>
 
 <div id="hud" hidden>
   <div id="vig"></div><div id="dmg"></div><div id="hurtflash"></div>
-  <div id="cross"><i></i><i></i><i></i><i></i></div><div id="hitm"></div>
+  <div id="dmgdir"></div>
+  <div id="cross"><i></i><i></i><i></i><i></i><b></b></div><div id="hitm"><i></i><i></i><i></i><i></i></div>
+  <div id="ammowarn"></div>
   <div id="pups"></div>
   <div id="bossbar" hidden><div class="lbl" id="bossname">Iron Warden</div><div class="bar"><i id="bossfill"></i></div></div>
   <div id="journal"><div class="jh">Field journal <span>J to fold</span></div><div id="jtext"></div><ul id="jlist"></ul></div>
@@ -22,13 +24,17 @@
   <div id="reviving" hidden>Second Wind…</div>
   <div id="bl">
     <div id="perks"></div>
+    <div id="roundrow"><div class="rtag">Round</div><div id="round"></div></div>
     <div id="hpbar"><i id="hpfill"></i><i id="shfill"></i></div>
-    <div id="roundrow"><div id="round"></div><div id="points">500<div id="ppop"></div></div></div>
+    <div id="points">500<div id="ppop"></div></div>
   </div>
   <div id="br">
     <div id="wnote"></div>
-    <div id="wname">Service Pistol</div>
-    <div id="ammo"><b id="mag">8</b> <span id="res">/ 64</span></div>
+    <div id="wplate">
+      <div id="wname">Service Pistol</div>
+      <div id="ammo"><b id="mag">8</b><span id="res">/ 64</span></div>
+      <div id="pips"></div>
+    </div>
     <div id="slots"></div>
   </div>
 </div>
@@ -223,6 +229,7 @@
 
 <div id="loading" hidden>
   <div class="ld-bg"></div>
+  <svg class="ld-mark" viewBox="0 0 200 260" aria-hidden="true"><use href="#fl-mark"/></svg>
   <div class="ld-main">
     <p class="ld-eye">Deploying</p>
     <h2 class="ld-title">Dig Site 7</h2>

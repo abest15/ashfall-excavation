@@ -8,11 +8,12 @@ addEventListener('keydown',e=>{
     case 'KeyE': interact(); break; case 'KeyR': reload(); break; case 'KeyF': case 'KeyV': melee(); break;
     case 'Digit1': switchTo(0); break; case 'Digit2': switchTo(1); break; case 'Digit3': switchTo(2); break;
     case 'KeyG': throwLure(); break;
+    case 'KeyC': crouchPress(); break; case 'KeyI': inspectWeapon(); break;
     case 'KeyJ': journalMin=!journalMin; $('journal').classList.toggle('min',journalMin); break;
     case 'Space': if(P.grounded){ P.vy=7; P.grounded=false; } break;
     case 'Escape': case 'KeyP': if(noLock) pause(); break;
   }
-  if(['Space','Tab','ArrowUp','ArrowDown'].includes(e.code)) e.preventDefault();
+  if(['Space','Tab','ArrowUp','ArrowDown','ControlLeft','ControlRight'].includes(e.code)) e.preventDefault();
 });
 addEventListener('keyup',e=>{ keys[e.code]=false; });
 addEventListener('blur',()=>{ for(const k in keys) keys[k]=false; mouseDown=false; mouseRight=false; PAD.fire=PAD.aim=false; });

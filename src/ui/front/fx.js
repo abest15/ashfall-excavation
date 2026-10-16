@@ -1,6 +1,6 @@
 /* ---------- front end sound: studio sting and quiet menu sounds (all procedural) ---------- */
 // Routes to AU.buses.music / AU.buses.sfx when the audio lane provides them, otherwise to AU.master scaled by SETTINGS.music / SETTINGS.sfx.
-function frontBus(kind){ const b=AU.buses&&AU.buses[kind]; if(b) return {node:b,k:1,own:false}; return {node:AU.master,k:kind==='music'?SETTINGS.music:SETTINGS.sfx,own:true}; }
+function frontBus(kind){ const b=(AU.buses&&AU.buses[kind])||(kind==='music'?AU.music:AU.ui); if(b) return {node:b,k:1,own:false}; return {node:AU.master,k:kind==='music'?SETTINGS.music:SETTINGS.sfx,own:true}; }
 const FX={last:{},verb:null};
 function fxReady(){ return !!(AU.ctx&&AU.master&&AU.ctx.state==='running'); }
 function fxOut(kind,vol){ const a=AU.ctx, bus=frontBus(kind), g=a.createGain(); g.gain.value=vol*bus.k; g.connect(bus.node); return g; }

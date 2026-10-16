@@ -27,7 +27,7 @@ function navMove(sc,dir){ const it=navItems(sc); if(!it.length) return false; co
 function rangeStep(i,d){ const st=+i.step||1, v=Math.min(+i.max,Math.max(+i.min,+i.value+st*d)); if(v===+i.value) return; i.value=v; i.dispatchEvent(new Event('input',{bubbles:true})); }
 function selStep(s,d){ const n=s.options.length, k=(s.selectedIndex+d+n)%n; if(k===s.selectedIndex) return; s.selectedIndex=k; s.dispatchEvent(new Event('change',{bubbles:true})); uiSfx('tick'); }
 function panelBtn(id){ return document.querySelector(`.mbtn[data-panel="${id}"]`); }
-function enterPanel(id){ const p=$(id); if(p.hidden) showPanel(id); const first=navItems(p)[0]; if(first) navFocus(first,true); else uiSfx('move'); }
+function enterPanel(id){ const p=$(id); if(p.hidden) showPanel(id); const first=navItems(p)[0]; if(first) navFocus(first,true); else { p.tabIndex=-1; navFocus(p,true); } } // read-only panels take focus themselves so up/down can scroll them
 function navAct(act){ const sc=navScope(); if(!sc) return false;
   if(sc==='boot'){ bootAdvance(); return true; }
   if(sc==='splash'){ dismissSplash(); return true; }
@@ -44,6 +44,7 @@ function navAct(act){ const sc=navScope(); if(!sc) return false;
     if(a.tagName==='INPUT'){ if(a.type!=='range'){ if(a.id==='mp-code') $('mp-join').click(); else navMove(sc,'down'); } return true; }
     if(a.dataset.panel){ enterPanel(a.dataset.panel); return true; }
     a.click(); return true; }
+  if(inPanel&&a===sc){ if(act==='up'||act==='down') sc.scrollBy({top:act==='down'?90:-90,behavior:'smooth'}); else if(act==='left') navFocus(panelBtn(sc.id)); return true; }
   if(act==='up'||act==='down'){ navMove(sc,act);
     if(!inPanel&&openPanel()){ const b=document.activeElement; showPanel(b.dataset.panel||null,true); } // panels follow focus like tabs
     return true; }
@@ -59,9 +60,9 @@ addEventListener('keydown',e=>{ navHint();
   if(sc==='boot'||sc==='splash'){ if(e.repeat||e.ctrlKey||e.metaKey||e.altKey||/^F\d+$/.test(e.key)||e.key==='Tab') return; e.preventDefault(); navAct('ok'); return; }
   const a=document.activeElement, text=a&&a.tagName==='INPUT'&&a.type!=='range';
   let act=NAVKEYS[e.code]||NAVKEYS[e.key]; if(!act) return;
-  if(text&&(act==='left'||act==='right'||(act==='back'&&e.key==='Backspace'))) return;
+  if(text&&(act==='left'||act==='right'||(act==='back'&&e.key==='Backspace')||(act==='ok'&&a.id==='mp-code'))) return; // the co-op code box joins on Enter by itself
   if(e.repeat&&(act==='ok'||act==='back')) return;
-  if(navAct(act)) e.preventDefault(); });
+  if(navAct(act)) e.preventDefault(); },true); // capture: the co-op text boxes stop key events from bubbling
 function frontPad(hit,now,p){ navHint();
   const sc=navScope(); if(!sc){ NAV.rep={}; return; }
   const fresh=now.some((v,i)=>v&&!PAD.prev[i]);
