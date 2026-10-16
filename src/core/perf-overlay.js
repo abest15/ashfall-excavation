@@ -1,5 +1,5 @@
 /* ---------- performance overlay (F3) · lane 5 ----------
-   FPS, frame time, draw calls, triangles, zombie count, quality, network role and ping.
+   FPS, frame time, draw calls, triangles, zombie count, quality, renderer backend, network role and ping.
    Reads only; it never changes game state. Toggle with F3 (remembered per browser).
    Network ping shows when the co-op code provides NET.ping (milliseconds); otherwise "n/a".
    Also fills an element with id "game-version" with GAME_VERSION if the menu provides one. */
@@ -24,6 +24,7 @@ function perfText(){ const zs=typeof zombies!=='undefined'?zombies:[]; let alive
     perfRow('geo/tex',mem.geometries+' / '+mem.textures)+
     perfRow('zombies',alive+' alive')+
     perfRow('quality',qn+' · '+sz.x+'x'+sz.y)+
+    perfRow('renderer',(typeof BACKEND!=='undefined'?BACKEND:'WebGL')+(typeof RENDERER_PREF!=='undefined'&&RENDERER_PREF!=='auto'?' (forced)':' (auto)'))+
     perfRow('state',state+(typeof mode!=='undefined'?' · '+mode:''))+
     perfRow('net',net)+
     perfRow('ping',ping).replace(/\n$/,''); }
@@ -32,7 +33,7 @@ function perfText(){ const zs=typeof zombies!=='undefined'?zombies:[]; let alive
 function perfFrame(t){ requestAnimationFrame(perfFrame);
   if(!PERF.on){ PERF.last=t; return; }
   const dt=PERF.last?t-PERF.last:16.7; PERF.last=t;
-  const info=renderer.info.render; PERF.calls=info.calls; PERF.tris=info.triangles; renderer.info.reset();
+  const info=renderer.info.render; PERF.calls=info.drawCalls!==undefined?info.drawCalls:info.calls; PERF.tris=info.triangles; renderer.info.reset();
   PERF.frames++; PERF.acc+=dt; if(dt>PERF.worst) PERF.worst=dt;
   if(PERF.acc>=500){ PERF.fps=PERF.frames*1000/PERF.acc; PERF.ms=PERF.acc/PERF.frames; PERF.peak=PERF.worst; PERF.frames=0; PERF.acc=0; PERF.worst=0;
     PERF.el.textContent=perfText(); } }

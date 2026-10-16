@@ -39,7 +39,8 @@ test('Graphics Low stays within its draw-call and triangle budgets', async ({ pa
       P.yaw = yaw; P.pitch = pitch; g.tick(0.001);
       const auto = r.info.autoReset; r.info.autoReset = false; r.info.reset();
       r.setRenderTarget(null); r.render(g.scene, g.camera);
-      const out = { calls: r.info.render.calls, triangles: r.info.render.triangles, cam: [g.camera.position.x, g.camera.position.z].map(v => +v.toFixed(1)) };
+      const out = { calls: r.info.render.drawCalls ?? r.info.render.calls, // WebGPURenderer: drawCalls (render.calls counts render() calls)
+        backend: r.backend && r.backend.isWebGPUBackend ? 'WebGPU' : 'WebGL 2', triangles: r.info.render.triangles, cam: [g.camera.position.x, g.camera.position.z].map(v => +v.toFixed(1)) };
       r.info.reset(); r.info.autoReset = auto;
       return out;
     }, [x, z, yaw, pitch]);
