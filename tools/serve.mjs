@@ -10,7 +10,7 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '..'), dist = join(ro
 const port = +(process.env.PORT || 5173);
 const types = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.png': 'image/png', '.svg': 'image/svg+xml', '.ogg': 'audio/ogg', '.mp3': 'audio/mpeg', '.wav': 'audio/wav', '.ico': 'image/x-icon', '.woff2': 'font/woff2', '.webmanifest': 'application/manifest+json' };
 let building = Promise.resolve();
-const safeBuild = () => (building = building.then(() => build({ quiet: true })).then(() => console.log('rebuilt', new Date().toLocaleTimeString()), e => console.error('build failed:', e.message)));
+const safeBuild = () => (building = building.then(() => build({ quiet: true })).then(() => console.log('rebuilt', new Date().toLocaleTimeString()), e => { console.error('build failed:', e.message); if (process.env.ASHFALL_NO_WATCH) process.exit(1); }));
 safeBuild();
 let t; const queue = () => { clearTimeout(t); t = setTimeout(safeBuild, 120); };
 if (!process.env.ASHFALL_NO_WATCH) { watch(join(root, 'src'), { recursive: true }, queue); watch(join(root, 'tools'), queue); }
