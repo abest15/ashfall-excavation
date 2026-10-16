@@ -4,6 +4,8 @@
 //   npm run test:qa                  the soak tests (solo rounds 1-15 leak check, co-op 3 rounds)
 //   npm run test:all                 both
 //   npm test -- smoke                one file
+//   npm run test:js                  everything above on the JavaScript zombie simulation (?sim=js)
+//   npm run test:bench               JS vs WASM locomotion benchmark (prints a table)
 //   ASHFALL_DESKTOP_TEST=1 xvfb-run -a npm test -- desktop    the Electron shell (needs `npm run build:prod`)
 import { defineConfig } from '@playwright/test';
 
@@ -12,10 +14,12 @@ const OUT = process.env.ASHFALL_TEST_OUT || '.lane5-test';
 
 // The long soak tests run only with ASHFALL_QA=1 (npm run test:qa); npm test stays a few minutes.
 const QA_ONLY = ['**/soak.spec.js', '**/coop-soak.spec.js'];
+// The JS-vs-WASM simulation benchmark runs only with ASHFALL_BENCH=1 (npm run test:bench).
+const BENCH_ONLY = ['**/wasm-bench.spec.js'];
 
 export default defineConfig({
   testDir: '.',
-  testIgnore: process.env.ASHFALL_QA ? [] : QA_ONLY,
+  testIgnore: [...(process.env.ASHFALL_QA ? [] : QA_ONLY), ...(process.env.ASHFALL_BENCH ? [] : BENCH_ONLY)],
   timeout: 240_000,
   expect: { timeout: 15_000 },
   fullyParallel: false,
