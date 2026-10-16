@@ -1,6 +1,6 @@
 
 const $=id=>document.getElementById(id);
-if(!window.THREE){ $('loaderr').hidden=false; $('play').disabled=true; return; }
+if(!THREE.REVISION){ $('loaderr').hidden=false; $('play').disabled=true; return; }
 const V3=THREE.Vector3;
 const rand=(a,b)=>a+Math.random()*(b-a);
 const clamp=(v,a,b)=>v<a?a:v>b?b:v;

@@ -38,13 +38,19 @@ function mergeGeos(list){ let nv=0, ni=0; for(const g of list){ nv+=g.attributes
 // a partial horizontal arc (rib, strap, wrap) of radius r around the Y axis, starting at angle a0 (0 = +z front) for 'arc' radians toward +x
 function arcGeo(r,tube,arc,a0,rs,ts){ const t=new THREE.TorusGeometry(r,tube,rs||4,ts||SEG(8,4),arc); t.rotateX(-Math.PI/2); t.rotateY(-Math.PI/2+a0); return t; }
 
-// shared time uniform for cloth sway and other animated shaders (advanced in renderFrame)
-const FXT={value:0};
-// patch a lit material so vertices with a 'sway' weight flutter like loose cloth (no extra draw calls)
-function swayMat(m){ m.onBeforeCompile=sh=>{ sh.uniforms.uFxT=FXT;
-    sh.vertexShader='attribute float sway;\nuniform float uFxT;\n'+sh.vertexShader.replace('#include <begin_vertex>',
-      '#include <begin_vertex>\n  { vec3 wo=modelMatrix[3].xyz; float ph=uFxT*3.3+wo.x*1.9+wo.z*1.37+position.x*11.+position.z*7.;\n    transformed.x+=sin(ph)*sway*.035; transformed.z+=(sin(ph*1.31+1.7)*.6-.25)*sway*.05; transformed.y+=abs(sin(ph*.7))*sway*.01; }'); };
-  m.customProgramCacheKey=()=>'sway1'; return m; }
+// shared time uniform for cloth sway and other animated shaders (advanced in renderFrame); a TSL uniform node (.value)
+const FXT=TSL.uniform(0);
+// make a lit material's vertices with a 'sway' weight flutter like loose cloth (no extra draw calls); TSL position node
+function swayMat(m){ const T=TSL, sw=T.attribute('sway','float'), pg=T.positionGeometry, wo=T.modelWorldMatrix.element(3).xyz;
+  const ph=FXT.mul(3.3).add(wo.x.mul(1.9)).add(wo.z.mul(1.37)).add(pg.x.mul(11)).add(pg.z.mul(7));
+  m.positionNode=T.positionLocal.add(T.vec3(T.sin(ph).mul(sw).mul(.035),T.abs(T.sin(ph.mul(.7))).mul(sw).mul(.01),T.sin(ph.mul(1.31).add(1.7)).mul(.6).sub(.25).mul(sw).mul(.05)));
+  return m; }
+
+// TSL stand-in for the old ShaderMaterial: a NodeMaterial whose output is `out` (a vec4 node, built from `u`), with
+// m.uniforms = u (TSL uniform/texture nodes, each with .value like ShaderMaterial uniforms). Unlit, no fog unless
+// o.fog is true (then `out` becomes the colour of a basic material so scene fog applies). Works on WebGPU and WebGL 2.
+function tslMat(o,u,out){ const fog=!!o.fog, m=fog?new THREE.MeshBasicNodeMaterial():new THREE.NodeMaterial(); const p=Object.assign({},o); delete p.fog;
+  Object.assign(m,p); m.fog=fog; m.lights=false; if(fog) m.colorNode=out; else m.fragmentNode=out; m.uniforms=u; return m; }
 
 // ---- instanced batches: many copies of one shape -> a few draw calls, split into grid cells so off-screen cells are culled
 const BATCHES=[];

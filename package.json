@@ -144,5 +144,8 @@
       "artifactName": "Ashfall-Excavation-${version}-x86_64.${ext}"
     }
   },
-  "desktopName": "ashfall-excavation.desktop"
+  "desktopName": "ashfall-excavation.desktop",
+  "dependencies": {
+    "three": "0.186.1"
+  }
 }

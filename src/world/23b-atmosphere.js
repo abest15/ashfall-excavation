@@ -46,9 +46,9 @@ const ATM={cones:[],shafts:[],fog:[],t:0};
   ATM.boom=[]; for(let i=0;i<5;i++){ const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:(()=>{ const cc=document.createElement('canvas'); cc.width=cc.height=64; const gg=cc.getContext('2d'), gr=gg.createRadialGradient(32,32,0,32,32,32); gr.addColorStop(0,'rgba(255,220,160,1)'); gr.addColorStop(.3,'rgba(255,140,60,.5)'); gr.addColorStop(1,'rgba(255,90,30,0)'); gg.fillStyle=gr; gg.fillRect(0,0,64,64); return new THREE.CanvasTexture(cc); })(),color:0xffffff,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,fog:false,opacity:0}));
     sp.renderOrder=-7.5; sp.frustumCulled=false; sky.add(sp); ATM.boom.push({sp,t:0}); } }
 // soft-edged additive volume (light cone / moon shaft): bright near the source, fading with distance and toward silhouette edges
-const VOL_MAT=(col,op,shaft)=>new THREE.ShaderMaterial({ uniforms:{col:{value:new THREE.Color(col)},op:{value:op},sh:{value:shaft?1:0}}, transparent:true, depthWrite:false, blending:THREE.AdditiveBlending, side:THREE.DoubleSide,
-  vertexShader:'varying float vH; varying vec3 vN; varying vec3 vV; void main(){ vH=uv.y; vec4 mv=modelViewMatrix*vec4(position,1.); vN=normalize(normalMatrix*normal); vV=normalize(-mv.xyz); gl_Position=projectionMatrix*mv; }',
-  fragmentShader:'uniform vec3 col; uniform float op,sh; varying float vH; varying vec3 vN; varying vec3 vV; void main(){ float e=abs(dot(normalize(vN),normalize(vV))); float a=op*pow(e,1.6)*mix(smoothstep(0.,.55,vH)*(.35+.65*vH),smoothstep(1.,.55,vH)*(.55+.45*(1.-vH)),sh); gl_FragColor=vec4(col*a,1.); }' });
+const VOL_MAT=(col,op,shaft)=>{ const T=TSL, u={col:T.uniform(new THREE.Color(col)),op:T.uniform(op),sh:T.uniform(shaft?1:0)}, vH=T.uv().y, e=T.abs(T.dot(T.normalView,T.positionViewDirection));
+  const a=u.op.mul(T.pow(e,1.6)).mul(T.mix(T.smoothstep(0,.55,vH).mul(vH.mul(.65).add(.35)),T.smoothstep(.55,1,vH).oneMinus().mul(vH.oneMinus().mul(.45).add(.55)),u.sh));
+  return tslMat({ transparent:true, depthWrite:false, blending:THREE.AdditiveBlending, side:THREE.DoubleSide },u,T.vec4(u.col.mul(a),1)); };
 if(QUAL>=1){
   const coneG=new THREE.CylinderGeometry(.1,1.85,3.25,QUAL===2?20:12,1,true); coneG.translate(0,-1.625,0);
   const glowT=(()=>{ const c=document.createElement('canvas'); c.width=c.height=64; const g=c.getContext('2d'), gr=g.createRadialGradient(32,32,0,32,32,32); gr.addColorStop(0,'rgba(255,255,255,1)'); gr.addColorStop(.25,'rgba(255,255,255,.35)'); gr.addColorStop(1,'rgba(255,255,255,0)'); g.fillStyle=gr; g.fillRect(0,0,64,64); return new THREE.CanvasTexture(c); })();
@@ -67,9 +67,10 @@ if(QUAL>=1){
     const t=new THREE.CanvasTexture(c); t.wrapS=t.wrapT=THREE.RepeatWrapping; return t; })();
   const fogG=new THREE.PlaneGeometry(130,130); fogG.rotateX(-Math.PI/2);
   const layers=QUAL===2?[[.18,.24],[.6,.15],[1.15,.08]]:[[.25,.24],[.8,.13]];
-  layers.forEach(([y,op],i)=>{ const mat=new THREE.ShaderMaterial({ uniforms:{tex:{value:nt},time:{value:0},op:{value:op},col:{value:new THREE.Color(0x6a6258)},cam:{value:new V3()},seed:{value:i*3.7}}, transparent:true, depthWrite:false,
-      vertexShader:'varying vec3 vW; void main(){ vec4 w=modelMatrix*vec4(position,1.); vW=w.xyz; gl_Position=projectionMatrix*viewMatrix*w; }',
-      fragmentShader:'uniform sampler2D tex; uniform float time,op,seed; uniform vec3 col,cam; varying vec3 vW; void main(){ vec2 p=vW.xz; float n=texture2D(tex,p*.021+vec2(time*.004+seed,time*.0015)).r*1.6; n*=texture2D(tex,p*.057-vec2(time*.006,seed+time*.003)).r*1.8; float d=distance(vW.xz,cam.xz); float a=op*n*smoothstep(1.5,7.,d)*smoothstep(62.,30.,d); gl_FragColor=vec4(col,clamp(a,0.,.8)); }' });
+  layers.forEach(([y,op],i)=>{ const T=TSL, u={tex:T.texture(nt),time:T.uniform(0),op:T.uniform(op),col:T.uniform(new THREE.Color(0x6a6258)),cam:T.uniform(new V3()),seed:T.uniform(i*3.7)};
+    const p=T.positionWorld.xz, n=T.texture(nt,p.mul(.021).add(T.vec2(u.time.mul(.004).add(u.seed),u.time.mul(.0015)))).r.mul(1.6).mul(T.texture(nt,p.mul(.057).sub(T.vec2(u.time.mul(.006),u.seed.add(u.time.mul(.003))))).r.mul(1.8));
+    const d=T.distance(p,u.cam.xz), a=u.op.mul(n).mul(T.smoothstep(1.5,7,d)).mul(T.smoothstep(30,62,d).oneMinus());
+    const mat=tslMat({ transparent:true, depthWrite:false },u,T.vec4(u.col,a.clamp(0,.8)));
     const m=new THREE.Mesh(fogG,mat); m.position.y=y; m.renderOrder=2; m.frustumCulled=false; scene.add(m); ATM.fog.push(m); }); }
 // wet ground: glossy puddles reflecting a small night-sky cube map, and a damp sheen on the mud (Medium and High)
 const ENV_CUBE=(()=>{ const face=(top,moon)=>{ const c=document.createElement('canvas'); c.width=c.height=64; const g=c.getContext('2d'); const gr=g.createLinearGradient(0,0,0,64); gr.addColorStop(0,top?'#0a0c12':'#1b1a1f'); gr.addColorStop(top?1:.55,top?'#14151b':'#3a3028'); gr.addColorStop(1,top?'#14151b':'#18140f'); g.fillStyle=gr; g.fillRect(0,0,64,64);

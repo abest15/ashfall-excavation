@@ -23,17 +23,9 @@ const DECAL_KIND={blood:{tiles:[0,1,2,3],col:[.17,.014,.01],life:26},pool:{tiles
   hole:{tiles:[5],col:[1,1,1],life:16},scorch:{tiles:[6],col:[1,1,1],life:24},drip:{tiles:[7],col:[.15,.012,.01],life:26}};
 const DECALS=(()=>{ const geo=new THREE.PlaneGeometry(1,1); const fade=new THREE.InstancedBufferAttribute(new Float32Array(DECAL_N),1), tile=new THREE.InstancedBufferAttribute(new Float32Array(DECAL_N),1), col=new THREE.InstancedBufferAttribute(new Float32Array(DECAL_N*3),3);
   fade.setUsage(THREE.DynamicDrawUsage); geo.setAttribute('aFade',fade); geo.setAttribute('aTile',tile); geo.setAttribute('aCol',col);
-  const mat=new THREE.ShaderMaterial({ uniforms:THREE.UniformsUtils.merge([THREE.UniformsLib.fog,{map:{value:null},uLight:{value:.62}}]), fog:true, transparent:true, depthWrite:false, polygonOffset:true, polygonOffsetFactor:-2, polygonOffsetUnits:-4,
-    vertexShader:`attribute float aFade; attribute float aTile; attribute vec3 aCol; varying vec2 vUv; varying float vF; varying vec3 vC;
-      #include <fog_pars_vertex>
-      void main(){ float tx=mod(aTile,4.), ty=floor(aTile/4.); vUv=vec2((uv.x+tx)/4.,(uv.y+1.-ty)/2.); vF=aFade; vC=aCol; vec4 mvPosition=modelViewMatrix*instanceMatrix*vec4(position,1.); gl_Position=projectionMatrix*mvPosition;
-      #include <fog_vertex>
-      }`,
-    fragmentShader:`uniform sampler2D map; uniform float uLight; varying vec2 vUv; varying float vF; varying vec3 vC;
-      #include <fog_pars_fragment>
-      void main(){ vec4 t=texture2D(map,vUv); gl_FragColor=vec4(t.rgb*vC*uLight,t.a*vF); if(gl_FragColor.a<.01) discard;
-      #include <fog_fragment>
-      }` });
+  const T=TSL, u={map:T.texture(decalTex),uLight:T.uniform(.62)}, aT=T.attribute('aTile','float'), tx=T.mod(aT,4), ty=T.floor(aT.div(4)), uv0=T.uv();
+  const tc=T.texture(decalTex,T.vec2(uv0.x.add(tx).div(4),uv0.y.add(1).sub(ty).div(2)));
+  const mat=tslMat({ fog:true, transparent:true, depthWrite:false, polygonOffset:true, polygonOffsetFactor:-2, polygonOffsetUnits:-4, alphaTest:.01 },u,T.vec4(tc.rgb.mul(T.attribute('aCol','vec3')).mul(u.uLight),tc.a.mul(T.attribute('aFade','float'))));
   mat.uniforms.map.value=decalTex;
   const m=new THREE.InstancedMesh(geo,mat,DECAL_N); m.frustumCulled=false; m.renderOrder=1; const z0=new THREE.Matrix4().makeScale(0,0,0); for(let i=0;i<DECAL_N;i++) m.setMatrixAt(i,z0); scene.add(m);
   return {m,fade,tile,col,life:new Float32Array(DECAL_N),max:new Float32Array(DECAL_N),i:0,active:0}; })();

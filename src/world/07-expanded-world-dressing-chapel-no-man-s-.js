@@ -1,8 +1,7 @@
 /* ================= expanded world: dressing, chapel, no man's land, windows, trap ================= */
 const CH_SHAFTS=[];
-function VOL_MAT2(col,op){ return new THREE.ShaderMaterial({ uniforms:{col:{value:new THREE.Color(col)},op:{value:op}}, transparent:true, depthWrite:false, blending:THREE.AdditiveBlending, side:THREE.DoubleSide,
-  vertexShader:'varying float vH; varying vec3 vN; varying vec3 vV; void main(){ vH=uv.y; vec4 mv=modelViewMatrix*vec4(position,1.); vN=normalize(normalMatrix*normal); vV=normalize(-mv.xyz); gl_Position=projectionMatrix*mv; }',
-  fragmentShader:'uniform vec3 col; uniform float op; varying float vH; varying vec3 vN; varying vec3 vV; void main(){ float e=abs(dot(normalize(vN),normalize(vV))); gl_FragColor=vec4(col*op*pow(e,1.5)*(.3+.7*vH),1.); }' }); }
+function VOL_MAT2(col,op){ const T=TSL, u={col:T.uniform(new THREE.Color(col)),op:T.uniform(op)}, vH=T.uv().y, e=T.abs(T.dot(T.normalView,T.positionViewDirection));
+  return tslMat({ transparent:true, depthWrite:false, blending:THREE.AdditiveBlending, side:THREE.DoubleSide },u,T.vec4(u.col.mul(u.op).mul(T.pow(e,1.5)).mul(vH.mul(.7).add(.3)),1)); }
 const FLAME_MAT=new THREE.MeshBasicMaterial({color:0xff8a3a,transparent:true,opacity:.8,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide});
 // duckboards and puddles
 // slatted duckboards: two runners and cross slats, all instanced
