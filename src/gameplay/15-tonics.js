@@ -17,7 +17,7 @@ function tonicMachine(key,x,z,ry){
   tonicPanels.push({pm,T});
   box(.5,.18,.04,M.brass,0,.65,.46,{parent:g});
   const bm=B({color:T.hex}); cyl(.13,.15,.42,bm,0,2.6,0,10,g); cyl(.05,.06,.18,bm,0,2.9,0,8,g); cyl(.06,.06,.04,M.brass,0,3.0,0,8,g);
-  const lab=makeLabel(T.name,{sx:2.4,size:46,color:T.color}); lab.position.set(0,3.45,0); g.add(lab);
+  const lab=makeLabel(T.name,{sx:2.4,size:46,color:T.color}); lab.position.set(0,3.45,0); g.add(lab); if(typeof dressTonic==='function') dressTonic(g,T);
   const fx=Math.sin(ry),fz=Math.cos(ry);
   const W=Math.abs(Math.sin(ry))>.7?.9:1.2, D=Math.abs(Math.sin(ry))>.7?1.2:.9; addCol(x,z,W,D);
   addInter({x:x+fx*1.2,z:z+fz*1.2,r:1.9,prompt:()=>{ if(P.perks.has(key)) return null; if(!T.noPower&&!POWER.on) return '!Requires power'; if(key==='wind'&&P.swBuys>=3) return '!The bottle is dry'; return `Drink ${T.name}, ${T.desc} [${T.cost}]`; },

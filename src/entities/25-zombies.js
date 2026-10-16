@@ -17,16 +17,29 @@ const HM={hide:L({color:0x2b231c,emissive:0x220800}),hideH:L({color:0x1e2236,emi
 function part(g,geo,mat,x,y,z,z_,head){ const m=new THREE.Mesh(geo,mat); m.position.set(x,y,z); g.add(m); if(QUAL===2&&!mat.blending) m.castShadow=true; if(z_){ m.userData.z=z_; if(head) m.userData.head=true; z_.parts.push(m); } return m; }
 function limb(g,geo,mat,x,y,len,z_){ const pv=new THREE.Group(); pv.position.set(x,y,0); g.add(pv); part(pv,geo,mat,0,-len/2,0,z_); return pv; }
 // makeZombie / makeHound live in 25-zombie-bodies.js
+// the Iron Warden: a riveted furnace-armour suit (merged, vertex-painted plates; visor and grille glow)
+const BOSSG=new Map();
+function bossGeo(t){ let g=BOSSG.get(t); if(g) return g; const b=GB(), S=SEG, ar=0x5a5d60, ad=0x2e3033, rs=0x6a4630, br=0x8a7040;
+  const rv=(c,x,y,z)=>{ if(hash3(Math.round(x*9),Math.round(y*9),Math.round(z*9))>.8) c.lerp(new THREE.Color(rs),.5); };
+  const rivets=(x0,x1,y,z,n)=>{ if(QUAL) for(let i=0;i<n;i++) b.add(SPH(5,4),0x3a3c3e,{p:[x0+(x1-x0)*i/(n-1),y,z],s:.025}); };
+  if(t==='torso'){ b.add(roundBox(1,1.15,.7),ar,{grime:.2,paint:rv}); b.add(roundBox(1.12,.42,.78),ad,{p:[0,.38,0],grime:.2,paint:rv});
+    b.add(roundBox(1.06,.2,.74),ad,{p:[0,-.63,0]}); for(const sx of [-1,1]){ b.add(SPH(S(12),S(8)),ar,{p:[sx*.62,.42,0],s:[.3,.24,.3],paint:rv}); b.add(roundBox(.5,.08,.5),ad,{p:[sx*.66,.6,0],r:[0,0,sx*-.35]}); }
+    b.add(roundBox(.86,.62,.08),ad,{p:[0,.02,.36]}); rivets(-.42,.42,.36,.395,8); rivets(-.42,.42,-.3,.395,8);
+    for(const sx of [-1,1]){ b.add(CYL(.18,.18,.95,S(10)),ad,{p:[sx*.25,.15,-.48],paint:rv}); b.add(CYL(.2,.2,.06,S(10)),br,{p:[sx*.25,.6,-.48]}); b.add(CYL(.07,.09,.4,S(8)),ad,{p:[sx*.25,.8,-.48]}); } }
+  else if(t==='grille'){ for(let i=0;i<5;i++) b.add(BOX(.11,.44,.03),0xffffff,{p:[-.3+i*.15,0,0]}); }
+  else if(t==='head'){ b.add(roundBox(.56,.56,.56),ar,{grime:.2,paint:rv}); b.add(BOX(.5,.12,.08),ad,{p:[0,.03,.27]}); b.add(BOX(.08,.2,.5),ad,{p:[0,.32,0]});
+    for(const sx of [-1,1]) b.add(CYL(.06,.06,.1,S(8)),br,{p:[sx*.3,0,0],r:[0,0,Math.PI/2]}); rivets(-.22,.22,.24,.285,6); }
+  else if(t==='arm'){ b.add(roundBox(.34,1,.34),ar,{grime:.2,paint:rv}); b.add(roundBox(.4,.16,.4),ad,{p:[0,-.2,0]}); b.add(roundBox(.4,.16,.4),ad,{p:[0,.3,0]}); b.add(SPH(S(8),S(6)),ad,{p:[0,-.55,0],s:.2}); }
+  else if(t==='armR'){ b.add(CYL(.14,.18,.6,S(10)),ad,{p:[0,-.6,0]}); b.add(TOR(.15,.03,4,S(10)),br,{p:[0,-.88,0],r:[Math.PI/2,0,0]}); }
+  else if(t==='leg'){ b.add(roundBox(.38,1.4,.38),ad,{grime:.2,paint:rv}); b.add(roundBox(.44,.42,.44),ar,{p:[0,.35,0],paint:rv}); b.add(SPH(S(8),S(6)),ar,{p:[0,-.15,.16],s:[.16,.14,.1]}); b.add(roundBox(.46,.18,.62),ad,{p:[0,-.62,.08]}); }
+  g=b.done(); BOSSG.set(t,g); return g; }
 function makeBoss(prime){
   const g=new THREE.Group(); g.rotation.order='YXZ'; const z={g,parts:[],kind:'boss',boss:true,prime};
-  const ar=ZM.armor, ad=ZM.armorDark;
-  part(g,new THREE.BoxGeometry(1,1.15,.7),ar,0,2.05,0,z); part(g,new THREE.BoxGeometry(1.06,.2,.74),ad,0,1.42,0,z);
-  part(g,new THREE.BoxGeometry(.8,.5,.06),prime?ZM.visorP:ZM.visor,0,2.1,.36);
-  const t1=part(g,new THREE.CylinderGeometry(.18,.18,.9,8),ad,-.25,2.2,-.48); const t2=part(g,new THREE.CylinderGeometry(.18,.18,.9,8),ad,.25,2.2,-.48);
-  const head=part(g,new THREE.BoxGeometry(.56,.56,.56),ar,0,2.9,0,z,true); part(head,new THREE.BoxGeometry(.46,.1,.05),prime?ZM.visorP:ZM.visor,0,.03,.29);
-  z.armL=limb(g,new THREE.BoxGeometry(.34,1,.34),ar,-.72,2.45,1,z); z.armR=limb(g,new THREE.BoxGeometry(.34,1,.34),ar,.72,2.45,1,z);
-  const can=new THREE.Mesh(new THREE.CylinderGeometry(.14,.18,.6,8),ad); can.position.y=-1.1; z.armR.add(can);
-  z.legL=limb(g,new THREE.BoxGeometry(.38,1.4,.38),ad,-.26,1.45,1.4,z); z.legR=limb(g,new THREE.BoxGeometry(.38,1.4,.38),ad,.26,1.45,1.4,z);
+  const bm=L({vertexColors:true,specular:0x2a2a2a,shininess:30}), vis=prime?ZM.visorP:ZM.visor;
+  const t=part(g,bossGeo('torso'),bm,0,2.05,0,z); part(t,bossGeo('grille'),vis,0,.02,.405);
+  const head=part(g,bossGeo('head'),bm,0,2.9,0,z,true); part(head,new THREE.BoxGeometry(.46,.1,.05),vis,0,.03,.315);
+  z.armL=limb(g,bossGeo('arm'),bm,-.72,2.45,1,z); z.armR=limb(g,bossGeo('arm'),bm,.72,2.45,1,z); part(z.armR,bossGeo('armR'),bm,0,0,0);
+  z.legL=limb(g,bossGeo('leg'),bm,-.26,1.45,1.4,z); z.legR=limb(g,bossGeo('leg'),bm,.26,1.45,1.4,z);
   if(prime){ g.scale.setScalar(1.25); const sm=new THREE.Mesh(new THREE.SphereGeometry(2,16,10),M.add(0x9af0ff,.22)); sm.position.y=2; sm.visible=false; g.add(sm); z.shieldMesh=sm; }
   return z;
 }

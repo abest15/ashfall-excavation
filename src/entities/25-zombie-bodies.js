@@ -48,7 +48,7 @@ function zTorso(v){ const b=GB(), S=SEG, torn=v.style==='torn', c=torn?ZC.linen:
   b.add(SPH(S(12),S(8)),v.trou,{p:[0,-.14,0],s:[.19,.13,.135],grime:.25});
   // sculpted torso shell
   const lathe=new THREE.LatheGeometry(ZPROF.map(a=>new THREE.Vector2(a[0],a[1])),S(16,8));
-  const cav=torn?(c2,x,y,z)=>{ if(z>.06&&Math.abs(x)<.11&&y>.12&&y<.46) c2.lerp(new THREE.Color(ZC.wound),.9); }:null;
+  const cav=torn?(c2,x,y,z)=>{ if(z>.06&&Math.abs(x)<.13&&y>.1&&y<.48) c2.lerp(new THREE.Color(ZC.wound),.9); }:null;
   b.add(lathe,c,{s:[1,1,.64],jit:QUAL?.014:0,grime:.3,paint:(c2,x,y,z)=>{ blood(c2,x,y,z); if(cav) cav(c2,x,y,z); if(y<.02) c2.multiplyScalar(.85); }});
   // shoulders, neck
   for(const sx of [-1,1]) b.add(SPH(S(10),S(7)),c,{p:[sx*.212,.5,0],s:[.1,.088,.096],grime:.2});
@@ -72,9 +72,9 @@ function zTorso(v){ const b=GB(), S=SEG, torn=v.style==='torn', c=torn?ZC.linen:
     if(v.pack){ b.add(BOX(.24,.24,.09),0x524a38,{p:[0,.33,-.165],grime:.3}); b.add(CYL(.045,.045,.28,S(8)),0x4a4232,{p:[0,.48,-.165],r:[0,0,Math.PI/2]}); }
     for(let i=0;i<3;i++){ const a=Math.PI*.75+i*.5, len=.18+hash3(i,sd,9)*.16; b.add(BOX(.07,len,.012),c,{p:[Math.sin(a)*.2,-.06-len/2,Math.cos(a)*.13],r:[0,a,0],sway:hangSway(len/2,len,1.2),grime:.4}); } }
   if(torn){
-    b.add(SPH(S(10),S(8)),ZC.wound,{p:[0,.29,.1],s:[.1,.15,.05]});
-    for(let i=0;i<4;i++){ const y=.2+i*.072, r=zR(y)+.006; for(const side of [1,-1]) b.add(arcGeo(r,.011,.95-i*.08,side>0?.2:-.2-(.95-i*.08),3,S(8,4)),ZC.bone,{p:[0,y,0],s:[1,1,.64],grime:.15}); }
-    b.add(BOX(.03,.26,.02),ZC.bone,{p:[0,.31,zR(.31)*.64]});
+    b.add(SPH(S(10),S(8)),ZC.wound,{p:[0,.3,.1],s:[.12,.17,.055]});
+    for(let i=0;i<4;i++){ const y=.2+i*.072, r=zR(y)+.006; for(const side of [1,-1]) b.add(arcGeo(r,.01,.8-i*.1,side>0?.22:-.22-(.8-i*.1),3,S(8,4)),0xa49678,{p:[0,y,0],s:[1,1,.64],grime:.35}); }
+    b.add(BOX(.026,.24,.016),0xa49678,{p:[0,.31,zR(.31)*.64]});
     for(const sx of [-1,1]) b.add(BOX(.032,.6,.012),ZC.leather,{p:[sx*.095,.27,zR(.27)*.64+.01],r:[-.05,0,sx*.05]});   // braces
     for(let i=0;i<4;i++){ const sx=i<2?-1:1, len=.12+hash3(i,sd,5)*.14; b.add(BOX(.06,len,.01),c,{p:[sx*(.12+(i%2)*.05),.14-len/2,zR(.12)*.64+.004],r:[0,sx*.3,0],sway:hangSway(len/2,len,1),grime:.4}); }
     b.add(TOR(.04,.016,4,S(8,5),Math.PI*1.4),ZC.gore,{p:[.03,.04,.13],r:[0,.3,1.2],sway:(x,y)=>clamp(-y*8,0,1)*.6}); }
@@ -103,11 +103,12 @@ function zHead(v){ const b=GB(), S=SEG, sk=v.skin, sd=v.seed*7+v.skin%53, hood=v
     b.add(CYL(.14,.134,.07,S(14)),v.coat,{p:[0,.11,-.005],r,grime:.25}); b.add(CYL(.135,.135,.026,S(14)),0x2b2a22,{p:[0,.09,-.002],r});
     b.add(CYL(.165,.15,.03,S(14)),v.coat,{p:[0,.152,-.015],r:[-.2,0,r[2]],s:[1,1,1.08],grime:.25});
     b.add(new THREE.CylinderGeometry(.115,.115,.01,S(10,6),1,false,-Math.PI/2,Math.PI),0x1d1a15,{p:[0,.08,.07],r:[.32,0,0],s:[1,1,.62]}); }
-  else if(v.head==='bandage'){ const bl=(c,x,y,z)=>{ if(hash3(Math.round(x*40),Math.round(y*40),Math.round(z*40))>.84) c.lerp(GOREC,.75); };
-    b.add(TOR(.134,.02,4,S(16,8)),ZC.bandage,{p:[0,.06,0],r:[Math.PI/2+.15,0,.08],grime:.25,paint:bl});
-    b.add(TOR(.13,.02,4,S(16,8)),ZC.bandage,{p:[0,.015,.005],r:[Math.PI/2-.35,.0,-.12],grime:.25,paint:bl});
-    b.add(TOR(.14,.018,4,S(16,8)),ZC.bandage,{p:[0,.0,0],r:[0,Math.PI/2,0],s:[1,1.08,1],grime:.25,paint:bl});
-    b.add(TOR(.135,.02,4,S(16,8)),ZC.bandage,{p:[0,.02,.01],r:[Math.PI/2+.75,.0,.55],grime:.25,paint:bl}); }
+  else if(v.head==='bandage'){ const bl=(c,x,y,z)=>{ if(hash3(Math.round(x*40),Math.round(y*40),Math.round(z*40))>.86) c.lerp(GOREC,.7); if(x>.03&&z>.06&&y<.06&&y>-.02) c.lerp(GOREC,.8); };
+    b.add(new THREE.SphereGeometry(1,S(14),S(6),0,Math.PI*2,0,Math.PI*.42),ZC.bandage,{p:[0,.012,-.004],s:[.137,.152,.146],r:[-.12,0,0],jit:QUAL?.01:0,grime:.3,paint:bl});
+    b.add(CYL(.137,.14,.05,S(16,8),true),ZC.bandage,{p:[0,.045,.0],r:[-.1,0,.05],s:[1,1,1.04],jit:QUAL?.006:0,grime:.3,paint:bl});
+    b.add(CYL(.133,.137,.042,S(16,8),true),ZC.bandage,{p:[.01,.02,.012],r:[-.6,0,-.45],s:[1,1,1.05],grime:.3,paint:bl});
+    b.add(TOR(.125,.016,4,S(14,8),Math.PI*1.3),ZC.bandage,{p:[0,-.02,-.01],r:[0,Math.PI/2,-Math.PI*.15],s:[1,1.12,1],grime:.3,paint:bl});
+    b.add(BOX(.03,.08,.01),ZC.bandage,{p:[-.1,-.06,-.1],r:[0,-.6,.2],sway:hangSway(-.02,.08,1)}); }
   else if(v.head==='hood'){ const hc=ZC.hood[v.seed%3];
     b.add(SPH(S(14),S(10)),hc,{p:[0,.01,0],s:[.142,.168,.152],jit:QUAL?.014:0,grime:.3,paint:(c,x,y,z)=>{ if(y<-.06&&z>.05) c.multiplyScalar(.8); }});
     b.add(CYL(.12,.175,.13,S(12),true),hc,{p:[0,-.17,-.005],sway:(x,y)=>clamp(-y*8+.5,0,1)*.9,grime:.3});

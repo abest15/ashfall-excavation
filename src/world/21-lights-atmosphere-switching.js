@@ -7,12 +7,14 @@ function setAtmosphere(m){
     rainMat.color.set(0x74d9ea); rainMat.opacity=.7; }
   else { scene.background.set(FOG_MAIN); scene.fog.color.set(FOG_MAIN); scene.fog.density=.03; hemi.color.set(0x9ea3aa); hemi.groundColor.set(0x3a2e21); hemi.intensity=.85; sun.intensity=.5;
     const ps=[[-3,3.3,36],[-6,3.3,18],[18,3.3,14],[-19,3.3,-20],[30,3.3,-10]]; LAMPS.forEach((l,i)=>{ l.color.set(0xffb560); l.distance=24; l.position.set(ps[i][0]+.5,ps[i][1],ps[i][2]); l.intensity=(i===0||POWER.on)?1.1:0; });
-    rainMat.color.set(0x9a9a9a); rainMat.opacity=.45; }
+    rainMat.color.set(0x9a9a9a); rainMat.opacity=.3; }
 }
-// rain / motes
-const RN=SETTINGS.scale<.6?700:1300, rainGeo=new THREE.BufferGeometry(), rainPos=new Float32Array(RN*3);
-for(let i=0;i<RN;i++){ rainPos[i*3]=rand(-24,24); rainPos[i*3+1]=rand(0,18); rainPos[i*3+2]=rand(-24,24); }
+// rain / motes: thin falling streaks (line segments), slow drifting motes in the Hollow
+const RN=SETTINGS.scale<.6?700:1300, rainGeo=new THREE.BufferGeometry(), rainPos=new Float32Array(RN*6);
+for(let i=0;i<RN;i++){ const x=rand(-24,24), y=rand(0,18), z=rand(-24,24); rainPos.set([x,y,z,x,y+.35,z],i*6); }
 rainGeo.setAttribute('position',new THREE.BufferAttribute(rainPos,3));
-const rainMat=new THREE.PointsMaterial({color:0x9a9a9a,size:.07,transparent:true,opacity:.45,depthWrite:false});
-const rain=new THREE.Points(rainGeo,rainMat); rain.frustumCulled=false; scene.add(rain);
-function updateRain(dt){ const v=mode==='hollow'?-.7:15; for(let i=0;i<RN;i++){ let y=rainPos[i*3+1]-v*dt; if(y<0) y+=18; else if(y>18) y-=18; rainPos[i*3+1]=y; } rainGeo.attributes.position.needsUpdate=true; rain.position.set(camera.position.x,0,camera.position.z); sky.position.copy(camera.position); sky.scale.setScalar(camera.far*.82/100); }
+const rainMat=new THREE.LineBasicMaterial({color:0x9a9a9a,transparent:true,opacity:.3,depthWrite:false});
+const rain=new THREE.LineSegments(rainGeo,rainMat); rain.frustumCulled=false; scene.add(rain);
+function updateRain(dt){ const hol=mode==='hollow', v=hol?-.7:15, sl=hol?.04:.38, wx=hol?0:-.035; for(let i=0;i<RN;i++){ const o=i*6; let y=rainPos[o+1]-v*dt; if(y<0) y+=18; else if(y>18) y-=18; rainPos[o+1]=y; rainPos[o+4]=y+sl; rainPos[o+3]=rainPos[o]-wx*sl*10; }
+  rainGeo.attributes.position.needsUpdate=true; rain.position.set(camera.position.x,0,camera.position.z); sky.position.copy(camera.position); sky.scale.setScalar(camera.far*.82/100);
+  if(typeof updateFx==='function') updateFx(dt); if(typeof updateAtmos==='function') updateAtmos(dt); }

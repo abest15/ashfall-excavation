@@ -13,7 +13,11 @@ const CM={metal:L({color:0x4d4741}),dark:L({color:0x26221f}),rust:L({color:0x6e3
   for(const sx of [-1,1]){ cyl(.45,.55,4.2,CM.dark,sx*1.7,17.6,-1.9,8,g); cyl(.6,.6,.3,CM.rust,sx*1.7,19.8,-1.9,8,g); }
   for(const sx of [-1,1]){ box(2,1.7,2.4,CM.rust,sx*4.1,14.8,0,{parent:g,round:true}); const arm=new THREE.Group(); arm.position.set(sx*4.2,14.2,0); g.add(arm); box(1.3,4.6,1.3,CM.metal,0,-2.4,0,{parent:arm,round:true});
     const fa=new THREE.Group(); fa.position.y=-4.7; arm.add(fa); box(1.15,4,1.15,CM.dark,0,-2,0,{parent:fa,round:true}); box(1.7,1.3,1.7,CM.rust,0,-4.4,0,{parent:fa,round:true}); COL.arms.push({arm,fa,sx}); }
-  const segGeo=w=>{ const q=QUAL?new THREE.CylinderGeometry(w*.56,w*.5,1,12):new THREE.BoxGeometry(w,w,1); if(QUAL) q.rotateX(Math.PI/2); q.translate(0,0,.5); return q; };
+  const segGeo=w=>{ if(!QUAL){ const q=new THREE.BoxGeometry(w,w,1); q.translate(0,0,.5); return q; }
+    const b=GB(), rx=g=>g.rotateX(Math.PI/2); b.add(new THREE.CylinderGeometry(w*.56,w*.5,1,14),0xffffff,{p:[0,0,.5],pre:rx});
+    for(const t of [.08,.5,.92]) b.add(new THREE.CylinderGeometry(w*.6-t*w*.05,w*.6-t*w*.05,.05,14),0xffffff,{p:[0,0,t],pre:rx});
+    b.add(new THREE.CylinderGeometry(w*.1,w*.1,.8,8),0xffffff,{p:[w*.5,w*.25,.5],pre:rx}); b.add(new THREE.CylinderGeometry(w*.16,w*.16,.3,8),0xffffff,{p:[w*.5,w*.25,.2],pre:rx});
+    b.add(new THREE.BoxGeometry(w*.5,w*.12,.7),0xffffff,{p:[0,-w*.52,.5]}); return b.done(); };
   const thighG=segGeo(1.5), shinG=segGeo(1.25), footG=QUAL?roundBox(2.4,.9,3.4):new THREE.BoxGeometry(2.4,.9,3.4), kneeG=new THREE.SphereGeometry(.95,10,8), valveG=new THREE.CylinderGeometry(.5,.5,.4,12);
   for(const side of [-1,1]){ const f={side,plant:new V3(),from:new V3(),to:new V3(),cur:new V3(),sw:false,hatch:false};
     f.thigh=new THREE.Mesh(thighG,CM.metal); f.shin=new THREE.Mesh(shinG,CM.dark); f.foot=new THREE.Mesh(footG,CM.rust); f.knee=new THREE.Mesh(kneeG,CM.rust);
