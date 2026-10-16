@@ -1,9 +1,16 @@
 # Ashfall Excavation — architecture
 
-Round-based co-op zombie survival game. Three.js r128 (vendored in `vendor/`), plain JavaScript, no runtime dependencies.
+Round-based co-op zombie survival game. Three.js r186 from npm (`three/webgpu`: WebGPURenderer, which uses WebGPU when available and its WebGL 2 backend otherwise), bundled by esbuild; plain JavaScript.
+
+## Rendering (WebGPU / WebGL 2)
+- `src/engine/02-renderer.js` creates `THREE.WebGPURenderer` and awaits `renderer.init()`. Options → Renderer: **Auto** (WebGPU on a hardware adapter, else WebGL 2), **WebGPU** (falls back to WebGL 2 if unavailable), **WebGL**. `SETTINGS.renderer`; applies on reload. `BACKEND` (`'WebGPU'` / `'WebGL 2'`) shows in the F3 overlay and on the loading screen.
+- **Never** use `ShaderMaterial`, `RawShaderMaterial` or `onBeforeCompile`: they do not run on WebGPURenderer. Built-in materials (Lambert, Phong, Basic, Sprite, Points, Line) are converted to node materials automatically. Custom shading is TSL (`TSL.*`, in scope next to `THREE`): use `tslMat(params, uniforms, outVec4)` (engine/04b-geometry.js) for an unlit custom material whose `material.uniforms.x.value` works like before, or set `positionNode`/`colorNode` on a material (see `swayMat`). Shared time uniform: `FXT` (TSL uniform).
+- Colour: colour management is off and output is not converted (`outputColorSpace = LinearSRGBColorSpace`), i.e. colours and textures are used as authored, exactly like the original r128 look. Do not set texture `colorSpace`.
+- Light units: the renderer registers light nodes that keep the classic (pre-physical) light model: intensities are scaled by PI and point lights fall off as `pow(1 - d/distance, decay)`. Keep tuning lights with the same numbers as before.
+- Post (Medium/High) is a TSL chain of `QuadMesh` passes (bright pass, quarter-res separable blur, composite with tone curve/grade/vignette/grain). Draw counts are read from `renderer.info.render.drawCalls`.
 
 ## How the code is put together
-- `src/manifest.json` lists every source file in load order. `tools/build.mjs` concatenates them into **one shared scope** wrapped in a single IIFE (`'use strict'`).
+- `src/manifest.json` lists every source file in load order. `tools/build.mjs` concatenates them into **one shared scope** wrapped in a single async IIFE (`'use strict'`) inside a generated ES module that does `import * as THREE from 'three/webgpu'` and `import * as TSL from 'three/tsl'`; esbuild bundles it (dist/assets/game.js, inlined in dist-single). Top-level `await` is allowed in game files (used once, for `renderer.init()`).
   - Every top-level `const`/`let`/`function` in any file is visible to every other file. **Names must be unique across the whole game.**
   - Top-level code runs in manifest order at load. `function` declarations are hoisted; `const`/`let` are not (using one before its file has run throws).
 - `src/styles/order.json` lists CSS files in order. `src/index.template.html` is the page shell (`<!--STYLES-->` / `<!--SCRIPTS-->` are filled in by the build).

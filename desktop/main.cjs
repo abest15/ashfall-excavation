@@ -40,6 +40,9 @@ protocol.registerSchemesAsPrivileged([
 app.commandLine.appendSwitch('force_high_performance_gpu');
 app.commandLine.appendSwitch('disable-renderer-backgrounding');
 app.commandLine.appendSwitch('disable-background-timer-throttling');
+// WebGPU (the game picks it automatically and falls back to WebGL 2): Chromium enables it on Windows, macOS and
+// supported Linux GPUs. ASHFALL_WEBGPU=1 also turns it on for other Linux GPUs through Vulkan.
+if (process.platform === 'linux' && process.env.ASHFALL_WEBGPU) { app.commandLine.appendSwitch('enable-unsafe-webgpu'); app.commandLine.appendSwitch('enable-features', 'Vulkan'); }
 if (process.env.ASHFALL_SOFTWARE_GL) { app.commandLine.appendSwitch('use-gl', 'angle'); app.commandLine.appendSwitch('use-angle', 'swiftshader'); app.commandLine.appendSwitch('enable-unsafe-swiftshader'); }
 app.setName(TITLE);
 if (process.platform === 'win32') app.setAppUserModelId('com.furnacelantern.ashfall');
@@ -61,6 +64,7 @@ function serveDist() {
     const res = await net.fetch(pathToFileURL(file).toString());
     const headers = new Headers(res.headers);
     if (file.endsWith('.html')) headers.set('Content-Security-Policy', CSP);
+    if (file.endsWith('.js')) headers.set('Content-Type', 'text/javascript'); // the game is an ES module
     return new Response(res.body, { status: res.status, headers });
   });
 }

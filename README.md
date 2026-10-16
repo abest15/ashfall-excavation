@@ -4,7 +4,7 @@ A round-based co-op zombie survival shooter set at Dig Site 7 on the northern fr
 
 Hold out round after round with up to three friends. Board the windows, open the site, restore the power, and forge your guns into something worse. Finish the old rite the diggers started: ride the Colossus that stalks No Man's Land, read the chapel's glass, build a storm in your fist, bring the giant down, and find the way out from under the dig.
 
-By **Furnace Lantern Games**. Built with Three.js (r128) and plain JavaScript; runs in a browser or as a desktop app for Windows, macOS and Linux.
+By **Furnace Lantern Games**. Built with Three.js (r186, WebGPU with an automatic WebGL 2 fallback) and plain JavaScript; runs in a browser or as a desktop app for Windows, macOS and Linux.
 
 - **Play in the browser:** https://abest15.github.io/ashfall-excavation/
 - **Download the desktop app:** [Releases](https://github.com/abest15/ashfall-excavation/releases) (Windows installer or portable .exe, macOS .dmg, Linux AppImage)
@@ -16,7 +16,7 @@ By **Furnace Lantern Games**. Built with Three.js (r128) and plain JavaScript; r
 - **Solo:** press any key on the title screen, then choose **Solo**.
 - **Co-op (2 to 4 players):** one player chooses **Co-op → Host a game** and shares the five-letter room code; friends choose **Co-op**, type the code and **Join**. The host presses **Start the dig**. Co-op needs an internet connection (peer-to-peer through PeerJS); the host's game is the authoritative one.
 - Each round sends more of the dead. Kills and repairs earn points; spend them on doors, wall weapons, tonics, the relic crate and the Forge.
-- Graphics quality (Low / Medium / High), field of view, sensitivity, volume and difficulty are under **Options**. Use **Low** on basic laptops.
+- Graphics quality (Low / Medium / High), renderer (Auto / WebGPU / WebGL), field of view, sensitivity, volume and difficulty are under **Options**. Use **Low** on basic laptops.
 
 ### Controls
 
@@ -46,7 +46,7 @@ The third weapon slot opens with the Packmule Tonic. Xbox and PlayStation contro
 You need [Node.js](https://nodejs.org) 22.12 or newer.
 
 ```bash
-npm install          # dev tools only; the game itself has no runtime dependencies
+npm install          # three.js (bundled into the game) and the dev tools
 npm run dev          # builds, serves http://localhost:5173 and rebuilds whenever src/ changes
 ```
 
@@ -145,7 +145,7 @@ src/                  game source, assembled into one script by tools/build.mjs
   index.template.html page shell
   engine/ world/ entities/ gameplay/ audio/ ui/ net/ core/  (see docs/ARCHITECTURE.md)
   styles/             CSS, ordered by styles/order.json
-vendor/               three.r128.min.js, peerjs.min.js
+vendor/               peerjs.min.js (three.js comes from npm and is bundled by esbuild)
 tools/
   build.mjs           the build (dev, production, test)
   serve.mjs           dev server with rebuild on change
@@ -166,4 +166,4 @@ The code is split by area and assembled in order into one scope. Read `docs/ARCH
 
 ---
 
-All code, art, sound and text in Ashfall Excavation are original. Three.js (MIT) and PeerJS (MIT) are third-party libraries included in `vendor/`.
+All code, art, sound and text in Ashfall Excavation are original. Three.js (MIT, bundled from npm) and PeerJS (MIT, in `vendor/`) are third-party libraries.
