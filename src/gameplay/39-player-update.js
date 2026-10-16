@@ -62,8 +62,10 @@ function updatePlayer(dt){
   camera.position.set(P.pos.x,P.pos.y+P.eyeH-bob*.5-P.landDip,P.pos.z);
   P.tilt+=((sliding?.07:0)-P.tilt)*Math.min(1,dt*10);
   camera.rotation.set(clamp(P.pitch+P.kick,-1.55,1.55),P.yaw-P.kickY,((P.revive>0||P.downed)?.4:0)+P.tilt+P.kickR+(P.moving&&P.grounded?Math.cos(P.bobT)*.003*(1-P.ads):0));
+  if(P.shake>(P.shakePrev||0)+.04) rumble(clamp(P.shake*2.2,0,1),clamp(P.shake*1.6,0,1),Math.round(180+P.shake*600)); // explosions, Colossus stomps
   if(P.shake>0){ P.shake=Math.max(0,P.shake-dt); camera.position.x+=rand(-1,1)*P.shake*.3; camera.position.y+=rand(-1,1)*P.shake*.3; }
   P.fovK+=((P.sprint?1:sliding?1.4:0)-P.fovK)*Math.min(1,dt*6);
   const fov=SETTINGS.fov-(w?handling(w.id).zoom:15)*P.ads+P.fovK*6; if(Math.abs(camera.fov-fov)>.05){ camera.fov=fov; camera.updateProjectionMatrix(); }
+  P.shakePrev=P.shake;
   if(GT-P.lastHit>3&&P.hp<P.maxHp&&P.revive<=0&&!P.downed&&!P.dead) P.hp=Math.min(P.maxHp,P.hp+P.maxHp*.7*dt);
 }

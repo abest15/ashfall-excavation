@@ -33,7 +33,7 @@ function fire(){
   }
   if(typeof muzzleLight==='function'&&!s.beam&&!s.jump) muzzleLight(muzzleW);
   if(w.id==='rod'||w.id==='dynamo') VM.rodFlare=1; recoil(w,s); vmFire(w,s);
-  rumble(s.type==='shotgun'||s.type==='rifle'?.6:.15,.4,s.auto?60:110);
+  { const Hh=handling(w.id); rumble(clamp(Hh.v*14,.08,.95),clamp(.2+Hh.v*6,.15,.7),s.auto?55:Math.round(90+Hh.v*1600)); }
   sfx[s.snd](w.up); if(w.mag===0&&w.res>0) setTimeout(()=>{ if(curW()===w) reload(); },160);
 }
 // current effective spread (radians): ADS, movement, stance, air, bloom and first-shot accuracy
@@ -75,7 +75,7 @@ function meleeHit(){ const res=P.bless.has('knife'); const fx=-Math.sin(P.yaw), 
   for(const h of hits.slice(0,res?4:1)){ const z=h.z; hitZombie(z,res?(z.boss?1500:Math.max(3000,z.maxHp*.5)):(z.boss?250:150),1,'melee'); spawnParticles(z.g.position.clone().setY(1.4),res?'relic':'blood',6); }
   sfx.stab(); hitMarker(false); P.rcP=(P.rcP||0)+.01; rumble(.5,.5,90); }
 function hurtPlayer(d,src){ if(P.invuln>0||P.revive>0||P.downed||P.dead||(state!=='play'&&!(NET.role!=='solo'&&state==='paused'))) return; d*=DF().dmg*(P.bless.has('stone')?.75:1);
-  if(P.aegis&&src){ const fx=-Math.sin(P.yaw), fz=-Math.cos(P.yaw), dx=src.x-P.pos.x, dz=src.z-P.pos.z, l=Math.hypot(dx,dz)||1; if((dx*fx+dz*fz)/l<-.25){ d*=.2; sfx.clang(); } } if(P.shield>0){ const a=Math.min(P.shield,d); P.shield-=a; d-=a; } P.hp-=d; P.lastHit=GT; P.invuln=.25; sfx.hurt(); if(src) dmgIndicator(src); P.kickR=(P.kickR||0)+rand(-1,1)*.03; vmImpulse(0,-.2,.2,-.6,0,rand(-1,1)*.8); rumble(1,.6,220); $('hurtflash').style.opacity=1; setTimeout(()=>$('hurtflash').style.opacity=0,90);
+  if(P.aegis&&src){ const fx=-Math.sin(P.yaw), fz=-Math.cos(P.yaw), dx=src.x-P.pos.x, dz=src.z-P.pos.z, l=Math.hypot(dx,dz)||1; if((dx*fx+dz*fz)/l<-.25){ d*=.2; sfx.clang(); } } if(P.shield>0){ const a=Math.min(P.shield,d); P.shield-=a; d-=a; } P.hp-=d; P.lastHit=GT; P.invuln=.25; sfx.hurt(); if(src) dmgIndicator(src); P.kickR=(P.kickR||0)+rand(-1,1)*.03; vmImpulse(0,-.2,.2,-.6,0,rand(-1,1)*.8); rumble(clamp(.35+d/40,.35,1),.5,Math.round(140+Math.min(d,60)*2)); $('hurtflash').style.opacity=1; setTimeout(()=>$('hurtflash').style.opacity=0,90);
   if(P.hp<=0) down(); }
 function down(){
   if(P.perks.has('wind')){ P.perks.clear(); P.maxHp=100; if(P.weapons.length>2){ P.weapons.length=2; if(P.cur>1) P.cur=0; buildVM(); } P.hp=1; P.revive=3; $('reviving').hidden=false; sfx.relic();
