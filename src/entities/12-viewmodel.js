@@ -13,8 +13,8 @@ const VMC={
   pistol:{hip:[.12,-.135,-.46],D:.34,vf:6,bg:[0,.075,.07]}, revolver:{hip:[.12,-.14,-.48],D:.36,vf:6,bg:[0,.06,.05]},
   carbine:{hip:[.14,-.155,-.4],D:.28,vf:8}, marksman:{hip:[.14,-.16,-.4],D:.13,vf:14,bg:[.04,.022,.05]},
   smg:{hip:[.135,-.15,-.42],D:.24,vf:8,bg:[-.04,.022,-.01]}, autorifle:{hip:[.14,-.16,-.4],D:.25,vf:8,bg:[0,.05,.12]},
-  shotgun:{hip:[.14,-.155,-.4],D:.26,vf:6}, lmg:{hip:[.15,-.165,-.42],D:.33,vf:6,bg:[.05,.02,-.12]},
-  cannon:{hip:[.15,-.17,-.44],D:.36,vf:6}, ion:{hip:[.12,-.14,-.46],D:.32,vf:6}, dynamo:{hip:[.14,-.16,-.42],D:.3,vf:6},
+  shotgun:{hip:[.14,-.155,-.4],D:.26,vf:6}, lmg:{hip:[.15,-.165,-.42],D:.36,vf:6,bg:[.05,.02,-.12]},
+  cannon:{hip:[.15,-.17,-.44],D:.37,vf:6}, ion:{hip:[.12,-.14,-.46],D:.32,vf:6}, dynamo:{hip:[.14,-.16,-.42],D:.3,vf:6},
   gauntlet:{hip:[.2,-.21,-.42],ads:[.12,-.19,-.4]}, gatling:{hip:[.2,-.21,-.42],ads:[.1,-.2,-.42]}, rod:{hip:[.27,-.33,-.5],ads:[.1,-.28,-.48]},
 };
 /* ----- casings (viewmodel space, short-lived) ----- */
@@ -27,18 +27,56 @@ function ejectCase(shell){ const g=VM.gun; if(!g||!g.userData.eject) return; if(
 function updateCases(dt){ for(const c of CASES){ if(c.t<=0) continue; c.t-=dt; c.v.y-=7*dt; c.m.position.addScaledVector(c.v,dt); c.m.rotation.x+=dt*18; c.m.rotation.y+=dt*9; if(c.t<=0) c.m.visible=false; } }
 /* ----- hands ----- */
 const HANDM={};
-function makeHand(right,kind){ if(!HANDM.skin){ HANDM.skin=L({color:0x9c8066}); HANDM.glove=L({color:0x3e3022}); HANDM.sleeve=L({color:0x4b4f3c}); HANDM.cuff=L({color:0x34372a});
-    const sg=new THREE.CylinderGeometry(.033,.042,.5,10); sg.rotateX(Math.PI/2); sg.translate(0,0,.25); HANDM.sg=sg; HANDM.cg=new THREE.CylinderGeometry(.036,.036,.035,10); HANDM.cg.rotateX(Math.PI/2); }
-  const h=new THREE.Group(), s=right?1:-1, arm=new THREE.Group(); h.add(arm);
-  if(kind==='grip'){ // wraps an upright grip, back of the hand outward
-    gb(h,.024,.074,.062,HANDM.glove,s*.026,-.002,.006); gb(h,.052,.068,.024,HANDM.skin,s*.004,-.006,-.03); gb(h,.014,.064,.02,HANDM.skin,-s*.022,-.006,-.016);
-    gb(h,.016,.016,.052,HANDM.skin,-s*.016,.03,-.008,.15); gb(h,.044,.05,.03,HANDM.glove,s*.012,-.004,.034);
-    arm.position.set(s*.014,-.028,.05); arm.rotation.set(.75,s*.3,0); }
-  else { // cradles a handguard from below, thumb on the near side
-    gb(h,.058,.024,.078,HANDM.glove,0,-.032,0); gb(h,.016,.05,.072,HANDM.glove,s*.033,-.012,.002); gb(h,.014,.046,.066,HANDM.skin,-s*.032,-.006,-.004);
-    gb(h,.013,.013,.056,HANDM.skin,s*.03,.016,-.022,0,s*.1); for(let i=0;i<3;i++) gb(h,.012,.014,.016,HANDM.skin,-s*.03,.02,-.028+i*.02);
-    arm.position.set(s*.012,-.04,.04); arm.rotation.set(.6,s*.5,0); }
-  arm.add(new THREE.Mesh(HANDM.cg,HANDM.cuff)); const sl=new THREE.Mesh(HANDM.sg,HANDM.sleeve); sl.position.z=.012; arm.add(sl);
+// organic hands: ellipsoid palm and heel, capsule finger segments curling around the gripped part, knuckles,
+// a cloth hand-wrap texture over palm and finger roots, cuff and rolled sleeve. Merged per material (about 3 draw calls a hand).
+function handInit(){ if(HANDM.skin) return;
+  const cv=document.createElement('canvas'); cv.width=cv.height=64; const c=cv.getContext('2d'); c.fillStyle='#6b5a40'; c.fillRect(0,0,64,64);
+  for(let i=-64;i<128;i+=9){ c.strokeStyle='rgba(30,22,14,.55)'; c.lineWidth=2; c.beginPath(); c.moveTo(i,0); c.lineTo(i+40,64); c.stroke(); c.strokeStyle='rgba(210,190,150,.22)'; c.lineWidth=3; c.beginPath(); c.moveTo(i+4,0); c.lineTo(i+44,64); c.stroke(); }
+  for(let k=0;k<160;k++){ c.fillStyle=`rgba(${Math.random()<.5?'20,14,8':'220,200,160'},${Math.random()*.12})`; c.fillRect(Math.random()*64,Math.random()*64,2,2); }
+  const tx=new THREE.CanvasTexture(cv); tx.wrapS=tx.wrapT=THREE.RepeatWrapping; tx.repeat.set(2,2);
+  HANDM.wrap=L({color:0xffffff,map:tx}); HANDM.skin=L({color:0x9a7c62}); HANDM.sleeve=L({color:0x4b4f3c}); HANDM.cuff=L({color:0x34372a}); }
+const CAPS=new Map();
+function capsuleGeo(r,len){ const k=r.toFixed(4)+'|'+len.toFixed(3); let g=CAPS.get(k); if(g) return g; const pts=[], h=Math.max(0,len/2-r), n=3;
+  for(let i=0;i<=n;i++){ const a=-Math.PI/2+i/n*Math.PI/2; pts.push(new THREE.Vector2(Math.max(1e-4,Math.cos(a)*r),-h+Math.sin(a)*r)); }
+  for(let i=0;i<=n;i++){ const a=i/n*Math.PI/2; pts.push(new THREE.Vector2(Math.max(1e-4,Math.cos(a)*r),h+Math.sin(a)*r)); }
+  g=new THREE.LatheGeometry(pts,QUAL?7:5); CAPS.set(k,g); return g; }
+const _ha=new V3(), _hb=new V3(), _hy=new V3(0,1,0);
+function capBetween(par,a,b,r,m){ _hb.subVectors(b,a); const len=_hb.length()+r*2, o=new THREE.Mesh(capsuleGeo(r,len),m); o.position.addVectors(a,b).multiplyScalar(.5); o.quaternion.setFromUnitVectors(_hy,_hb.normalize()); par.add(o); return o; }
+function ellip(par,m,x,y,z,sx,sy,sz,rx=0,ry=0,rz=0){ const o=new THREE.Mesh(gGeo('hs',()=>new THREE.SphereGeometry(1,QUAL?10:7,QUAL?8:5)),m); o.position.set(x,y,z); o.scale.set(sx,sy,sz); o.rotation.set(rx,ry,rz); par.add(o); return o; }
+function mergeByMaterial(root){ root.updateMatrixWorld(true); const inv=new THREE.Matrix4().copy(root.matrixWorld).invert(), groups=new Map(), m4=new THREE.Matrix4(), nm=new THREE.Matrix3(), v=new V3(), drop=[];
+  root.traverse(o=>{ if(!o.isMesh) return; let g=groups.get(o.material); if(!g){ g={p:[],n:[],u:[]}; groups.set(o.material,g); }
+    const geo=o.geometry.index?o.geometry.toNonIndexed():o.geometry, P_=geo.attributes.position, N_=geo.attributes.normal, U_=geo.attributes.uv; m4.multiplyMatrices(inv,o.matrixWorld); nm.getNormalMatrix(m4);
+    for(let i=0;i<P_.count;i++){ v.fromBufferAttribute(P_,i).applyMatrix4(m4); g.p.push(v.x,v.y,v.z); v.fromBufferAttribute(N_,i).applyMatrix3(nm).normalize(); g.n.push(v.x,v.y,v.z); if(U_) g.u.push(U_.getX(i),U_.getY(i)); else g.u.push(0,0); }
+    if(geo!==o.geometry) geo.dispose(); drop.push(o); });
+  for(const o of drop) o.parent.remove(o); for(let i=root.children.length-1;i>=0;i--) if(root.children[i].isGroup&&!root.children[i].children.length) root.remove(root.children[i]);
+  for(const [m,g] of groups){ const bg=new THREE.BufferGeometry(); bg.setAttribute('position',new THREE.Float32BufferAttribute(g.p,3)); bg.setAttribute('normal',new THREE.Float32BufferAttribute(g.n,3)); bg.setAttribute('uv',new THREE.Float32BufferAttribute(g.u,2)); root.add(new THREE.Mesh(bg,m)); } }
+function makeHand(right,kind){ handInit(); const h=new THREE.Group(), s=right?1:-1, W=HANDM.wrap, S=HANDM.skin, fr=.0085;
+  const arm=new THREE.Group(); h.add(arm); const P_=(x,y,z)=>new V3(x,y,z);
+  if(kind==='grip'){ // origin = centre of an upright grip (about .036 x .055); back of the hand on the +s side
+    const ex=.019+fr, ez=.027+fr, pt=(th,y,k)=>P_(s*Math.cos(th)*ex,y,-Math.sin(th)*ez+k*.004);
+    ellip(h,W,s*.028,.0,.006,.013,.04,.034,0,0,s*.1); ellip(h,W,s*.012,-.004,.034,.022,.036,.016); // back of hand, heel behind the grip
+    for(let k=0;k<4;k++){ const y=.024-k*.0165, r=fr*(k===3?.85:1), sp=[.25,.95,1.6,2.2];
+      ellip(h,W,s*(ex+.004),y,.002+k*.004,.009,.008,.009); // knuckle
+      for(let j=0;j<3;j++) capBetween(h,pt(sp[j],y,k),pt(sp[j+1],y-.001*j,k),r*(1-j*.08),j===0?W:S); }
+    const t0=P_(s*.006,.03,.03), t1=P_(-s*.012,.036,.012), t2=P_(-s*.022,.034,-.008); capBetween(h,t0,t1,.0095,W); capBetween(h,t1,t2,.0085,S);
+    ellip(h,W,s*.01,.024,.024,.016,.012,.02); // thumb pad
+    arm.position.set(s*.016,-.034,.05); arm.rotation.set(.75,s*.3,0); }
+  else { // origin sits under a handguard whose axis is .03 above; palm below, fingers curl up the far side, thumb on the near side
+    const cy=.03, R=.026+fr, pt=(th,z)=>P_(-s*Math.sin(th)*R,cy-Math.cos(th)*R,z);
+    ellip(h,W,0,cy-R-.004,.004,.026,.012,.04); ellip(h,W,s*.024,cy-R+.01,.01,.012,.022,.034,0,0,-s*.5); // palm, heel/thumb mound
+    for(let k=0;k<4;k++){ const z=-.026+k*.0165, sp=[.55,1.25,1.95,2.5];
+      ellip(h,W,-s*Math.sin(.5)*(R+.002),cy-Math.cos(.5)*(R+.002),z,.009,.009,.008);
+      for(let j=0;j<3;j++) capBetween(h,pt(sp[j],z),pt(sp[j+1],z),fr*(1-j*.08),j===0?W:S); }
+    const t0=P_(s*.03,cy-R+.006,.02), t1=P_(s*(R+.004),cy-.004,-.004), t2=P_(s*(R-.002),cy+.012,-.03); capBetween(h,t0,t1,.0095,W); capBetween(h,t1,t2,.0085,S);
+    arm.position.set(s*.012,cy-R-.008,.045); arm.rotation.set(.6,s*.5,0); }
+  // wrist, cuff with a rolled edge, sleeve
+  capBetween(arm,P_(0,0,-.02),P_(0,0,.03),.024,W);
+  const cuff=new THREE.Mesh(HANDM.cg||(HANDM.cg=(()=>{ const g=new THREE.CylinderGeometry(.034,.036,.045,QUAL?12:8); g.rotateX(Math.PI/2); return g; })()),HANDM.cuff); cuff.position.z=.035; arm.add(cuff);
+  const roll=new THREE.Mesh(gGeo('hroll',()=>new THREE.TorusGeometry(.035,.007,5,QUAL?14:8)),HANDM.cuff); roll.position.z=.013; arm.add(roll);
+  for(let i=0;i<2;i++){ const b=new THREE.Mesh(gGeo('hbtn',()=>new THREE.CylinderGeometry(.004,.004,.003,6)),HANDM.cuff); b.rotation.z=Math.PI/2; b.position.set(s*.036,.008-i*.016,.04); arm.add(b); }
+  const sl=new THREE.Mesh(HANDM.sg||(HANDM.sg=(()=>{ const g=new THREE.CylinderGeometry(.036,.046,.5,QUAL?12:8); g.rotateX(Math.PI/2); g.translate(0,0,.3); return g; })()),HANDM.sleeve); arm.add(sl);
+  for(let i=0;i<2;i++){ const f=new THREE.Mesh(gGeo('hfold'+i,()=>new THREE.TorusGeometry(.039+i*.003,.004,4,QUAL?12:8)),HANDM.sleeve); f.position.z=.1+i*.07; arm.add(f); }
+  mergeByMaterial(h);
   return h; }
 function addHands(g,id){ VM.rh=VM.lh=null; if(id==='gauntlet') return;
   const ud=g.userData, t=WD[id].type, two=t==='pistol'||t==='ion';
@@ -53,7 +91,7 @@ function buildVM(){
   const w=curW(); if(!w) return;
   const g=buildGun(w.id,w.up||w.id==='gatling'); vmRoot.add(g); VM.gun=g; const ud=g.userData; addHands(g,w.id);
   const C=VMC[w.id]||VMC.autorifle, cfg={hip:C.hip,vf:C.vf||0,style:ud.style||'none'};
-  if(ud.sight) cfg.ads=[0,-ud.sight.y,-C.D-ud.sight.z]; else cfg.ads=C.ads||[0,-.16,-.36]; cfg.near=ud.sight?Math.max(0,C.D*.75-.01):0;
+  if(ud.sight) cfg.ads=[-(ud.sight.x||0),-ud.sight.y,-C.D-ud.sight.z]; else cfg.ads=C.ads||[0,-.16,-.36]; cfg.near=ud.sight?Math.max(0,C.D-.035):0;
   const H={}; cfg.home=H;
   if(VM.lh){ H.lh=VM.lh.position.clone(); H.lhr=VM.lh.rotation.clone(); } if(VM.rh){ H.rh=VM.rh.position.clone(); H.rhr=VM.rh.rotation.clone(); }
   if(ud.mag){ H.mag=ud.mag.position.clone(); H.magr=ud.mag.rotation.clone(); H.magVis=ud.mag.visible; }
@@ -130,7 +168,7 @@ function rlTracks(style,empty){
     T.M={pull:.24,rel:.24,hide:.4,grab:.45,ins:.62,seat:.64,dyn:true,off:[0,.0,-.035]};
     T.E=[[.18,'out'],[.63,'in'],[.77,'rack']]; }
   else if(style==='rod'){ T.G=[[0,...Z6],[.2,-.08,.1,.05,.9,0,.25],[.8,-.08,.12,.05,.95,0,.3],[1,...Z6]]; T.E=[[.15,'out'],[.75,'in']]; }
-  else if(style==='gauntlet'){ T.G=[[0,...Z6],[.2,-.06,.08,.04,-.3,.2,1.0],[.75,-.06,.1,.04,-.35,.2,1.1],[1,...Z6]]; T.E=[[.15,'out'],[.75,'in']]; }
+  else if(style==='gauntlet'){ T.G=[[0,...Z6],[.2,.0,.0,-.08,-.25,.2,.8],[.75,.0,.02,-.08,-.3,.2,.9],[1,...Z6]]; T.E=[[.15,'out'],[.75,'in']]; }
   else T.G=[[0,...Z6],[1,...Z6]];
   return T; }
 const RLT={}; const rlT=(style,empty)=>RLT[style+empty]||(RLT[style+empty]=rlTracks(style,empty));
@@ -200,7 +238,7 @@ function updateVM(dt){
   if(w&&w.reloadEnd&&w.rlStart!==undefined){
     if(VM.rlId!==w.rlId){ VM.rlId=w.rlId; VM.ev={}; VM.inspect=0; }
     { const k0=w.rlShell?(w.rlPh==='in'?clamp((GT-w.rlA)/Math.max(.05,w.rlB-w.rlA),0,1):w.rlPh==='out'?1-clamp((GT-w.rlA)/Math.max(.05,w.rlB-w.rlA),0,1):1):clamp((GT-w.rlStart)/Math.max(.05,w.rlDur),0,1);
-      const env=w.rlShell?k0*k0*(3-2*k0):clamp(Math.min(k0/.14,(1-k0)/.12),0,1), e=env*env*(3-2*env), lift=st==='pistol'||st==='revolver'?[-.04,.05,.06]:[-.06,.07,.02]; x+=lift[0]*e; y+=lift[1]*e; z+=lift[2]*e; }
+      const env=w.rlShell?k0*k0*(3-2*k0):clamp(Math.min(k0/.14,(1-k0)/.12),0,1), e=env*env*(3-2*env), lift=st==='gauntlet'||st==='rod'?[0,0,0]:st==='pistol'||st==='revolver'?[-.04,.05,.06]:[-.06,.07,.02]; x+=lift[0]*e; y+=lift[1]*e; z+=lift[2]*e; }
     if(w.rlShell){ shellAnim(w,ud,cfg); x+=_g6[0]; y+=_g6[1]; z+=_g6[2]; rxr+=_g6[3]; ryr+=_g6[4]; rzr+=_g6[5]; pumpAmt=Math.max(pumpAmt,VM.pumpR||0); }
     else { rk=clamp((GT-w.rlStart)/Math.max(.05,w.rlDur),0,1); const T=rlT(st,!!w.rlEmpty);
       kfs(T.G,rk,_g6); x+=_g6[0]; y+=_g6[1]; z+=_g6[2]; rxr+=_g6[3]; ryr+=_g6[4]; rzr+=_g6[5];

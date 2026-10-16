@@ -92,7 +92,7 @@ function buildGun(id,up,override){
     gb(g,.053,.138,.012,dk,0,-.055,.426,-.08); gb(g,.03,.016,.31,wo,0,.022,-.27);
     gc(g,.019,.21,me,0,.012,-.02,12); gc(g,.011,.72,dk,0,.014,-.48,10); gc(g,.016,.03,me,0,.014,-.84,10);
     gcircle(g,.007,bore,0,.014,-.8551).rotation.y=Math.PI;
-    for(const z of [-.2,-.43]) gb(g,.056,.07,.014,st,0,-.008,z);
+    for(const z of [-.2,-.43]) gb(g,.056,.07,.014,me,0,-.008,z);
     gb(g,.006,.012,.006,dk,0,.03,-.83); for(const sx of [-1,1]) gb(g,.003,.022,.014,dk,sx*.009,.03,-.83);
     gb(g,.024,.008,.05,dk,0,.03,-.17); for(const sx of [-1,1]) gb(g,.006,.012,.008,dk,sx*.006,.036,-.155);
     gb(g,.006,.012,.006,dk,0,.035,-.83);
@@ -180,9 +180,9 @@ function buildGun(id,up,override){
     gb(g,.02,.03,.08,dk,-.038,.02,-.04);
     const mg=grp(-.07,-.02,-.05); ud.mag=mg; gb(mg,.07,.13,.15,ac,0,-.04,0); gb(mg,.074,.014,.154,dk,0,.024,0); gb(mg,.012,.05,.02,dk,-.038,-.04,0);
     for(let i=0;i<4;i++) round_(mg,br,br,.03+i*.008,.04,0,.045,.006);
-    gb(g,.018,.02,.012,dk,0,.078,.11); for(const sx of [-1,1]) gb(g,.006,.02,.012,dk,sx*.007,.083,.11); gb(g,.004,.036,.006,dk,0,.066,-.6);
+    gb(g,.022,.012,.022,dk,0,.062,.11); gb(g,.006,.04,.008,dk,0,.084,.11); gring(g,.0095,.0028,dk,0,.118,.11); gb(g,.016,.01,.022,dk,0,.052,-.6); gb(g,.004,.064,.005,dk,0,.086,-.6); for(const sx of [-1,1]) gb(g,.003,.05,.012,dk,sx*.0095,.092,-.6);
     const bo=grp(0,0,0); ud.bolt=bo; ud.boltTravel=.06; gb(bo,.026,.012,.016,st,.042,.02,-.12);
-    ud.sight={y:.085,z:.11}; ud.rh=[.002,-.078,.08]; ud.lh=[0,-.024,-.36]; ud.style='box'; ud.eject=[0,-.03,-.05]; mz=-.87; my=.02;
+    ud.sight={y:.118,z:.11}; ud.rh=[.002,-.078,.08]; ud.lh=[0,-.024,-.36]; ud.style='box'; ud.eject=[0,-.03,-.05]; mz=-.87; my=.02;
   }
   else if(t==='rod'){ const wood=override||GM.rodWood, band=override||GM.rodBand, glowC=up?0xc8f6ff:0x74d9ea;
     gc(g,.022,1.1,wood,0,0,-.12,7); gc(g,.03,.1,band,0,0,.42,8); const pom=new THREE.Mesh(new THREE.SphereGeometry(.04,8,6),band); pom.position.z=.48; g.add(pom);
@@ -205,9 +205,9 @@ function buildGun(id,up,override){
     const dish=new THREE.Mesh(new THREE.ConeGeometry(.042,.05,14,1,true),dk); dish.rotation.x=Math.PI/2; dish.position.set(0,.02,-.25); g.add(dish);
     gs(g,.012,glow(glowC),0,.02,-.235); gb(g,.012,.04,.05,dk,0,.068,.0);
     ud.crystal=gc(g,.011,.15,glow(glowC),0,.064,-.07,8); gc(g,.016,.008,cop,0,.064,.005,10); gc(g,.016,.008,cop,0,.064,-.145,10);
-    gring(g,.012,.0022,glow(glowC),0,.098,-.13); gb(g,.004,.02,.006,dk,0,.086,-.13); for(const sx of [-1,1]) gb(g,.004,.01,.008,dk,sx*.006,.094,.03);
+    gring(g,.012,.0022,glow(glowC),0,.128,-.13); gb(g,.004,.05,.006,dk,0,.1,-.13); gb(g,.012,.034,.012,dk,0,.1,.03); for(const sx of [-1,1]) gb(g,.004,.012,.008,dk,sx*.006,.123,.03);
     const cell=grp(0,-.004,.085); ud.mag=cell; gc(cell,.02,.06,dk,0,0,0,10); gc(cell,.021,.012,glow(glowC),0,0,-.012,10); gc(cell,.014,.008,st,0,0,.034,8);
-    ud.sight={y:.098,z:.03}; ud.rh=[.002,-.064,.044]; ud.lh=[-.026,-.075,.044]; ud.style='cell'; mz=-.27; my=.02; }
+    ud.sight={y:.128,z:.03}; ud.rh=[.002,-.064,.044]; ud.lh=[-.026,-.075,.044]; ud.style='cell'; mz=-.27; my=.02; }
   else if(t==='dynamo'){ const wo2=override||(up?GM.upWood:GM.wood), cop=override||L({color:0xb07a40}), glowC=up?0xff8a6a:0xcfe8ff;
     gp(g,[[.1,.03],[.4,.016],[.42,.0],[.42,-.11],[.38,-.12],[.2,-.06],[.1,-.04]],.05,wo2); gb(g,.054,.14,.016,dk,0,-.05,.425);
     gb(g,.07,.09,.3,dk,0,.02,-.08); gb(g,.074,.02,.24,cop,0,.07,-.08);
@@ -228,14 +228,14 @@ function buildGun(id,up,override){
   else if(t==='cannon'){
     const ba=grp(0,-.03,-.06); ud.barrel=ba; gc(ba,.06,.5,me,0,.07,-.19,14); gc(ba,.068,.04,ac,0,.07,-.39,14); gc(ba,.068,.03,ac,0,.07,-.02,14);
     gc(ba,.072,.05,dk,0,.07,-.45,14,.062); gcircle(ba,.044,bore,0,.07,-.4755).rotation.y=Math.PI; for(let i=0;i<4;i++) gc(ba,.066,.012,dk,0,.07,-.12-i*.05,14);
-    gb(ba,.005,.012,.006,dk,0,.138,-.42); gb(ba,.03,.03,.04,dk,0,.012,-.02);
+    gb(ba,.014,.012,.022,dk,-.064,.1,-.42); gb(ba,.005,.06,.006,dk,-.066,.13,-.42); gb(ba,.004,.004,.004,glow(0xffd070),-.066,.162,-.42); gb(ba,.03,.03,.04,dk,0,.012,-.02);
     const sh=grp(0,.04,-.015); ud.mag=sh; ud.chamber=[0,.07,.045]; gc(sh,.05,.03,br,0,0,0,12); gc(sh,.052,.006,br,0,0,.016,12);
     gb(g,.1,.11,.12,me,0,.035,.02); gb(g,.104,.03,.06,dk,0,.075,.04);
-    for(const sx of [-1,1]) gb(g,.006,.026,.01,dk,sx*.01,.1,.06);
+    gb(g,.02,.03,.024,dk,-.06,.1,.06); for(const sx of [-1,1]) gb(g,.005,.05,.008,dk,-.066+sx*.009,.125,.06); gb(g,.024,.006,.008,dk,-.066,.11,.06);
     gp(g,[[.03,-.02],[.08,-.02],[.11,-.15],[.07,-.16],[.04,-.08]],.04,wo); gtg(g,.022,.004,dk,0,-.03,.03); gb(g,.006,.022,.006,st,0,-.03,.034,.35);
     gp(g,[[.075,.05],[.36,.025],[.375,-.1],[.335,-.112],[.2,-.06],[.08,-.03]],.052,wo); gb(g,.056,.13,.016,dk,0,-.04,.375);
     gb(g,.014,.012,.05,ac,0,.096,.09);
-    ud.sight={y:.109,z:.06}; ud.rh=[.002,-.08,.06]; ud.lh=[0,-.03,-.3]; ud.style='break'; mz=-.5; my=.04; }
+    ud.sight={x:-.066,y:.132,z:.06}; ud.rh=[.002,-.08,.06]; ud.lh=[0,-.03,-.3]; ud.style='break'; mz=-.5; my=.04; }
   else if(t==='gatling'){ const sp=new THREE.Group(); sp.position.set(0,.03,-.32); g.add(sp); for(let i=0;i<6;i++){ const a=i/6*Math.PI*2; gc(sp,.016,.62,me,Math.cos(a)*.045,Math.sin(a)*.045,0,6); }
     gc(sp,.062,.05,ac,0,0,-.28,10); gc(sp,.062,.05,ac,0,0,.1,10); gc(sp,.066,.03,dk,0,0,-.1,10); gc(sp,.02,.66,dk,0,0,-.02,8);
     gb(g,.13,.14,.3,me,0,.02,.06); gb(g,.135,.03,.28,dk,0,.08,.06); gb(g,.05,.16,.07,wo,0,-.12,.12,.2); gb(g,.16,.12,.18,ac,-.12,0,.08); gb(g,.012,.07,.012,st,0,.13,-.02); gb(g,.012,.012,.18,st,0,.165,.05);
