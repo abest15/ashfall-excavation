@@ -1,11 +1,145 @@
 {
   "name": "ashfall-excavation",
+  "productName": "Ashfall Excavation",
   "version": "0.9.0",
   "private": true,
   "description": "Ashfall Excavation: a round-based co-op zombie survival game.",
+  "author": "Furnace Lantern Games",
+  "license": "UNLICENSED",
   "type": "module",
+  "main": "desktop/main.cjs",
   "scripts": {
     "build": "node tools/build.mjs",
-    "dev": "node tools/serve.mjs"
-  }
+    "build:prod": "node tools/build.mjs --prod",
+    "build:test": "cross-env ASHFALL_TEST=1 ASHFALL_OUT=.test node tools/build.mjs",
+    "dev": "node tools/serve.mjs",
+    "test": "playwright test -c tests/playwright.config.js",
+    "icons": "node tools/make-icons.mjs",
+    "desktop": "npm run build:prod && electron .",
+    "dist:win": "npm run build:prod && electron-builder --win nsis portable --publish never",
+    "dist:mac": "npm run build:prod && electron-builder --mac dmg --publish never",
+    "dist:linux": "npm run build:prod && electron-builder --linux AppImage --publish never"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.56.1",
+    "cross-env": "^10.1.0",
+    "electron": "^44.8.0",
+    "electron-builder": "^26.15.3",
+    "esbuild": "^0.28.2",
+    "peerjs": "^1.5.4",
+    "png2icons": "^2.0.1",
+    "sharp": "^0.35.5"
+  },
+  "homepage": "https://abest15.github.io/ashfall-excavation/",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/abest15/ashfall-excavation.git"
+  },
+  "engines": {
+    "node": ">=22.12"
+  },
+  "build": {
+    "appId": "com.furnacelantern.ashfall",
+    "productName": "Ashfall Excavation",
+    "copyright": "Copyright © 2026 Furnace Lantern Games",
+    "artifactName": "Ashfall-Excavation-${version}-${os}-${arch}.${ext}",
+    "directories": {
+      "output": "release",
+      "buildResources": "desktop/build"
+    },
+    "files": [
+      "dist/**/*",
+      "!dist/version.json",
+      "desktop/main.cjs",
+      "desktop/preload.cjs",
+      "desktop/build/icon.png",
+      "desktop/build/icon.ico",
+      "package.json"
+    ],
+    "asar": true,
+    "compression": "normal",
+    "extraMetadata": {
+      "main": "desktop/main.cjs"
+    },
+    "publish": null,
+    "win": {
+      "icon": "desktop/build/icon.ico",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "legalTrademarks": "Furnace Lantern Games"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Ashfall Excavation",
+      "artifactName": "Ashfall-Excavation-Setup-${version}.${ext}",
+      "installerIcon": "desktop/build/icon.ico",
+      "uninstallerIcon": "desktop/build/icon.ico",
+      "uninstallDisplayName": "Ashfall Excavation"
+    },
+    "portable": {
+      "artifactName": "Ashfall-Excavation-Portable-${version}.${ext}"
+    },
+    "mac": {
+      "icon": "desktop/build/icon.icns",
+      "category": "public.app-category.action-games",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "universal"
+          ]
+        }
+      ],
+      "identity": null,
+      "hardenedRuntime": false
+    },
+    "dmg": {
+      "artifactName": "Ashfall-Excavation-${version}-mac.${ext}",
+      "title": "Ashfall Excavation"
+    },
+    "linux": {
+      "icon": "desktop/build/icon.png",
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "category": "Game",
+      "synopsis": "Round-based co-op zombie survival",
+      "maintainer": "Furnace Lantern Games",
+      "vendor": "Furnace Lantern Games",
+      "executableName": "ashfall-excavation",
+      "desktop": {
+        "entry": {
+          "Name": "Ashfall Excavation",
+          "Comment": "Round-based co-op zombie survival",
+          "Categories": "Game;ActionGame;"
+        }
+      },
+      "syncDesktopName": true
+    },
+    "appImage": {
+      "artifactName": "Ashfall-Excavation-${version}-x86_64.${ext}"
+    }
+  },
+  "desktopName": "ashfall-excavation.desktop"
 }

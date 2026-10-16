@@ -1,0 +1,103 @@
+# Builds the installers when a version tag is pushed (for example v1.0.0) and attaches them to a GitHub Release.
+#   Windows: NSIS installer + portable .exe   macOS: universal .dmg   Linux: AppImage   plus the web build as a .zip
+# The app version is taken from the tag, so package.json does not have to be bumped first (but it is nicer if it is).
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing tag to (re)build, e.g. v1.0.0'
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  installers:
+    name: Installers (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            script: dist:win
+            files: |
+              release/*.exe
+          - os: macos-latest
+            script: dist:mac
+            files: |
+              release/*.dmg
+          - os: ubuntu-latest
+            script: dist:linux
+            files: |
+              release/*.AppImage
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    env:
+      TAG: ${{ github.event.inputs.tag || github.ref_name }}
+      CSC_IDENTITY_AUTO_DISCOVERY: 'false'   # unsigned builds; add signing secrets later (see README)
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4.2.2
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+
+      - uses: actions/setup-node@v4.4.0
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Set version from tag
+        shell: bash
+        run: npm version "${TAG#v}" --no-git-tag-version --allow-same-version
+
+      - name: Build installers
+        run: npm run ${{ matrix.script }}
+
+      - name: Web build archive
+        if: matrix.os == 'ubuntu-latest'
+        shell: bash
+        run: |
+          cd dist && zip -qr "../release/Ashfall-Excavation-${TAG#v}-web.zip" . && cd ..
+          cp dist-single/index.html "release/Ashfall-Excavation-${TAG#v}-single-file.html"
+
+      - uses: actions/upload-artifact@v4.6.2
+        with:
+          name: installers-${{ matrix.os }}
+          if-no-files-found: error
+          path: |
+            ${{ matrix.files }}
+            release/*.zip
+            release/*.html
+
+  publish:
+    name: Publish GitHub Release
+    needs: installers
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      TAG: ${{ github.event.inputs.tag || github.ref_name }}
+    steps:
+      - uses: actions/download-artifact@v4.3.0
+        with:
+          path: out
+          pattern: installers-*
+          merge-multiple: true
+
+      - run: ls -la out
+
+      - uses: softprops/action-gh-release@v2.2.2
+        with:
+          tag_name: ${{ env.TAG }}
+          name: Ashfall Excavation ${{ env.TAG }}
+          generate_release_notes: true
+          prerelease: ${{ contains(env.TAG, '-') }}
+          files: out/*
+          fail_on_unmatched_files: true

@@ -24,3 +24,23 @@ function statsOf(w){ const d=WD[w.id]; const s=Object.assign({},d); s.pellets=d.
 function mkInst(id,up=false){ const s=statsOf({id,up}); return {id,up,mag:s.mag,res:s.res,next:0,reloadEnd:0}; }
 const curW=()=>PU.gatling>0&&PU.gat?PU.gat:(P.weapons[P.cur]||null);
 const maxSlots=()=>P.perks.has('mule')?3:2;
+/* ---------- handling: recoil, bloom, ADS zoom and reload style per weapon ----------
+   v: vertical camera kick (rad) · h: horizontal kick · hb: horizontal drift bias (+ right) · rec: recovery speed
+   vz/vr: viewmodel push-back and muzzle climb · bloom: spread added per shot (0..1) · zoom: ADS FOV reduction */
+const HANDLING={
+  pistol:{v:.014,h:.004,hb:.15,rec:11,vz:.035,vr:.11,bloom:.2,zoom:12},
+  revolver:{v:.04,h:.01,hb:.3,rec:7,vz:.06,vr:.32,bloom:.5,zoom:14},
+  carbine:{v:.034,h:.007,hb:.2,rec:6,vz:.075,vr:.14,bloom:.6,zoom:22},
+  marksman:{v:.032,h:.006,hb:-.2,rec:6,vz:.06,vr:.1,bloom:.6,zoom:38},
+  smg:{v:.0075,h:.0055,hb:.35,rec:10,vz:.02,vr:.035,bloom:.07,zoom:16},
+  autorifle:{v:.0095,h:.005,hb:.25,rec:9,vz:.024,vr:.04,bloom:.08,zoom:22},
+  shotgun:{v:.05,h:.012,hb:.3,rec:6,vz:.095,vr:.28,bloom:.4,zoom:12},
+  lmg:{v:.0085,h:.0065,hb:-.3,rec:8,vz:.024,vr:.035,bloom:.06,zoom:16},
+  rod:{v:.022,h:.006,hb:0,rec:7,vz:.06,vr:.12,bloom:0,zoom:10},
+  cannon:{v:.06,h:.012,hb:.2,rec:5,vz:.11,vr:.34,bloom:.5,zoom:14},
+  ion:{v:.013,h:.004,hb:.1,rec:9,vz:.04,vr:.1,bloom:.15,zoom:14},
+  dynamo:{v:.045,h:.008,hb:0,rec:5,vz:.09,vr:.25,bloom:0,zoom:16},
+  gauntlet:{v:.012,h:.004,hb:0,rec:8,vz:.05,vr:.06,bloom:0,zoom:8},
+  gatling:{v:.0035,h:.004,hb:0,rec:10,vz:.012,vr:.015,bloom:.03,zoom:8},
+};
+const handling=id=>HANDLING[id]||HANDLING.pistol;

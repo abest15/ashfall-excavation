@@ -14,29 +14,11 @@ ZM.coatB=L({color:0x5e3a22,emissive:0x2e1000,map:clothTex});
 const HG=(()=>{ const b=new THREE.SphereGeometry(.24,14,9); b.scale(.85,.75,2.1); const h=new THREE.SphereGeometry(.15,12,8); h.scale(.95,.85,1.25); const sn=new THREE.CylinderGeometry(.055,.08,.16,8); sn.rotateX(Math.PI/2); const tl=new THREE.CylinderGeometry(.03,.012,.42,6); tl.rotateX(Math.PI/2);
   return {body:b,head:h,jaw:new THREE.BoxGeometry(.15,.05,.22),leg:new THREE.CylinderGeometry(.055,.04,.56,8),ear:new THREE.ConeGeometry(.045,.14,5),tail:tl,spine:new THREE.BoxGeometry(.05,.07,.6),snout:sn}; })();
 const HM={hide:L({color:0x2b231c,emissive:0x220800}),hideH:L({color:0x1e2236,emissive:0x0a1a30}),eye:B({color:0xff6a20}),ember:B({color:0xff8a3a})};
-function part(g,geo,mat,x,y,z,z_,head){ const m=new THREE.Mesh(geo,mat); m.position.set(x,y,z); g.add(m); if(z_){ m.userData.z=z_; if(head) m.userData.head=true; z_.parts.push(m); } return m; }
+function part(g,geo,mat,x,y,z,z_,head){ const m=new THREE.Mesh(geo,mat); m.position.set(x,y,z); g.add(m); if(QUAL===2&&!mat.blending) m.castShadow=true; if(z_){ m.userData.z=z_; if(head) m.userData.head=true; z_.parts.push(m); } return m; }
 function limb(g,geo,mat,x,y,len,z_){ const pv=new THREE.Group(); pv.position.set(x,y,0); g.add(pv); part(pv,geo,mat,0,-len/2,0,z_); return pv; }
-function makeZombie(kind){
-  const g=new THREE.Group(); const z={g,parts:[],kind,boss:false};
-  const coat=kind==='hollow'?ZM.coatH:kind==='marked'?ZM.coatM:kind==='burster'?ZM.coatB:pick(ZM.coat), skin=kind==='hollow'?ZM.skinH:(Math.random()<.5?ZM.skin:ZM.skin2), eye=kind==='hollow'||kind==='marked'?ZM.eyeH:kind==='burster'?HM.eye:ZM.eye;
-  const torso=part(g,ZG.torso,coat,0,1.27,0,z); part(g,ZG.belt,ZM.belt,0,.94,0);
-  if(kind==='burster'){ torso.scale.set(1.45,1.15,2); for(let i=0;i<5;i++){ const b=part(torso,ZG.eye,HM.ember,rand(-.22,.22),rand(-.28,.28),.16); b.scale.set(1.6,3,1); } }
-  const head=part(g,ZG.head,skin,0,1.82,.02,z,true); head.rotation.set(rand(-.15,.25),rand(-.3,.3),rand(-.25,.25)); z.head=head;
-  part(head,ZG.eye,eye,-.065,.03,.162); part(head,ZG.eye,eye,.065,.03,.162); part(head,ZG.jaw,skin,0,-.15,.07).rotation.x=.3; if(Math.random()<.5) part(head,ZG.cap,coat,0,.2,0);
-  z.armL=limb(g,ZG.arm,Math.random()<.3?skin:coat,-.36,1.58,.64,z); z.armR=limb(g,ZG.arm,coat,.36,1.58,.64,z);
-  z.legL=limb(g,ZG.leg,ZM.pants,-.13,.86,.82,z); z.legR=limb(g,ZG.leg,ZM.pants,.13,.86,.82,z);
-  part(z.armL,ZG.hand,skin,0,-.66,0); part(z.armR,ZG.hand,skin,0,-.66,0); part(z.legL,ZG.foot,ZM.belt,0,-.84,.05); part(z.legR,ZG.foot,ZM.belt,0,-.84,.05); part(g,ZG.neck,skin,0,1.66,0);
-  return z;
-}
-function makeHound(hollow){ const g=new THREE.Group(); const z={g,parts:[],kind:'hound',boss:false}; const m=hollow?HM.hideH:HM.hide, e=hollow?ZM.eyeH:HM.eye;
-  part(g,HG.body,m,0,.66,0,z); part(g,HG.spine,hollow?ZM.eyeH:HM.ember,0,.85,-.05);
-  const head=part(g,HG.head,m,0,.82,.6,z,true); z.head=head; part(head,HG.snout,m,0,-.04,.2); part(head,HG.jaw,m,0,-.15,.05); part(head,ZG.eye,e,-.08,.04,.185); part(head,ZG.eye,e,.08,.04,.185); part(head,HG.ear,m,-.09,.18,-.08); part(head,HG.ear,m,.09,.18,-.08);
-  const tail=part(g,HG.tail,m,0,.8,-.62); tail.rotation.x=.6;
-  z.armL=limb(g,HG.leg,m,-.13,.56,.56,z); z.armR=limb(g,HG.leg,m,.13,.56,.56,z); z.armL.position.z=.34; z.armR.position.z=.34;
-  z.legL=limb(g,HG.leg,m,-.13,.56,.56,z); z.legR=limb(g,HG.leg,m,.13,.56,.56,z); z.legL.position.z=-.34; z.legR.position.z=-.34;
-  return z; }
+// makeZombie / makeHound live in 25-zombie-bodies.js
 function makeBoss(prime){
-  const g=new THREE.Group(); const z={g,parts:[],kind:'boss',boss:true,prime};
+  const g=new THREE.Group(); g.rotation.order='YXZ'; const z={g,parts:[],kind:'boss',boss:true,prime};
   const ar=ZM.armor, ad=ZM.armorDark;
   part(g,new THREE.BoxGeometry(1,1.15,.7),ar,0,2.05,0,z); part(g,new THREE.BoxGeometry(1.06,.2,.74),ad,0,1.42,0,z);
   part(g,new THREE.BoxGeometry(.8,.5,.06),prime?ZM.visorP:ZM.visor,0,2.1,.36);
@@ -80,10 +62,10 @@ function route(a,b){ const prev={}; prev[a]=null; const q=[a];
   if(!(b in prev)) return null; let cur=b; while(prev[cur].z!==a) cur=prev[cur].z; return {door:prev[cur].d,next:cur}; }
 function hitZombie(z,dmg,mult,how){
   if(z.dead) return;
-  if(NET.role==='client'){ if(z.id) toHost({t:'hit',id:z.id,dmg,mult,how}); z.flash=.07; return; }
+  if(NET.role==='client'){ if(z.id) toHost({t:'hit',id:z.id,dmg,mult,how}); z.flash=.07; if(typeof fxZombieHit==='function') fxZombieHit(z,how); return; }
   if(z.shield){ if(GT-(HL.shMsg||-9)>3){ HL.shMsg=GT; toast('Warded! Shatter the glowing crystals'); } spawnParticles(z.g.position.clone().setY(2.6),'relic',2); return; }
   let d=dmg*mult; if(PU.insta>0&&!z.boss) d=z.hp+1;
-  z.hp-=d; z.flash=.07; if(!z.boss||Math.random()<.5) addPts(10);
+  z.hp-=d; z.flash=.07; if(typeof fxZombieHit==='function') fxZombieHit(z,how); if(!z.boss||Math.random()<.5) addPts(10);
   if(z.prime){ const f=z.hp/z.maxHp;
     if(!z.ph1&&f<.66){ z.ph1=true; z.hp=z.maxHp*.65; shieldUp(z,pickN([0,1,2,3,4],3)); return; }
     if(!z.ph2&&f<.33){ z.ph2=true; z.hp=z.maxHp*.32; shieldUp(z,[0,1,2,3,4].filter(i=>HL.crystals[i].visible)); return; } }
@@ -100,7 +82,7 @@ function killZombie(z,how,silent){
   if(z.kind==='burster'&&!silent) burst(z);
   if(!silent) zvoice(z,'death');
   if(!silent&&how!=='self'){ creditKill(how);
-    if(how==='head'&&z.head&&!z.boss){ z.head.visible=false; const hp_=new V3(); z.head.getWorldPosition(hp_); spawnParticles(hp_,'blood',9); } addPts(z.boss?490:how==='melee'?120:how==='head'?90:50); sfx.kill(); hitMarker(true);
+    if(how==='head'&&z.head&&!z.boss) zHeadOff(z); addPts(z.boss?490:how==='melee'?120:how==='head'?90:50); sfx.kill(); hitMarker(true);
     const p=z.g.position;
     for(const st of Q.stones){ if(!st.fed&&Math.hypot(p.x-st.x,p.z-st.z)<7.5){ st.kills++; st.rm.color.setHSL(.1,.6,.15+st.kills/STONE_KILLS*.35); spawnParticles(new V3(st.x,2.3,st.z),'relic',4);
       if(st.kills>=STONE_KILLS){ st.fed=true; st.rm.color.set(0xf2cb78); sfx.ignite(); toast(`The ${st.name} is fed. Strike it with the Rod.`); } } }
@@ -123,9 +105,11 @@ function updateWinZombie(z,dt){ const W=z.win, g=z.g, p=g.position, zs=z.speed*(
   else if(z.wstate==='climb'){ z.ct+=dt/.85; const k=Math.min(1,z.ct); p.x=W.outX+(W.inX-W.outX)*k; p.z=W.outZ+(W.inZ-W.outZ)*k; p.y=Math.sin(k*Math.PI)*.95; g.rotation.x=Math.sin(k*Math.PI)*.5; moving=true;
     if(k>=1){ z.wstate=null; p.y=0; g.rotation.x=0; z.tx=W.inX-W.nx*2; z.tz=W.inZ-W.nz*2; z.win=null; return; } }
   g.rotation.y=Math.atan2(-W.nx,-W.nz);
-  z.phase+=dt*(moving?zs*3.2:1); const sw=Math.sin(z.phase)*(moving?.5:.05); z.legL.rotation.x=sw; z.legR.rotation.x=-sw;
-  if(z.swing>0){ const k=Math.sin((1-z.swing/(z.swingKind==='tear'?.6:.45))*Math.PI); z.armL.rotation.x=-1.35-k*1.1; z.armR.rotation.x=-1.35-k*.6; }
-  else { z.armL.rotation.x=-1.35+Math.sin(z.phase*.5)*.15; z.armR.rotation.x=-1.35-Math.sin(z.phase*.5+1)*.15; } }
+  if(z.kind==='hound'){ animHound(z,dt,moving,zs,-1); return; }
+  if(z.wstate==='climb') animWindow(z,dt,'climb',Math.min(1,z.ct),true);
+  else if(z.swing>0&&z.swingKind==='tear') animWindow(z,dt,'tear',1-z.swing/.6,moving);
+  else if(z.swing>0) animZombie(z,dt,false,0,1-z.swing/.45);
+  else animWindow(z,dt,z.wstate==='tear'?'tear':'walk',-1,moving); }
 // the player a zombie hunts (multiplayer adds remote players here)
 function zTarget(p){ let best=null,bd=1e9; const cand=[]; if(!(P.downed||P.dead||P.inCabin)) cand.push({x:P.pos.x,z:P.pos.z,id:'h',remote:false});
   if(NET.role==='host') for(const id in NET.remotes){ const st=NET.remotes[id].st; if(st&&!st.dn&&!st.dd&&!st.cab&&st.m===mode) cand.push({x:st.x,z:st.z,id,remote:true}); }
@@ -135,7 +119,7 @@ function updateZombies(dt){
   const pz=zoneOf(P.pos.x,P.pos.z)||P.zone; P.zone=pz;
   for(const z of zombies){
     const g=z.g, p=g.position;
-    if(z.dead){ z.dt+=dt; if(z.dt<.5){ g.rotation.x=-(z.dt/.5)*1.45; } else p.y-=dt*.5; if(z.dt>2.6){ scene.remove(g); z.gone=true; } continue; }
+    if(z.dead){ if(zDeathUpdate(z,dt)){ scene.remove(g); z.gone=true; } continue; }
     if(z.flash>0){ z.flash-=dt; }
     if(z.rise>0){ z.rise-=dt; p.y=-2.2*Math.max(0,z.rise/1.2); if(Math.random()<.2) spawnParticles(new V3(p.x,.1,p.z),'dirt',1); continue; }
     p.y=0;
@@ -166,14 +150,9 @@ function updateZombies(dt){
     }
     const face=Math.atan2(dP<6?dpx:dx,dP<6?dpz:dz); let dr=face-g.rotation.y; dr=Math.atan2(Math.sin(dr),Math.cos(dr)); g.rotation.y+=dr*Math.min(1,dt*8);
     // animate
-    z.phase+=dt*(moving?z.speed*(z.boss?2.2:3.2):1);
-    const sw=Math.sin(z.phase)*(moving?(z.speed>3?.9:.5):.05);
-    z.legL.rotation.x=sw; z.legR.rotation.x=-sw;
-    if(z.kind==='hound'){ z.armL.rotation.x=-sw; z.armR.rotation.x=sw; g.rotation.x=z.swing>0?-.3*Math.sin((1-z.swing/.45)*Math.PI):0; continue; }
-    const armBase=z.boss?-.3:-1.35;
-    if(z.swing>0){ const k=Math.sin((1-z.swing/.45)*Math.PI); z.armL.rotation.x=armBase-k*.9; z.armR.rotation.x=armBase-k*1.1; }
-    else { z.armL.rotation.x=armBase+Math.sin(z.phase*.5)*.15; z.armR.rotation.x=armBase-Math.sin(z.phase*.5+1)*.15; }
-    if(z.speed>3&&moving) g.rotation.x=.18; else g.rotation.x=0;
+    g.rotation.x=0; const swT=z.swing>0?1-z.swing/.45:-1;
+    if(z.kind==='hound'){ animHound(z,dt,moving,z.speed,swT); g.rotation.x=swT>=0?-.3*Math.sin(swT*Math.PI):0; continue; }
+    animZombie(z,dt,moving,z.speed*(PU.freeze>0?.35:1),swT);
   }
   for(let i=zombies.length-1;i>=0;i--) if(zombies[i].gone) zombies.splice(i,1);
 }

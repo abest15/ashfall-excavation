@@ -83,7 +83,7 @@ function goDown(){ P.downed=true; P.bleed=35; P.hp=1; P.perks.clear(); P.maxHp=1
 function gotRevived(by){ if(!P.downed) return; P.downed=false; P.hp=P.maxHp*.5; P.invuln=1.5; $('reviving').hidden=true; sfx.relic(); toast('Revived by '+by); }
 function respawn(){ P.dead=false; P.downed=false; P.maxHp=100; P.hp=100; P.perks.clear(); P.weapons=[mkInst('pistol')]; P.cur=0; buildVM(); if(mode==='hollow') P.pos.set(HX+rand(-3,3),0,HZ+17); else P.pos.set(rand(-3,3),0,44); $('reviving').hidden=true; toast('Back in the fight'); }
 function clientEnterHollow(){ mode='hollow'; for(const z of zombies) scene.remove(z.g); zombies.length=0; NZ.clear(); zparts=[]; P.pos.set(HX+rand(-3,3),0,HZ+17); P.yaw=0; P.pitch=0; setAtmosphere('hollow'); ambienceMode('hollow'); flashScreen('#bff3ff'); setRoundHud('—',false); }
-function myState(){ const w=curW(); return {t:'st',x:+P.pos.x.toFixed(2),y:+P.pos.y.toFixed(2),z:+P.pos.z.toFixed(2),yaw:+P.yaw.toFixed(3),pitch:+P.pitch.toFixed(3),w:w?w.id:'',up:w&&w.up?1:0,sh:NET.shots,hp:Math.round(P.hp),mh:P.maxHp,dn:P.downed?1:0,dd:P.dead?1:0,pts:P.points,m:mode,cab:P.inCabin?1:0}; }
+function myState(){ const w=curW(); return {t:'st',x:+P.pos.x.toFixed(2),y:+P.pos.y.toFixed(2),z:+P.pos.z.toFixed(2),yaw:+P.yaw.toFixed(3),pitch:+P.pitch.toFixed(3),w:w?w.id:'',up:w&&w.up?1:0,sh:NET.shots,hp:Math.round(P.hp),mh:P.maxHp,dn:P.downed?1:0,dd:P.dead?1:0,pts:P.points,er:P.earned,k:P.kills,hs:P.heads,m:mode,cab:P.inCabin?1:0}; }
 function questVis(){ return {res:RESON.map(r=>r.g.visible?[+r.g.position.x.toFixed(1),+r.g.position.z.toFixed(1),+r.g.rotation.y.toFixed(2)]:0), wr:WR.g.visible?[+WR.g.position.x.toFixed(1),+WR.g.position.y.toFixed(1),+WR.g.position.z.toFixed(1)]:0,
   vb:COL.vBurst.slice(), vo:COL.vOn?1:0, cand:CH.cands.map(c=>c.lit?1:0), mur:(CH.mural>0||CH.solved)?1:0, sh:lodeParts.shaft.visible?1:0, ob:+lodeParts.ob.position.y.toFixed(2), cr:HL.crystals.map(c=>c.visible?1:0), lit:HL.lit||0, gate:HL.gateOpen?1:0}; }
 function makeSnap(){ const z=[]; for(const q of zombies){ if(q.gone) continue; const p=q.g.position; let fl=0; if(q.dead) fl|=1; if(q.headKill) fl|=2; if(q.shield) fl|=4; if(q.wraithBound) fl|=8; if(q.swing>0) fl|=16;
@@ -109,13 +109,12 @@ function syncNetZombies(arr){ const seen=new Set();
     if((fl&16)&&z.netSwing<=0){ z.netSwing=.45; zvoice(z,'attack'); }
     if((fl&1)&&!z.dead) netKill(z,!!(fl&2)); }
   for(const [id,z] of NZ) if(!seen.has(id)&&!z.dead) netKill(z,false); }
-function netKill(z,head){ z.dead=true; z.dt=0; zparts=zparts.filter(p=>p.userData.z!==z); zvoice(z,'death'); if(head&&z.head&&!z.boss){ z.head.visible=false; const hp_=new V3(); z.head.getWorldPosition(hp_); spawnParticles(hp_,'blood',9); } }
+function netKill(z,head){ z.dead=true; z.dt=0; zparts=zparts.filter(p=>p.userData.z!==z); zvoice(z,'death'); if(head&&z.head&&!z.boss) zHeadOff(z); }
 function updateNetZombies(dt){ for(const z of zombies){ const g=z.g, p=g.position;
-    if(z.dead){ z.dt+=dt; if(z.dt<.5) g.rotation.x=-(z.dt/.5)*1.45; else p.y-=dt*.5; if(z.dt>2.6){ scene.remove(g); z.gone=true; NZ.delete(z.id); } continue; }
+    if(z.dead){ if(zDeathUpdate(z,dt)){ scene.remove(g); z.gone=true; NZ.delete(z.id); } continue; }
     const ox=p.x, oz=p.z, k=Math.min(1,dt*10); p.x+=(z.nx-p.x)*k; p.y+=(z.ny-p.y)*k; p.z+=(z.nz-p.z)*k; let dr=z.nry-g.rotation.y; dr=Math.atan2(Math.sin(dr),Math.cos(dr)); g.rotation.y+=dr*k; g.rotation.x+=(z.nrx-g.rotation.x)*k;
-    const sp=Math.hypot(p.x-ox,p.z-oz)/Math.max(dt,1e-3); z.speed=sp; const moving=sp>.3; z.phase+=dt*(moving?sp*3.2:1); const sw=Math.sin(z.phase)*(moving?(sp>3?.9:.5):.05); z.legL.rotation.x=sw; z.legR.rotation.x=-sw;
-    if(z.kind==='hound'){ z.armL.rotation.x=-sw; z.armR.rotation.x=sw; continue; }
-    const ab=z.boss?-.3:-1.35; if(z.netSwing>0){ z.netSwing-=dt; const kk=Math.sin((1-Math.max(0,z.netSwing)/.45)*Math.PI); z.armL.rotation.x=ab-kk*.9; z.armR.rotation.x=ab-kk*1.1; } else { z.armL.rotation.x=ab+Math.sin(z.phase*.5)*.15; z.armR.rotation.x=ab-Math.sin(z.phase*.5+1)*.15; } }
+    const sp=Math.hypot(p.x-ox,p.z-oz)/Math.max(dt,1e-3); z.speed=sp; const moving=sp>.3; if(z.netSwing>0) z.netSwing-=dt; const swT=z.netSwing>0?1-z.netSwing/.45:-1;
+    if(z.kind==='hound') animHound(z,dt,moving,sp,swT); else if(z.nrx>.05&&z.hips) animWindow(z,dt,'climb',clamp(z.nrx/.5,0,1)*.5,true); else animZombie(z,dt,moving,sp,swT); }
   for(let i=zombies.length-1;i>=0;i--) if(zombies[i].gone) zombies.splice(i,1); }
 function updateNetPups(dt){ const arr=(NET.lastSnap&&NET.lastSnap.pu)||[], seen=new Set();
   for(const [id,type,x,z] of arr){ seen.add(id); let q=NPU.get(id); if(!q){ q={g:pupVisual(type,x,z),asked:false}; NPU.set(id,q); } q.g.rotation.y+=dt*2; q.g.position.y=1+Math.sin(GT*3+id)*.15;

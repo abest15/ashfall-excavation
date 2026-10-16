@@ -33,8 +33,81 @@
   </div>
 </div>
 
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <linearGradient id="fl-flame" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#ff4a12"/><stop offset=".45" stop-color="#ff9a2e"/><stop offset=".8" stop-color="#ffd88a"/><stop offset="1" stop-color="#fff6dc"/></linearGradient>
+    <radialGradient id="fl-glow" cx="50%" cy="55%" r="50%"><stop offset="0" stop-color="#ffb347" stop-opacity=".95"/><stop offset=".4" stop-color="#ff6a1a" stop-opacity=".35"/><stop offset="1" stop-color="#ff4a12" stop-opacity="0"/></radialGradient>
+    <linearGradient id="fl-brass" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f6d79a"/><stop offset=".5" stop-color="#c99447"/><stop offset="1" stop-color="#7c5320"/></linearGradient>
+    <linearGradient id="fl-brass-u" gradientUnits="userSpaceOnUse" x1="0" y1="10" x2="0" y2="250"><stop offset="0" stop-color="#f6d79a"/><stop offset=".45" stop-color="#d9a85b"/><stop offset=".7" stop-color="#c99447"/><stop offset="1" stop-color="#7c5320"/></linearGradient>
+    <symbol id="fl-mark" viewBox="0 0 200 260">
+      <rect x="70" y="70" width="60" height="110" fill="#ff9a40" opacity=".08"/>
+      <circle cx="100" cy="24" r="13" fill="none" stroke="url(#fl-brass)" stroke-width="6"/>
+      <path d="M66 62 L80 40 H120 L134 62 Z" fill="url(#fl-brass)"/>
+      <rect x="62" y="62" width="76" height="8" rx="2" fill="url(#fl-brass)"/>
+      <ellipse cx="100" cy="128" rx="40" ry="56" fill="url(#fl-glow)"/>
+      <path d="M100 82 C114 104 126 118 120 140 C116 156 106 164 100 164 C94 164 84 156 80 140 C74 118 88 106 92 92 C96 104 98 110 104 112 C104 102 102 92 100 82 Z" fill="url(#fl-flame)"/>
+      <path d="M100 120 C108 132 110 142 106 152 C104 157 102 158 100 158 C98 158 96 157 94 152 C91 144 95 134 100 120 Z" fill="#fff6dc"/>
+      <path d="M70 70 V180 M100 70 V86 M130 70 V180 M100 166 V180" stroke="url(#fl-brass-u)" stroke-width="6" stroke-linecap="square" fill="none"/>
+      <path d="M52 180 H148 L140 232 H60 Z" fill="url(#fl-brass)"/>
+      <path d="M82 232 V210 A18 18 0 0 1 118 210 V232 Z" fill="#2a1206"/>
+      <path d="M88 228 V212 A12 12 0 0 1 112 212 V228 Z" fill="#ff7a24"/>
+      <path d="M62 194 H138 M64 204 H78 M122 204 H136" stroke="#5a3814" stroke-width="3"/>
+      <rect x="46" y="232" width="108" height="10" rx="2" fill="url(#fl-brass)"/>
+    </symbol>
+  </defs>
+</svg>
 <div id="menu" class="overlay front">
   <canvas id="embers"></canvas><div class="grain" id="grain"></div>
+  <div id="boot">
+    <div class="boot-stage" id="boot-gate" hidden>
+      <svg class="gate-mark" viewBox="0 0 200 260" aria-hidden="true"><use href="#fl-mark"/></svg>
+      <p class="gate-press">Press any key</p>
+      <p class="gate-sub">Sound on · headphones recommended</p>
+    </div>
+    <div class="boot-stage" id="boot-logo" hidden>
+      <div class="fl-heat"></div>
+      <svg class="fl-big" viewBox="0 0 200 260" role="img" aria-label="Furnace Lantern Games">
+        <ellipse class="fl-halo" cx="100" cy="128" rx="96" ry="120" fill="url(#fl-glow)"/>
+        <g class="fl-frame" fill="none" stroke="url(#fl-brass-u)" stroke-linecap="square">
+          <circle cx="100" cy="24" r="13" stroke-width="6" pathLength="100"/>
+          <path d="M66 62 L80 40 H120 L134 62 Z" stroke-width="5" pathLength="100"/>
+          <path d="M62 66 H138" stroke-width="8" pathLength="100"/>
+          <path d="M70 70 V180 M130 70 V180" stroke-width="6" pathLength="100"/>
+          <path d="M100 70 V86 M100 166 V180" stroke-width="6" pathLength="100"/>
+          <path d="M52 180 H148 L140 232 H60 Z" stroke-width="5" pathLength="100"/>
+          <path d="M46 237 H154" stroke-width="10" pathLength="100"/>
+        </g>
+        <rect class="fl-glass" x="70" y="70" width="60" height="110" fill="#ff9a40" opacity="0"/>
+        <g class="fl-fill">
+          <path d="M66 62 L80 40 H120 L134 62 Z" fill="url(#fl-brass)"/>
+          <rect x="46" y="232" width="108" height="10" rx="2" fill="url(#fl-brass)"/>
+          <path d="M52 180 H148 L140 232 H60 Z" fill="url(#fl-brass)"/>
+          <path d="M62 194 H138 M64 204 H78 M122 204 H136" stroke="#5a3814" stroke-width="3"/>
+        </g>
+        <g class="fl-mouth"><path d="M82 232 V210 A18 18 0 0 1 118 210 V232 Z" fill="#2a1206"/><path class="fl-coal" d="M88 228 V212 A12 12 0 0 1 112 212 V228 Z" fill="#ff7a24"/></g>
+        <g class="fl-fire">
+          <ellipse cx="100" cy="128" rx="40" ry="56" fill="url(#fl-glow)"/>
+          <path class="fl-flame" d="M100 82 C114 104 126 118 120 140 C116 156 106 164 100 164 C94 164 84 156 80 140 C74 118 88 106 92 92 C96 104 98 110 104 112 C104 102 102 92 100 82 Z" fill="url(#fl-flame)"/>
+          <path class="fl-core" d="M100 120 C108 132 110 142 106 152 C104 157 102 158 100 158 C98 158 96 157 94 152 C91 144 95 134 100 120 Z" fill="#fff6dc"/>
+        </g>
+        <circle class="fl-spark" cx="100" cy="150" r="3" fill="#fff3c4"/>
+      </svg>
+      <div class="fl-word">
+        <div class="fl-name"><span>FURNACE</span><span>LANTERN</span></div>
+        <div class="fl-games"><i></i>GAMES<i></i></div>
+      </div>
+    </div>
+    <div class="boot-stage" id="boot-notice" hidden>
+      <div class="notice-card">
+        <svg class="notice-ico" viewBox="0 0 48 48" aria-hidden="true"><path d="M24 4 L45 42 H3 Z" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round"/><path d="M24 17 V30" stroke="currentColor" stroke-width="4" stroke-linecap="round"/><circle cx="24" cy="36" r="2.4" fill="currentColor"/></svg>
+        <h2>Photosensitivity notice</h2>
+        <p>Ashfall Excavation contains flashing lights, lightning, muzzle flashes, explosions and sudden changes in brightness. For a small number of people, patterns of light like these can trigger seizures, even if they have never had one before and have no history of epilepsy.</p>
+        <p>If you feel dizzy, notice twitching or blurred vision, lose awareness of your surroundings or feel unwell in any way while playing, stop at once and speak to a doctor before you play again.</p>
+        <p class="notice-small">Play in a well lit room, sit back from the screen and rest for a few minutes every hour.</p>
+      </div>
+    </div>
+    <p class="boot-skip" id="boot-skip"><kbd>Any key</kbd> Skip</p>
+  </div>
   <div id="splash" role="button" tabindex="0" aria-label="Press any key to begin">
     <svg class="emblem" viewBox="0 0 200 200" aria-hidden="true">
       <defs><radialGradient id="eg" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#bff6ff"/><stop offset=".45" stop-color="#2aa8c0"/><stop offset="1" stop-color="#0a2a33" stop-opacity="0"/></radialGradient></defs>
@@ -47,31 +120,43 @@
     <h1 class="logo"><span class="l1">ASHFALL</span><span class="l2">EXCAVATION</span></h1>
     <p class="tagline">DIG SITE 7 · NORTHERN FRONT · 1918</p>
     <p class="press" id="press">PRESS ANY KEY</p>
+    <p class="studio-credit"><svg viewBox="0 0 200 260" aria-hidden="true"><use href="#fl-mark"/></svg><span>Furnace Lantern Games</span></p>
   </div>
   <div id="front-main" hidden>
     <aside class="side">
       <div class="minilogo"><svg viewBox="0 0 200 200" aria-hidden="true"><circle cx="100" cy="100" r="86" fill="none" stroke="#c9a35a" stroke-width="10" stroke-dasharray="12 7"/><circle cx="100" cy="100" r="44" fill="url(#eg)"/><path d="M100 72 L119 100 L100 128 L81 100 Z" fill="#e6fcff"/></svg><div><b>ASHFALL</b><span>EXCAVATION</span></div></div>
+      <div id="pause-head" hidden><p class="ph-eye">Operation suspended</p><p class="ph-title">Paused</p><p class="ph-stats" id="pause-stats"></p></div>
       <nav class="mnav" aria-label="Main menu">
-        <button id="play" class="mbtn primary" type="button">Solo</button>
-        <button id="restart" class="mbtn" type="button" hidden>Restart</button>
-        <button id="m-coop" class="mbtn" type="button" data-panel="p-coop">Co-op</button>
-        <button class="mbtn" type="button" data-panel="p-opts">Options</button>
-        <button class="mbtn" type="button" data-panel="p-ctrl">Controls</button>
-        <button class="mbtn" type="button" data-panel="p-intel">Field intel</button>
-        <button id="m-quit" class="mbtn" type="button" hidden>Quit to title</button>
+        <button id="play" class="mbtn primary" type="button" data-desc="Hold the dig alone against the dead.">Solo</button>
+        <button id="restart" class="mbtn" type="button" hidden data-desc="Abandon this run and start again from round one.">Restart</button>
+        <button id="m-coop" class="mbtn" type="button" data-panel="p-coop" data-desc="Host or join a room for up to four diggers.">Co-op</button>
+        <button class="mbtn" type="button" data-panel="p-opts" data-desc="Sound, picture, sensitivity and difficulty.">Options</button>
+        <button class="mbtn" type="button" data-panel="p-ctrl" data-desc="Keyboard, mouse and controller layouts.">Controls</button>
+        <button class="mbtn" type="button" data-panel="p-intel" data-desc="What the dig crew found, and what came after.">Field intel</button>
+        <button id="m-quit" class="mbtn" type="button" hidden data-desc="Leave this run and return to the title screen.">Quit to title</button>
       </nav>
+      <p class="mdesc" id="mdesc">Hold the dig alone against the dead.</p>
       <div class="dogtag"><b>SERVICE RECORD</b><span id="best">No rounds survived yet</span></div>
     </aside>
     <section class="panel" id="p-opts" hidden>
       <h2 class="ph">Options</h2><span class="stamp">FIELD ISSUE</span>
+      <h2>Audio</h2>
       <div class="set">
-        <label for="s-sens">Look sensitivity <output id="o-sens"></output><input id="s-sens" type="range" min="0.3" max="3" step="0.1"></label>
-        <label for="s-fov">Field of view <output id="o-fov"></output><input id="s-fov" type="range" min="65" max="100" step="1"></label>
-        <label for="s-vol">Volume <output id="o-vol"></output><input id="s-vol" type="range" min="0" max="1" step="0.05"></label>
-        <label for="s-scale">Graphics
+        <label class="srow" for="s-vol"><span>Master volume</span><input id="s-vol" type="range" min="0" max="1" step="0.05"><output id="o-vol"></output></label>
+        <label class="srow" for="s-music"><span>Music</span><input id="s-music" type="range" min="0" max="1" step="0.05"><output id="o-music"></output></label>
+        <label class="srow" for="s-sfx"><span>Effects</span><input id="s-sfx" type="range" min="0" max="1" step="0.05"><output id="o-sfx"></output></label>
+      </div>
+      <h2>Picture</h2>
+      <div class="set">
+        <label class="srow" for="s-fov"><span>Field of view</span><input id="s-fov" type="range" min="65" max="100" step="1"><output id="o-fov"></output></label>
+        <label class="srow sel" for="s-scale"><span>Graphics</span>
           <select id="s-scale"><option value="0.55">Low · fastest, simple look</option><option value="0.75">Medium · smooth lighting and film look</option><option value="1">High · best look, needs a decent GPU</option></select>
         </label>
-        <label for="s-diff">Difficulty
+      </div>
+      <h2>Gameplay</h2>
+      <div class="set">
+        <label class="srow" for="s-sens"><span>Look sensitivity</span><input id="s-sens" type="range" min="0.3" max="3" step="0.1"><output id="o-sens"></output></label>
+        <label class="srow sel" for="s-diff"><span>Difficulty</span>
           <select id="s-diff"><option value="rec">Recruit · gentler dead</option><option value="vet">Veteran · the intended fight</option><option value="hard">Hardened · no mercy</option></select>
         </label>
       </div>
@@ -80,30 +165,34 @@
     <section class="panel" id="p-ctrl" hidden>
       <h2 class="ph">Controls</h2><span class="stamp">STANDING ORDERS</span>
       <h2>Keyboard and mouse</h2>
-      <dl class="keys">
-        <dt>W A S D</dt><dd>Move · Shift to sprint · Space to jump</dd>
-        <dt>Mouse</dt><dd>Look · Left click fire · Right click aim</dd>
-        <dt>E</dt><dd>Buy, open, drink, dig, use</dd>
-        <dt>Hold E</dt><dd>Rebuild a boarded window · revive a teammate</dd>
-        <dt>R</dt><dd>Reload</dd>
-        <dt>1 · 2 · 3 · Wheel</dt><dd>Switch weapon (3 with Packmule Tonic)</dd>
-        <dt>F · V</dt><dd>Knife slash, lunges at nearby dead</dd>
-        <dt>G</dt><dd>Throw a Clockwork Lure</dd>
-        <dt>J</dt><dd>Fold the field journal</dd>
-        <dt>Esc</dt><dd>Pause menu</dd>
+      <dl class="binds">
+        <dt>Move</dt><dd><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></dd>
+        <dt>Sprint · jump</dt><dd><kbd class="w">Shift</kbd><kbd class="w">Space</kbd></dd>
+        <dt>Fire · aim</dt><dd><kbd class="m">Left click</kbd><kbd class="m">Right click</kbd></dd>
+        <dt>Reload</dt><dd><kbd>R</kbd></dd>
+        <dt>Buy, open, drink, dig, use</dt><dd><kbd>E</kbd></dd>
+        <dt>Rebuild a window · revive</dt><dd><span class="hold">Hold</span><kbd>E</kbd></dd>
+        <dt>Switch weapon</dt><dd><kbd>1</kbd><kbd>2</kbd><kbd>3</kbd><kbd class="m">Wheel</kbd></dd>
+        <dt>Knife slash</dt><dd><kbd>F</kbd><kbd>V</kbd></dd>
+        <dt>Throw a Clockwork Lure</dt><dd><kbd>G</kbd></dd>
+        <dt>Fold the field journal</dt><dd><kbd>J</kbd></dd>
+        <dt>Pause</dt><dd><kbd class="w">Esc</kbd></dd>
       </dl>
+      <p class="note">The third weapon slot opens with Packmule Tonic. The knife lunges at nearby dead.</p>
       <h2>Controller</h2>
-      <dl class="keys">
-        <dt>Left stick</dt><dd>Move · Click to sprint</dd>
-        <dt>Right stick</dt><dd>Look</dd>
-        <dt>RT · LT</dt><dd>Fire · Aim</dd>
-        <dt>A</dt><dd>Jump</dd>
-        <dt>X</dt><dd>Use, buy, open (hold to rebuild or revive) · Reload when nothing is nearby</dd>
-        <dt>Y</dt><dd>Switch weapon</dd>
-        <dt>B · RB</dt><dd>Knife slash</dd>
-        <dt>LB</dt><dd>Throw a Clockwork Lure</dd>
-        <dt>Start · Back</dt><dd>Pause · Fold the journal</dd>
+      <dl class="binds">
+        <dt>Move · sprint</dt><dd><kbd class="pad">LS</kbd><span class="hold">click</span></dd>
+        <dt>Look</dt><dd><kbd class="pad">RS</kbd></dd>
+        <dt>Fire · aim</dt><dd><kbd class="pad">RT</kbd><kbd class="pad">LT</kbd></dd>
+        <dt>Jump</dt><dd><kbd class="pad face">A</kbd></dd>
+        <dt>Use · buy · reload</dt><dd><kbd class="pad face">X</kbd></dd>
+        <dt>Rebuild · revive</dt><dd><span class="hold">Hold</span><kbd class="pad face">X</kbd></dd>
+        <dt>Switch weapon</dt><dd><kbd class="pad face">Y</kbd></dd>
+        <dt>Knife slash</dt><dd><kbd class="pad face">B</kbd><kbd class="pad">RB</kbd></dd>
+        <dt>Throw a Clockwork Lure</dt><dd><kbd class="pad">LB</kbd></dd>
+        <dt>Pause · fold the journal</dt><dd><kbd class="pad w">Start</kbd><kbd class="pad w">Back</kbd></dd>
       </dl>
+      <p class="note">X reloads when there is nothing nearby to use. In menus: D-pad or left stick to move, A to select, B to go back.</p>
     </section>
     <section class="panel" id="p-intel" hidden>
       <h2 class="ph">Field intel</h2><span class="stamp">EYES ONLY</span>
@@ -127,15 +216,31 @@
       <p id="mp-status" class="note"></p>
       <p class="note">The host's computer runs the zombies, so the strongest machine should host. More players means more and tougher dead. Players connect directly to each other; a few school or office networks block that.</p>
     </section>
+    <div class="navhint" id="navhint"></div>
     <div class="ticker"><b>FIELD REPORT</b><span id="ticker"></span></div>
   </div>
 </div>
 
+<div id="loading" hidden>
+  <div class="ld-bg"></div>
+  <div class="ld-main">
+    <p class="ld-eye">Deploying</p>
+    <h2 class="ld-title">Dig Site 7</h2>
+    <p class="ld-sub">Northern Front · Autumn 1918 · Night</p>
+  </div>
+  <div class="ld-tip"><b>Field tip</b><p id="ld-tip"></p></div>
+  <div class="ld-bar"><div class="ld-row"><span id="ld-stage">Preparing</span><span id="ld-pct">0%</span></div><div class="ld-track"><i id="ld-fill"></i></div></div>
+  <svg class="ld-spin" viewBox="0 0 200 260" aria-hidden="true"><use href="#fl-mark"/></svg>
+</div>
+<div id="veil" hidden></div>
+
 <div id="over" class="overlay" hidden>
   <div class="card">
-    <p class="eyebrow" id="over-eyebrow">The line broke</p>
-    <h1 id="over-title">Overrun on round 1</h1>
-    <p class="lede" id="over-lede"></p>
+    <div class="over-head">
+      <p class="eyebrow" id="over-eyebrow">The line broke</p>
+      <h1 id="over-title">Overrun on round 1</h1>
+      <p class="lede" id="over-lede"></p>
+    </div>
     <div class="stats">
       <div><b id="st-round">1</b><span>Round</span></div>
       <div><b id="st-kills">0</b><span>Kills</span></div>
@@ -143,7 +248,11 @@
       <div><b id="st-time">0:00</b><span>Time</span></div>
       <div><b id="st-rites">0/12</b><span>Rites</span></div>
     </div>
-    <div class="row"><button id="again" class="btn primary" type="button">Dig again</button><span class="meta">Controller: press A</span></div>
+    <div class="board-wrap">
+      <p class="board-h">Scoreboard</p>
+      <table class="board" id="board"><thead><tr><th>Digger</th><th>Score</th><th>Kills</th><th>Headshots</th><th>Status</th></tr></thead><tbody id="board-rows"></tbody></table>
+    </div>
+    <div class="row"><button id="again" class="btn primary" type="button">Dig again</button><button id="over-menu" class="btn" type="button">Main menu</button><span class="meta" id="over-hint">Controller: press A</span></div>
   </div>
 </div>
 

@@ -14,6 +14,7 @@ function frame(t){
   const dt=Math.min(.05,(t-last)/1000); last=t;
   pollPad(dt);
   if(state==='play'||(state==='paused'&&NET.role!=='solo')) tick(dt); else if(state==='menu') updateMenuScene(dt,t);
+  if(typeof audioFrame==='function') audioFrame(dt);
   if(!$('menu').hidden) drawEmbers(dt);
   renderFrame(state==='play'||state==='paused');
 }

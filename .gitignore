@@ -3,3 +3,14 @@ dist/
 dist-single/
 release/
 *.log
+# per-lane and test build folders (ASHFALL_OUT)
+.lane*/
+.lane*-single/
+.test/
+.test-single/
+# Playwright output
+test-results/
+playwright-report/
+.lane*/
+.lead*/
+test-results/

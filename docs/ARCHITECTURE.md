@@ -8,9 +8,17 @@ Round-based co-op zombie survival game. Three.js r128 (vendored in `vendor/`), p
   - Top-level code runs in manifest order at load. `function` declarations are hoisted; `const`/`let` are not (using one before its file has run throws).
 - `src/styles/order.json` lists CSS files in order. `src/index.template.html` is the page shell (`<!--STYLES-->` / `<!--SCRIPTS-->` are filled in by the build).
 - Builds: `npm run build` → `dist/` (multi-file, for GitHub Pages and the desktop app) and `dist-single/index.html` (one self-contained file).
+  - `npm run build:prod` (or `ASHFALL_PROD=1`) minifies game code and CSS with esbuild and leaves out the dev error overlay. CI, Pages and the desktop app use this.
   - `ASHFALL_OUT=name` changes the output folder (each lane builds into its own folder).
-  - `ASHFALL_TEST=1` injects `tools/test-hook.js`, exposing internals as `window.__G` for automated tests.
-- Dev: `PORT=5181 ASHFALL_OUT=.lane1 npm run dev` serves and rebuilds on change.
+  - `ASHFALL_TEST=1` injects `tools/test-hook.js`, exposing internals as `window.__G` for automated tests. A name the hook cannot find is skipped and listed in `__G.__missing` instead of breaking the build.
+  - Every build prepends `const GAME_VERSION="x.y.z";` inside the game scope (from `package.json` `version`, or `ASHFALL_VERSION`). Any file may read `GAME_VERSION`; do not declare that name yourself. The page also gets `<meta name="ashfall-version">`, and `dist/version.json` records the build.
+  - Dev and test builds (not production) load `tools/error-overlay.js` before the game, which shows uncaught errors and promise rejections on screen.
+  - `vendor/peerjs.min.js` (PeerJS 1.5.4, MIT) is copied to `dist/assets/`. The web build still loads PeerJS from unpkg at runtime; the desktop app redirects that request to the local copy.
+  - If `desktop/build/icon-64.png` exists it becomes the favicon.
+- Dev: `PORT=5181 ASHFALL_OUT=.lane1 npm run dev` serves and rebuilds on change (`ASHFALL_TEST=1` works here too).
+- In-game tools: **F3** toggles the performance overlay (`src/core/perf-overlay.js`: FPS, frame time, draw calls, triangles, zombies, quality, network role, ping when `NET.ping` is set in ms).
+- Desktop: `desktop/main.cjs` (Electron) serves `dist/` from a private `app://ashfall` origin with a content security policy, allows pointer lock, fullscreen and clipboard writes, and exposes `window.ashfallDesktop` (`isDesktop`, `toggleFullscreen()`, `isFullscreen()`, `quit()`) through `desktop/preload.cjs`. Packaging is configured under `"build"` in `package.json` (electron-builder; output in `release/`).
+- Tests: `tests/` (Playwright). `npm test` builds a test build into `.lane5-test/`, serves it on port 5185 and runs the smoke, full-ritual and co-op tests. See README.md.
 
 ## Folders
 | Folder | What lives there |
@@ -22,7 +30,7 @@ Round-based co-op zombie survival game. Three.js r128 (vendored in `vendor/`), p
 | `src/audio` | Web Audio engine, procedural sound effects, zombie voices |
 | `src/ui` | HUD, interaction prompts, gamepad, input, menus and title screen |
 | `src/net` | peer-to-peer co-op (host-authoritative) |
-| `src/core` | the main loop (must stay last) |
+| `src/core` | the performance overlay, then the main loop (`41-loop.js` must stay last) |
 
 ## Global conventions
 - Key shared state: `P` (local player), `R` (rounds), `Q` (quest), `PU` (power-ups), `zombies`, `scene`, `camera`, `renderer`, `SETTINGS`, `QUAL` (0 low / 1 medium / 2 high), `NET` (`role`: solo / host / client), `mode` (main / hollow), `state` (menu / play / paused / over / end), `GT` (game time).

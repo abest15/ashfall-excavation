@@ -27,7 +27,8 @@ function pollPad(dt){
     if(hit(9)){ PAD.prev=now; pause(); return; }
   } else {
     PAD.fire=PAD.aim=false; PAD.mx=PAD.my=0;
-    if(hit(0)||hit(9)){ PAD.active=true; if(!$('over').hidden) $('again').click(); else if(!$('menu').hidden){ if(FRONT.splash) dismissSplash(); else $('play').click(); } }
+    if(typeof frontPad==='function') frontPad(hit,now,p);
+    else if(hit(0)||hit(9)){ PAD.active=true; if(!$('over').hidden) $('again').click(); else if(!$('menu').hidden){ if(FRONT.splash) dismissSplash(); else $('play').click(); } }
   }
   PAD.prev=now;
 }

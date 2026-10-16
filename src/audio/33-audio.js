@@ -1,100 +1,136 @@
-/* ---------- audio ---------- */
-const AU={ctx:null}; let VOLK=1;
-function sfxAt(name,pos,maxD,arg){ const d=Math.hypot(pos.x-P.pos.x,pos.z-P.pos.z); if(d>maxD) return; VOLK=Math.pow(1-d/maxD,1.4); try{ sfx[name](arg); }finally{ VOLK=1; } }
-// zombie voices: formant-filtered saw + breath, panned to where the zombie is; at most five at once
-let VOICE_N=0;
-function zvoice(z,kind){ const a=AU.ctx; if(!a||!AU.master||VOICE_N>=5||P.inCabin) return; const p=z.g.position, dx=p.x-P.pos.x, dz=p.z-P.pos.z, d=Math.hypot(dx,dz), maxD=kind==='death'?26:32; if(d>maxD) return;
-  const vol=Math.pow(1-d/maxD,1.5)*(z.boss?1.4:1); if(vol<.02) return;
-  const rx=Math.cos(P.yaw), rz=-Math.sin(P.yaw), pan=clamp((dx*rx+dz*rz)/(d||1),-1,1)*.85, t=a.currentTime;
-  const out=a.createGain(); out.gain.value=vol; if(a.createStereoPanner){ const sp=a.createStereoPanner(); sp.pan.value=pan; out.connect(sp); sp.connect(AU.master); } else out.connect(AU.master);
-  const hound=z.kind==='hound', hollow=z.kind==='hollow'||z.prime; let dur,base,end,f1,f2,q=6;
-  if(hound){ if(kind==='death'){dur=.5;base=320;end=120;f1=900;f2=2200;} else if(kind==='attack'){dur=.25;base=260;end=200;f1=1100;f2=2600;} else {dur=.7;base=110;end=95;f1=500;f2=1400;} }
-  else if(z.boss){ dur=kind==='death'?1.6:1.1; base=kind==='attack'?70:55; end=base*.7; f1=380; f2=900; }
-  else if(kind==='scream'){ dur=rand(.5,.8); base=rand(190,260); end=base*rand(1.1,1.4); f1=rand(800,1000); f2=rand(2000,2600); q=4; }
-  else if(kind==='attack'){ dur=.35; base=rand(120,160); end=base*.8; f1=rand(600,800); f2=rand(1300,1700); }
-  else if(kind==='death'){ dur=rand(.7,1); base=rand(130,160); end=55; f1=550; f2=1100; }
-  else { dur=rand(1,1.7); base=rand(70,115); end=base*rand(.75,1.15); f1=rand(480,750); f2=rand(1050,1450); }
-  if(hollow){ base*=1.3; end*=1.3; }
-  VOICE_N++; setTimeout(()=>VOICE_N--,dur*1000+60);
-  const o=a.createOscillator(); o.type='sawtooth'; o.frequency.setValueAtTime(base,t); o.frequency.linearRampToValueAtTime(end,t+dur);
-  const lfo=a.createOscillator(); lfo.frequency.value=kind==='death'?14:rand(5,9); const lg=a.createGain(); lg.gain.value=base*(kind==='death'?.18:.07); lfo.connect(lg); lg.connect(o.frequency);
-  const b1=a.createBiquadFilter(); b1.type='bandpass'; b1.frequency.value=f1; b1.Q.value=q; const b2=a.createBiquadFilter(); b2.type='bandpass'; b2.frequency.value=f2; b2.Q.value=q;
-  const sharp=kind==='attack'||kind==='scream'; const g=a.createGain(); g.gain.setValueAtTime(.0001,t); g.gain.exponentialRampToValueAtTime(sharp?.5:.32,t+(kind==='attack'?.03:.12)); g.gain.exponentialRampToValueAtTime(.0008,t+dur);
-  o.connect(b1); o.connect(b2); b1.connect(g); b2.connect(g); g.connect(out);
-  const n=a.createBufferSource(); n.buffer=AU.noise; const nb=a.createBiquadFilter(); nb.type='bandpass'; nb.frequency.value=f1*1.6; nb.Q.value=1.5; const ng=a.createGain(); ng.gain.setValueAtTime(.0001,t); ng.gain.exponentialRampToValueAtTime(sharp||hound?.35:.12,t+.05); ng.gain.exponentialRampToValueAtTime(.0008,t+dur*.9); n.connect(nb); nb.connect(ng); ng.connect(out);
-  o.start(t); lfo.start(t); n.start(t,Math.random()*1.5); o.stop(t+dur+.05); lfo.stop(t+dur+.05); n.stop(t+dur+.05); }
-function initAudio(){ if(AU.ctx){ if(AU.ctx.state==='suspended') AU.ctx.resume(); return; }
-  try{ const C=window.AudioContext||window.webkitAudioContext; AU.ctx=new C(); }catch(e){ return; }
-  const a=AU.ctx; AU.master=a.createGain(); AU.master.gain.value=SETTINGS.vol; AU.master.connect(a.destination);
-  const len=a.sampleRate*2; AU.noise=a.createBuffer(1,len,a.sampleRate); const d=AU.noise.getChannelData(0); for(let i=0;i<len;i++) d[i]=Math.random()*2-1;
-  const src=a.createBufferSource(); src.buffer=AU.noise; src.loop=true;
-  const wf=a.createBiquadFilter(); wf.type='lowpass'; wf.frequency.value=420; AU.wind=a.createGain(); AU.wind.gain.value=.07; src.connect(wf); wf.connect(AU.wind); AU.wind.connect(AU.master);
-  const rf=a.createBiquadFilter(); rf.type='highpass'; rf.frequency.value=3500; AU.rain=a.createGain(); AU.rain.gain.value=.03; src.connect(rf); rf.connect(AU.rain); AU.rain.connect(AU.master);
-  AU.drone=a.createGain(); AU.drone.gain.value=0; AU.drone.connect(AU.master);
-  for(const f of [55,55.6,82.4]){ const o=a.createOscillator(); o.type='sine'; o.frequency.value=f; o.connect(AU.drone); o.start(); }
-  src.start(); ambienceMode(mode);
-}
-function ambienceMode(m){ if(!AU.ctx) return; const t=AU.ctx.currentTime, H=m==='hollow', C=m==='cabin'; AU.wind.gain.setTargetAtTime(H?.02:C?.01:.07,t,.5); AU.rain.gain.setTargetAtTime(H||C?0:.03,t,.5); AU.drone.gain.setTargetAtTime(H?.09:C?.05:0,t,.8); }
-function nz(dur,freq,q,vol,type='lowpass',delay=0,fEnd){ const a=AU.ctx; if(!a) return; const t=a.currentTime+delay; const s=a.createBufferSource(); s.buffer=AU.noise;
-  const f=a.createBiquadFilter(); f.type=type; f.frequency.setValueAtTime(freq,t); if(fEnd) f.frequency.exponentialRampToValueAtTime(fEnd,t+dur); f.Q.value=q;
-  const g=a.createGain(); g.gain.setValueAtTime(Math.max(.0009,vol*VOLK),t); g.gain.exponentialRampToValueAtTime(.0008,t+dur); s.connect(f); f.connect(g); g.connect(AU.master); s.start(t,Math.random()*1.5); s.stop(t+dur+.05); }
-function tn(freq,dur,type,vol,delay=0,fEnd,att=.005){ const a=AU.ctx; if(!a) return; const t=a.currentTime+delay; const o=a.createOscillator(); o.type=type; o.frequency.setValueAtTime(freq,t); if(fEnd) o.frequency.exponentialRampToValueAtTime(fEnd,t+dur);
-  const g=a.createGain(); g.gain.setValueAtTime(.0001,t); g.gain.exponentialRampToValueAtTime(Math.max(.0002,vol*VOLK),t+att); g.gain.exponentialRampToValueAtTime(.0008,t+dur); o.connect(g); g.connect(AU.master); o.start(t); o.stop(t+dur+.05); }
-function groan(vol,hi){ const a=AU.ctx; if(!a||vol<.01) return; const t=a.currentTime; const o=a.createOscillator(); o.type='sawtooth'; const base=rand(70,120)*(hi?2.6:1); o.frequency.setValueAtTime(base,t); o.frequency.linearRampToValueAtTime(base*rand(.7,1.2),t+1.1);
-  const lfo=a.createOscillator(); lfo.frequency.value=rand(5,9); const lg=a.createGain(); lg.gain.value=base*.06; lfo.connect(lg); lg.connect(o.frequency);
-  const f=a.createBiquadFilter(); f.type='bandpass'; f.frequency.value=rand(500,900); f.Q.value=2.5; const g=a.createGain(); g.gain.setValueAtTime(.0001,t); g.gain.exponentialRampToValueAtTime(vol,t+.15); g.gain.exponentialRampToValueAtTime(.0008,t+1.2);
-  o.connect(f); f.connect(g); g.connect(AU.master); o.start(t); lfo.start(t); o.stop(t+1.3); lfo.stop(t+1.3); }
-const sfx={
-  pistol:u=>{ nz(.16,u?3600:2600,.8,.55,'lowpass',0,400); tn(u?220:160,.07,'square',.12,0,50); if(u) tn(900,.12,'sine',.06,0,300); },
-  rifle:u=>{ nz(.4,1900,.6,.85,'lowpass',0,180); tn(90,.22,'sine',.38,0,40); if(u) tn(600,.2,'sawtooth',.05,0,150); },
-  smg:u=>{ nz(.09,u?3600:3000,.8,.42,'lowpass',0,600); tn(130,.05,'square',.06,0,60); },
-  shotgun:u=>{ nz(.5,1400,.5,.95,'lowpass',0,140); tn(70,.28,'sine',.42,0,35); nz(.07,2600,4,.16,'bandpass',.42); nz(.07,1900,4,.16,'bandpass',.55); },
-  lmg:u=>{ nz(.13,2300,.7,.52,'lowpass',0,350); tn(110,.07,'square',.1,0,55); },
-  rod:u=>{ nz(.32,400,3,.35,'bandpass',0,3200); tn(u?60:90,.28,'sine',.45,0,32); [1318.5,1975.5,2637].forEach((f,i)=>tn(f*(u?.75:1)*(1+rand(-.004,.004)),.5-i*.1,'sine',.09,.02+i*.015)); tn(u?440:880,.6,'triangle',.06,.05,u?1320:1760); if(u){ tn(110,.5,'sawtooth',.08,0,55); nz(.45,700,2,.25,'bandpass',.05,2400); } },
-  ion:u=>{ tn(u?520:780,.18,'square',.1,0,u?160:240); nz(.18,3000,2,.3,'bandpass',0,800); tn(u?90:130,.2,'sine',.3,0,60); },
-  ionHit:()=>{ nz(.4,1800,1,.45,'bandpass',0,300); tn(240,.3,'sawtooth',.12,0,60); },
-  dynamo:u=>{ nz(.6,6000,1.5,.6,'bandpass',0,900); tn(55,.6,'sawtooth',.25,0,40); tn(2400,.3,'square',.06,0,400); nz(1.2,200,1,.3,'lowpass',.1,60); },
-  drum:()=>{ nz(.08,180,1,.45,'lowpass'); tn(150,.09,'sine',.25,0,85); },
-  chime:()=>{ tn(rand(900,1400),.3,'triangle',.07); },
-  toss:()=>{ nz(.2,900,2,.2,'bandpass',0,2400); tn(1600,.05,'square',.03,.05); },
-  dry:()=>tn(1500,.03,'square',.07), reload:()=>{ nz(.05,2500,5,.25,'bandpass'); nz(.06,1700,5,.25,'bandpass',.4); },
-  swap:()=>nz(.06,2200,4,.14,'bandpass'), buy:()=>{ tn(660,.12,'triangle',.2); tn(990,.25,'triangle',.2,.1); }, deny:()=>tn(150,.25,'square',.1,0,110),
-  hit:()=>tn(1900,.035,'square',.035), kill:()=>nz(.14,700,1,.25), swing:()=>nz(.16,900,1,.22,'bandpass',0,3200), stab:()=>{ nz(.12,600,1,.35); tn(120,.1,'sine',.25,0,60); },
-  hurt:()=>{ nz(.28,500,1,.5); tn(90,.25,'sawtooth',.14,0,60); },
-  roundStart:()=>{ [73.4,110,146.8,220].forEach((f,i)=>tn(f,4.5,'sine',.22-i*.04,i*.02,null,.02)); nz(1.4,180,1,.5,'lowpass',0,60); tn(55,1.6,'sine',.4,0,40); },
-  roundEnd:()=>{ [329.6,311.1,293.7,261.6,246.9].forEach((f,i)=>tn(f,.9,'triangle',.13,i*.38)); tn(123.5,3,'sine',.18,1.5); },
-  power:()=>{ tn(40,2.4,'sawtooth',.3,0,120,.3); nz(1.8,300,1,.45,'lowpass',0,1200); tn(60,3,'sine',.3,.8); },
-  door:()=>{ nz(.9,700,1,.5,'lowpass',0,90); tn(80,.6,'sine',.32,0,40); nz(.2,1800,3,.2,'bandpass',.25); },
-  crate:()=>{ [523.3,659.3,784,1046.5,784,659.3,880,1174.7].forEach((f,i)=>tn(f,.5,'triangle',.1,i*.22)); },
-  flee:()=>{ tn(220,1.2,'sawtooth',.15,0,55); nz(1,300,1,.4,'lowpass',0,60); },
-  forge:()=>{ nz(1.3,400,1,.5,'lowpass',0,2400); tn(110,1.4,'sawtooth',.12,0,440); [0,.7,1.4,2.1,2.8].forEach(d=>{ tn(1250,.5,'triangle',.18,d+.2); nz(.08,5000,3,.25,'bandpass',d+.2); }); tn(523,1.2,'sine',.2,3.4); },
-  tonic:()=>{ for(let i=0;i<6;i++) tn(rand(300,520),.12,'sine',.18,i*.13,rand(160,260)); tn(880,.5,'triangle',.12,.9); },
-  pup:()=>{ tn(523,.15,'sine',.25); tn(784,.3,'sine',.25,.12); tn(1046,.4,'sine',.2,.24); },
-  boss:()=>{ tn(46,2.6,'sawtooth',.32,0,38,.3); nz(2.2,220,1,.32); tn(69,2.2,'square',.08,.2,52,.3); },
-  fireball:()=>{ nz(.6,900,1,.35,'lowpass',0,200); },
-  relic:()=>{ [880,1108.7,1318.5,1760].forEach((f,i)=>tn(f,1.4,'sine',.1,i*.08)); },
-  ignite:()=>{ nz(.8,600,1,.4,'lowpass',0,4000); [440,660,880].forEach((f,i)=>tn(f,1.2,'sine',.12,i*.1)); },
-  portal:()=>{ tn(110,3,'sine',.3,0,440,.5); [1318.5,1568,1760,2093].forEach((f,i)=>tn(f,2.5,'sine',.08,.3+i*.15)); nz(2.5,800,1,.3,'bandpass',0,5000); },
-  dig:()=>{ nz(.25,500,1,.4); nz(.25,400,1,.35,'lowpass',.3); },
-  cannon:u=>{ nz(.7,900,.5,1,'lowpass',0,80); tn(50,.5,'sine',.55,0,28); if(u) tn(320,.4,'sawtooth',.08,0,90); },
-  boom:()=>{ nz(1.1,700,.6,1,'lowpass',0,50); tn(42,.9,'sine',.6,0,25); },
-  ring:()=>{ tn(1320,.6,'sine',.08); tn(1980,.4,'sine',.05,.02); },
-  tone:f=>{ tn(f,2.2,'sine',.28,0,null,.01); tn(f*2,1.2,'triangle',.07); tn(f*3.01,.8,'sine',.03); },
-  clash:()=>{ tn(233,1,'sawtooth',.12); tn(247,1,'sawtooth',.12); nz(.5,300,1,.3); },
-  wraith:()=>{ tn(900,1.1,'sawtooth',.07,0,300,.05); tn(1210,1,'sine',.08,.05,400); nz(.9,2400,3,.2,'bandpass',0,600); },
-  shatter:()=>{ for(let i=0;i<5;i++) tn(rand(1800,3200),.4,'triangle',.07,i*.04); nz(.4,5000,2,.25,'highpass'); },
-  howl:()=>{ tn(300,1.8,'sawtooth',.08,0,620,.4); tn(310,1.6,'sine',.12,.1,560,.4); nz(1.6,500,2,.15,'bandpass'); },
-  houndSpawn:()=>{ nz(.25,3000,2,.25,'bandpass',0,600); tn(160,.3,'square',.06,0,60); },
-  stomp:v=>{ if(v<=.02) return; nz(1.4,260,.7,.9*v,'lowpass',0,40); tn(38,1.2,'sine',.7*v,0,22); },
-  tear:()=>{ nz(.25,1800,2,.35,'bandpass',0,500); tn(140,.15,'square',.08,0,70); },
-  board:()=>{ nz(.08,900,3,.4,'bandpass'); tn(220,.06,'square',.08); nz(.06,1200,3,.3,'bandpass',.14); },
-  bell:()=>{ [220,440.5,553,661,880].forEach((f,i)=>tn(f,3.2-i*.4,'sine',[.22,.12,.08,.06,.04][i],0,null,.004)); },
-  candle:()=>{ nz(.4,1200,1,.18,'bandpass',0,3000); tn(660,.6,'sine',.05,.1); },
-  zap:u=>{ nz(.22,5200,2,.4,'bandpass',0,1400); tn(1800,.12,'sawtooth',.08,0,300); tn(90,.25,'square',.1,0,50); },
-  clang:()=>{ tn(820,.3,'triangle',.18,0,500); nz(.1,3000,4,.2,'bandpass'); },
-  thunder:d=>{ nz(2.8,180,.5,.55,'lowpass',d,40); nz(.6,900,.6,.25,'lowpass',d,120); },
-  distant:()=>{ nz(1.5,150,.5,.14,'lowpass',.6,40); },
-  clank:()=>{ tn(110,.6,'square',.12,0,60); nz(.4,700,2,.4,'bandpass',0,200); tn(440,.3,'triangle',.08,.25); },
-  fire:()=>{ nz(1.6,700,.6,.5,'lowpass',0,2400); tn(80,1,'sawtooth',.06,0,160); },
-  gameOver:()=>{ [196,185,174.6,146.8].forEach((f,i)=>tn(f,1.8,'triangle',.16,i*.55)); tn(49,4,'sine',.3,.4); },
+/* ---------- audio engine: mixer buses, master dynamics, reverb zones, 3D emitters ----------
+   Signal flow
+     sources -> fx | ui | voice | amb buses -> sfx group (SETTINGS.sfx) ----\
+     fx + voice + emitter wet sends -> verbIn -> A/B convolvers -> sfx group  >-> mix -> glue comp -> limiter -> master (SETTINGS.vol) -> soft clip -> out
+     score + stingers + menu music -> music bus (SETTINGS.music) ------------/
+   All impulse responses and samples are synthesized at runtime; there are no audio files. */
+const AU={ctx:null,live:0,peakLive:0,errs:0,lastErr:'',area:null,out:null,em:null,hint:null,vols:{m:-1,s:-1,v:-1},cvA:0,ir:{},emFx:[],emVo:[]};
+let VOLK=1;
+const AU_MAXLIVE=240; // hard cap on concurrently playing source nodes (oscillators + buffer sources)
+const auVols=()=>({m:SETTINGS.music==null?.8:clamp(+SETTINGS.music||0,0,1), s:SETTINGS.sfx==null?1:clamp(+SETTINGS.sfx||0,0,1), v:SETTINGS.vol==null?.7:clamp(+SETTINGS.vol||0,0,1)});
+function auTrack(s){ AU.live++; if(AU.live>AU.peakLive) AU.peakLive=AU.live; s.onended=auEnded; return s; }
+function auEnded(){ AU.live--; }
+const auBusy=()=>AU.live>=AU_MAXLIVE;
+const auDst=()=>AU.em||AU.out||AU.fx;
+
+// ---- low-level layers, usable on the live context or an OfflineAudioContext (weapon pre-rendering)
+function lN(c,dst,t,dur,f,q,vol,type,fEnd,att,off){ const s=c.createBufferSource(); s.buffer=AU.noise;
+  const fl=c.createBiquadFilter(); fl.type=type||'lowpass'; fl.frequency.setValueAtTime(f,t); if(fEnd) fl.frequency.exponentialRampToValueAtTime(fEnd,t+dur); fl.Q.value=q;
+  const g=c.createGain(); if(att){ g.gain.setValueAtTime(.0001,t); g.gain.exponentialRampToValueAtTime(Math.max(.0002,vol),t+att); } else g.gain.setValueAtTime(Math.max(.0002,vol),t); g.gain.exponentialRampToValueAtTime(.0003,t+dur);
+  s.connect(fl); fl.connect(g); g.connect(dst); s.start(t,off==null?Math.random()*1.6:off); s.stop(t+dur+.03); return s; }
+function lT(c,dst,t,f,dur,type,vol,fEnd,att){ const o=c.createOscillator(); o.type=type; o.frequency.setValueAtTime(f,t); if(fEnd) o.frequency.exponentialRampToValueAtTime(fEnd,t+dur);
+  const g=c.createGain(); g.gain.setValueAtTime(.0001,t); g.gain.exponentialRampToValueAtTime(Math.max(.0002,vol),t+(att||.004)); g.gain.exponentialRampToValueAtTime(.0003,t+dur); o.connect(g); g.connect(dst); o.start(t); o.stop(t+dur+.03); return o; }
+// legacy helpers used by the sfx table: route to the current bus / emitter and honour VOLK
+function nz(dur,freq,q,vol,type='lowpass',delay=0,fEnd){ const a=AU.ctx; if(!a||!AU.fx||auBusy()) return; auTrack(lN(a,auDst(),a.currentTime+delay,dur,freq,q,Math.max(.0009,vol*VOLK),type,fEnd)); }
+function tn(freq,dur,type,vol,delay=0,fEnd,att=.005){ const a=AU.ctx; if(!a||!AU.fx||auBusy()) return; auTrack(lT(a,auDst(),a.currentTime+delay,freq,dur,type,Math.max(.0002,vol*VOLK),fEnd,att)); }
+
+// ---- synthesized impulse responses per area
+const IRDEF={
+  open:  {len:1.5,rt:1.0, pre:.012,er:5, erSpan:.07,damp:3200,width:1,  wet:.16},  // trenches, yard, No Man's Land: short, wide, dry earth
+  bunker:{len:.9, rt:.55, pre:.004,er:9, erSpan:.03,damp:2600,width:.75,wet:.24},  // spawn bunker: small timber-and-earth room
+  chapel:{len:4.2,rt:3.4, pre:.024,er:12,erSpan:.1, damp:4800,width:.95,wet:.36},  // long stone hall
+  cabin: {len:.7, rt:.42, pre:.002,er:14,erSpan:.016,damp:7500,width:.55,wet:.3,ring:[540,1260,1910,2870]}, // tight riveted iron box
+  hollow:{len:6.8,rt:5.6, pre:.06, er:9, erSpan:.22,damp:2400,width:1,  wet:.46},  // huge crystal cavern
 };
+function makeIR(name){ const a=AU.ctx, D=IRDEF[name], sr=a.sampleRate, len=Math.floor(Math.min(D.len,QUAL===0?2.6:D.len)*sr), b=a.createBuffer(2,len,sr);
+  for(let ch=0;ch<2;ch++){ const d=b.getChannelData(ch); let y=0, k=.5, alt=0;
+    for(let i=0;i<len;i++){ const t=i/sr; if((i&63)===0){ const fc=300+D.damp*Math.exp(-t/(D.rt*.45)); k=1-Math.exp(-2*Math.PI*fc/sr); }
+      const n=Math.random()*2-1, m=ch?D.width*n+(1-D.width)*alt:n; alt=n; y+=k*(m-y); const env=t<D.pre?0:Math.exp(-6.9*(t-D.pre)/D.rt)*Math.min(1,(t-D.pre)/.004+.02); d[i]=y*env*1.6; }
+    for(let e=0;e<D.er;e++){ const t=D.pre+Math.random()*D.erSpan, i=Math.floor(t*sr); if(i<len) d[i]+=(Math.random()<.5?-1:1)*rand(.25,.7)*Math.exp(-t*6/D.rt); }
+    if(D.ring) for(const f of D.ring){ const w=2*Math.PI*f*(1+(ch?.004:-.004))/sr, n=Math.min(len,Math.floor(.35*sr)); for(let i=0;i<n;i++) d[i]+=Math.sin(w*i)*.05*Math.exp(-i/sr*11); } }
+  return b; }
+function irFor(name){ return AU.ir[name]||(AU.ir[name]=makeIR(name)); }
+function setArea(name){ if(!AU.cv||AU.area===name) return; AU.area=name; const a=AU.ctx, t=a.currentTime, cur=AU.cv[AU.cvA], nxt=AU.cv[1-AU.cvA];
+  if(nxt.area!==name){ nxt.c.buffer=irFor(name); nxt.area=name; }
+  cur.g.gain.setTargetAtTime(0,t,.25); nxt.g.gain.setTargetAtTime(1,t,.25); AU.cvA=1-AU.cvA; AU.wet.gain.setTargetAtTime(IRDEF[name].wet,t,.3); }
+function areaNow(){ if(mode==='hollow') return 'hollow'; if(P.inCabin) return 'cabin'; if(state==='menu') return 'open'; const z=zoneOf(P.pos.x,P.pos.z); return z==='E'?'chapel':z==='A'?'bunker':'open'; }
+
+// ---- 3D emitters: a fixed pool of panner chains (bounded node count); sounds are routed into one for their lifetime
+function mkEmitter(bus,hrtf){ const a=AU.ctx, inp=a.createGain(), lp=a.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=18000; lp.Q.value=.5;
+  const pn=a.createPanner(); pn.panningModel=hrtf?'HRTF':'equalpower'; pn.distanceModel='linear'; pn.refDistance=1; pn.maxDistance=1e4; pn.rolloffFactor=0;
+  const wet=a.createGain(); wet.gain.value=0; inp.connect(lp); lp.connect(pn); pn.connect(bus); lp.connect(wet); wet.connect(AU.verbIn); return {inp,lp,pn,wet,until:0,follow:null,srcs:null}; }
+function auPos(pn,x,y,z){ if(pn.positionX){ pn.positionX.value=x; pn.positionY.value=y; pn.positionZ.value=z; } else pn.setPosition(x,y,z); }
+function occlusion(x,z){ if(mode==='hollow') return 0; if(P.inCabin) return .75; const a=zoneOf(P.pos.x,P.pos.z), b=zoneOf(x,z); if(a===b) return 0;
+  if(a&&b){ let open=false; try{ open=typeof route==='function'&&!!route(a,b); }catch(e){} return open?.35:.7; } return (a==='A'||a==='E'||b==='A'||b==='E')?.5:.15; }
+// claim an emitter at world position pos; d = distance, maxD = audible range (0 = no extra attenuation). Returns the emitter or null.
+function emitAt(pos,d,maxD,pool,dur,steal){ const a=AU.ctx; if(!a||!AU.emFx.length) return null; const list=pool==='voice'?AU.emVo:AU.emFx, t=a.currentTime;
+  let em=null; for(const e of list) if(e.until<=t){ em=e; break; }
+  if(!em){ if(!steal) return null; em=list.reduce((p,q)=>q.until<p.until?q:p); if(em.srcs) for(const s of em.srcs){ try{ s.stop(t+.02); }catch(e){} } }
+  em.until=t+dur; em.follow=null; em.srcs=null; em.proj=null; auPos(em.pn,pos.x,(pos.y||0)+1.2,pos.z);
+  const r=maxD?clamp(d/maxD,0,1):clamp(d/90,0,1), occ=occlusion(pos.x,pos.z);
+  em.lp.frequency.setValueAtTime(Math.max(320,17000*Math.pow(.1,r*1.15)*(1-occ*.82)),t);
+  em.wet.gain.setValueAtTime(.12+r*.9+occ*.4,t); em.inp.gain.setValueAtTime(1-occ*.4,t); return em; }
+
+// positional one-shot: plays sfx[name](arg) at pos with distance attenuation, panning, distance low-pass and occlusion
+function sfxAt(name,pos,maxD,arg){ if(!AU.ctx||!AU.fx||!sfx[name]) return; const d=Math.hypot(pos.x-P.pos.x,pos.z-P.pos.z); if(d>maxD) return;
+  const k=Math.pow(1-d/maxD,1.4); if(k<.01) return; const em=emitAt(pos,d,maxD,'fx',2.5,true), pk=VOLK, pe=AU.em; VOLK=k; AU.em=em?em.inp:null;
+  try{ sfx[name](arg); }finally{ VOLK=pk; AU.em=pe; } }
+
+function initAudio(){ if(AU.ctx){ if(AU.ctx.state==='suspended') AU.ctx.resume(); return; }
+  try{ const C=window.AudioContext||window.webkitAudioContext; AU.ctx=new C({latencyHint:'interactive'}); }catch(e){ return; }
+  const a=AU.ctx, V=auVols();
+  // master: mix -> glue compressor -> brickwall-ish limiter -> master volume -> soft clipper -> speakers
+  AU.mix=a.createGain(); AU.mix.gain.value=.62; // headroom trim; the compressors' automatic make-up gain brings level back
+  const comp=a.createDynamicsCompressor(); comp.threshold.value=-16; comp.knee.value=10; comp.ratio.value=3; comp.attack.value=.005; comp.release.value=.25;
+  const lim=a.createDynamicsCompressor(); lim.threshold.value=-4; lim.knee.value=1; lim.ratio.value=20; lim.attack.value=.001; lim.release.value=.1;
+  AU.master=a.createGain(); AU.master.gain.value=V.v; const clip=a.createWaveShaper(); const cc=new Float32Array(1024); for(let i=0;i<1024;i++){ const x=i/511.5-1, ax=Math.abs(x); cc[i]=ax<.8?x:Math.sign(x)*(.8+.2*Math.tanh((ax-.8)/.2)); } clip.curve=cc;
+  AU.mix.connect(comp); comp.connect(lim); lim.connect(AU.master); AU.master.connect(clip); clip.connect(a.destination); AU.comp=comp; AU.lim=lim; AU.clip=clip;
+  // buses
+  AU.music=a.createGain(); AU.music.gain.value=V.m; AU.music.connect(AU.mix);
+  AU.sfxG=a.createGain(); AU.sfxG.gain.value=V.s; AU.sfxG.connect(AU.mix);
+  AU.fx=a.createGain(); AU.fx.connect(AU.sfxG); AU.ui=a.createGain(); AU.ui.gain.value=.85; AU.ui.connect(AU.sfxG);
+  AU.voice=a.createGain(); AU.voice.gain.value=.9; AU.voice.connect(AU.sfxG); AU.amb=a.createGain(); AU.amb.connect(AU.sfxG);
+  AU.vols={m:V.m,s:V.s,v:V.v};
+  // reverb: sends -> high-pass -> area wet level -> two convolvers crossfaded on area change -> sfx group
+  AU.verbIn=a.createGain(); const hp=a.createBiquadFilter(); hp.type='highpass'; hp.frequency.value=180; AU.wet=a.createGain(); AU.wet.gain.value=.16;
+  AU.verbIn.connect(hp); hp.connect(AU.wet); AU.verbOut=a.createGain(); AU.verbOut.connect(AU.sfxG);
+  AU.cv=[0,1].map(()=>{ const c=a.createConvolver(), g=a.createGain(); g.gain.value=0; AU.wet.connect(c); c.connect(g); g.connect(AU.verbOut); return {c,g,area:null}; });
+  const fxs=a.createGain(); fxs.gain.value=.55; AU.fx.connect(fxs); fxs.connect(AU.verbIn); const vos=a.createGain(); vos.gain.value=.6; AU.voice.connect(vos); vos.connect(AU.verbIn);
+  AU.gunSend=a.createGain(); AU.gunSend.gain.value=.7; AU.gunSend.connect(AU.verbIn);
+  // shared buffers, computed once
+  const len=a.sampleRate*2; AU.noise=a.createBuffer(1,len,a.sampleRate); const d=AU.noise.getChannelData(0); for(let i=0;i<len;i++) d[i]=Math.random()*2-1;
+  AU.dist=new Float32Array(512); for(let i=0;i<512;i++){ const x=i/255.5-1; AU.dist[i]=Math.tanh(x*3.2)/Math.tanh(3.2); }
+  // emitter pools
+  const hrtf=QUAL>=1; for(let i=0;i<(QUAL?14:10);i++) AU.emFx.push(mkEmitter(AU.fx,hrtf)); for(let i=0;i<6;i++) AU.emVo.push(mkEmitter(AU.voice,hrtf));
+  // ambience beds
+  const src=a.createBufferSource(); src.buffer=AU.noise; src.loop=true;
+  const wf=a.createBiquadFilter(); wf.type='lowpass'; wf.frequency.value=420; AU.wind=a.createGain(); AU.wind.gain.value=.07; src.connect(wf); wf.connect(AU.wind); AU.wind.connect(AU.amb);
+  const wl=a.createOscillator(); wl.frequency.value=.07; const wlg=a.createGain(); wlg.gain.value=160; wl.connect(wlg); wlg.connect(wf.frequency); wl.start();
+  const rf=a.createBiquadFilter(); rf.type='highpass'; rf.frequency.value=3500; AU.rain=a.createGain(); AU.rain.gain.value=.03; src.connect(rf); rf.connect(AU.rain); AU.rain.connect(AU.amb);
+  AU.drone=a.createGain(); AU.drone.gain.value=0; AU.drone.connect(AU.amb);
+  for(const f of [55,55.6,82.4]){ const o=a.createOscillator(); o.type='sine'; o.frequency.value=f; o.connect(AU.drone); o.start(); }
+  const ff=a.createBiquadFilter(); ff.type='bandpass'; ff.frequency.value=160; ff.Q.value=.8; AU.furnace=a.createGain(); AU.furnace.gain.value=0; src.connect(ff); ff.connect(AU.furnace); AU.furnace.connect(AU.amb);
+  src.start(); setArea('open'); ambienceMode(mode);
+  if(typeof gunWarm==='function') gunWarm('pistol',false);
+}
+function ambienceMode(m){ if(!AU.ctx) return; const t=AU.ctx.currentTime, H=m==='hollow', C=m==='cabin'; AU.wind.gain.setTargetAtTime(H?.025:C?.01:.07,t,.5); AU.rain.gain.setTargetAtTime(H||C?0:.03,t,.5); AU.drone.gain.setTargetAtTime(H?.08:C?.04:0,t,.8); AU.furnace.gain.setTargetAtTime(C?.16:0,t,.6); }
+
+// ---- per-frame update (called from the main loop): volumes, listener, reverb area, world one-shots, score
+const _auF=new V3(), _auU=new V3(); let auPrevState='menu', auAmbT=3;
+function audioFrame(dt){ const a=AU.ctx; if(!a||!AU.fx) return; const t=a.currentTime;
+  try{
+    const V=auVols(), o=AU.vols; if(V.m!==o.m){ AU.music.gain.setTargetAtTime(V.m,t,.05); o.m=V.m; } if(V.s!==o.s){ AU.sfxG.gain.setTargetAtTime(V.s,t,.05); o.s=V.s; } if(V.v!==o.v){ AU.master.gain.setTargetAtTime(V.v,t,.05); o.v=V.v; }
+    // route the title-screen music through the music bus so the Music slider applies to it too
+    if(typeof MUS!=='undefined'&&MUS.g&&MUS.g._auRouted!==true){ try{ MUS.g.disconnect(); }catch(e){} MUS.g.connect(AU.music); MUS.g._auRouted=true; }
+    const L=a.listener, c=camera.position; _auF.set(0,0,-1).applyQuaternion(camera.quaternion); _auU.set(0,1,0).applyQuaternion(camera.quaternion);
+    if(L.positionX){ L.positionX.value=c.x; L.positionY.value=c.y; L.positionZ.value=c.z; L.forwardX.value=_auF.x; L.forwardY.value=_auF.y; L.forwardZ.value=_auF.z; L.upX.value=_auU.x; L.upY.value=_auU.y; L.upZ.value=_auU.z; }
+    else { L.setPosition(c.x,c.y,c.z); L.setOrientation(_auF.x,_auF.y,_auF.z,_auU.x,_auU.y,_auU.z); }
+    for(const e of AU.emFx.concat(AU.emVo)){ if(e.proj&&(typeof projs==='undefined'||projs.indexOf(e.proj)<0)){ if(e.srcs) for(const s of e.srcs){ try{ s.stop(t+.06); }catch(er){} } e.proj=null; e.follow=null; e.srcs=null; e.until=Math.min(e.until,t+.1); }
+      if(e.follow&&e.until>t){ const p=e.follow; auPos(e.pn,p.x,(p.y||0)+1.4,p.z); } }
+    setArea(areaNow());
+    if(state==='play'){ if(typeof zSteps==='function') zSteps(dt); auWorld(dt); }
+    if(typeof gunPrefetch==='function') gunPrefetch(dt);
+    if(typeof MX!=='undefined') MX.update(dt,auPrevState);
+    auPrevState=state;
+  }catch(e){ AU.errs++; AU.lastErr=String(e&&e.stack||e); } }
+// world one-shots: boss projectile whooshes, crystal drips in the Hollow, creaks in the chapel
+function auWorld(dt){ const a=AU.ctx, t=a.currentTime;
+  if(typeof projs!=='undefined') for(const q of projs){ if(q._au) { if(q._au.until>t) q._au.follow=q.m.position; continue; } const p=q.m.position, d=Math.hypot(p.x-P.pos.x,p.z-P.pos.z); if(d>40) continue;
+    const em=emitAt(p,d,40,'fx',Math.min(5,q.life),false); if(!em) continue; q._au=em; em.follow=p; em.proj=q; const k=Math.pow(1-d/40,1.1), dur=Math.min(4,q.life);
+    const s=lN(a,em.inp,t,dur,700,2,.22*k+.05,'bandpass',300,.15), o=lT(a,em.inp,t,62,dur,'sawtooth',.06*k+.02,48,.2); auTrack(s); auTrack(o); em.srcs=[s,o]; }
+  auAmbT-=dt; if(auAmbT>0) return; const area=AU.area;
+  if(area==='hollow'){ auAmbT=rand(1.2,3.5); const ang=rand(0,6.28), r=rand(6,22), pos={x:P.pos.x+Math.cos(ang)*r,y:rand(2,6),z:P.pos.z+Math.sin(ang)*r}, em=emitAt(pos,r,30,'fx',2,false); if(!em||auBusy()) return;
+    const f=rand(1400,3200); auTrack(lT(a,em.inp,t,f,1.2,'sine',.06,null,.002)); auTrack(lT(a,em.inp,t,f*2.71,.5,'sine',.025,null,.002)); }
+  else if(area==='chapel'){ auAmbT=rand(5,11); const pos={x:45+rand(-12,12),y:4,z:17+rand(-10,10)}, em=emitAt(pos,10,30,'fx',2,false); if(!em||auBusy()) return; auTrack(lN(a,em.inp,t,.9,rand(300,520),9,.05,'bandpass',rand(260,600),.2)); }
+  else if(area==='cabin'){ auAmbT=rand(.7,1.6); if(auBusy()) return; const prev=AU.out; AU.out=AU.amb; tn(rand(900,1500),.05,'square',.015); nz(.08,2500,6,.03,'bandpass'); AU.out=prev; }
+  else auAmbT=rand(3,6); }
