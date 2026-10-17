@@ -9,8 +9,13 @@ THREE.ColorManagement.enabled=false;
 const canvas=$('c');
 const RENDERER_PREF=['auto','webgpu','webgl'].includes(SETTINGS.renderer)?SETTINGS.renderer:'auto';
 let renderer, RENDER_NOTE='';
+// set when a WebGPU device was lost earlier in this browser session: stay on WebGL 2 until the tab is closed
+let GPU_LOST=false; try{ GPU_LOST=sessionStorage.getItem('ashfall:gpulost')==='1'; }catch(e){}
+// three r186 sends swizzle:'rgba' (identity) in every texture view; some Chromium builds (around 141) type that field
+// differently and reject the call, losing the device. Leaving the identity swizzle out means exactly the same view.
+if(typeof GPUTexture!=='undefined'){ const cv=GPUTexture.prototype.createView; GPUTexture.prototype.createView=function(d){ if(d&&d.swizzle==='rgba'){ const {swizzle,...rest}=d; return cv.call(this,rest); } return cv.call(this,d); }; }
 try{
-  let forceWebGL=RENDERER_PREF==='webgl';
+  let forceWebGL=RENDERER_PREF==='webgl'||GPU_LOST;
   // Auto: WebGPU only on a hardware adapter (a software/fallback WebGPU adapter is slower than WebGL 2)
   if(RENDERER_PREF==='auto'){ let ad=null; try{ ad=navigator.gpu?await navigator.gpu.requestAdapter({powerPreference:'high-performance'}):null; }catch(e){}
     if(!ad||(ad.info&&ad.info.isFallbackAdapter)||ad.isFallbackAdapter) forceWebGL=true; }
@@ -18,7 +23,10 @@ try{
   await renderer.init();
 }catch(e){ console.error(e); $('loaderr').hidden=false; $('loaderr').textContent='This browser offers neither WebGPU nor WebGL 2, so the game cannot start.'; $('play').disabled=true; return; }
 const BACKEND=renderer.backend&&renderer.backend.isWebGPUBackend?'WebGPU':'WebGL 2';
-if(RENDERER_PREF==='webgpu'&&BACKEND!=='WebGPU') RENDER_NOTE='WebGPU unavailable, using WebGL 2';
+if(GPU_LOST&&RENDERER_PREF!=='webgl') RENDER_NOTE='WebGPU stopped responding earlier, using WebGL 2';
+else if(RENDERER_PREF==='webgpu'&&BACKEND!=='WebGPU') RENDER_NOTE='WebGPU unavailable, using WebGL 2';
+// a lost WebGPU device (driver reset, GPU process crash) would leave a blank screen: reload once on the WebGL 2 backend
+if(BACKEND==='WebGPU') renderer.onDeviceLost=info=>{ renderer._onDeviceLost(info); try{ sessionStorage.setItem('ashfall:gpulost','1'); }catch(e){ return; } location.reload(); };
 renderer.outputColorSpace=THREE.LinearSRGBColorSpace; renderer.toneMapping=THREE.NoToneMapping;
 renderer.autoClear=false;
 // Instanced meshes: keep instance matrices in an instanced vertex attribute (as r128 did). Below the uniform-buffer limit
