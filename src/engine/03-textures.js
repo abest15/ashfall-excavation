@@ -23,9 +23,15 @@ const earthTex=makeTex(128,(g,s)=>{g.fillStyle='#4f3f2d';g.fillRect(0,0,s,s);
   g.strokeStyle='rgba(30,22,14,.6)';for(let i=0;i<7;i++){g.beginPath();let x=Math.random()*s,y=Math.random()*s;g.moveTo(x,y);for(let k=0;k<5;k++){x+=rand(-10,10);y+=rand(4,12);g.lineTo(x,y)}g.stroke();}});
 const plankTex=makeTex(128,(g,s)=>{for(let i=0;i<8;i++){const c=rand(80,112)|0;g.fillStyle=`rgb(${c},${c*.72|0},${c*.46|0})`;g.fillRect(i*16,0,16,s);g.fillStyle='rgba(20,14,8,.75)';g.fillRect(i*16,0,1.5,s);}
   speckle(g,s,500,['#2b1e12','#7a5c3c'],1,2);for(let i=0;i<10;i++){g.fillStyle='#1f160d';g.fillRect((Math.random()*8|0)*16+8,Math.random()*s,2,2);}});
-const sandTex=makeTex(128,(g,s)=>{g.fillStyle='#3a3224';g.fillRect(0,0,s,s);
-  for(let r=0;r<4;r++)for(let i=-1;i<4;i++){const x=i*40+(r%2)*20,y=r*32;g.fillStyle=`rgb(${rand(118,142)|0},${rand(104,120)|0},${rand(70,86)|0})`;rr(g,x+2,y+2,36,28,10);g.fill();g.strokeStyle='rgba(60,50,34,.6)';g.stroke();}
-  speckle(g,s,500,['#5a4e36','#9a8a66'],1,2);});
+// stacked sandbags: rounded, shaded pillows in a running bond, tied ends, burlap weave (tiles seamlessly)
+const sandTex=makeTex(QUAL?256:128,(g,s)=>{ const k=s/128, rh=s/4, bw=s/2; g.fillStyle='#211b13'; g.fillRect(0,0,s,s);
+  for(let r=0;r<4;r++) for(let i=-1;i<3;i++){ const x=i*bw+(r%2)*bw/2, y=r*rh, cx=x+bw/2, cy=y+rh/2, br_=rand(.85,1.08), c=[126*br_,108*br_,74*br_];
+    for(const dx of [0]){ g.save(); g.beginPath(); g.ellipse(cx+dx,cy+rand(-1,1)*k,bw/2-1.5*k,rh/2-2*k,0,0,7); g.clip();
+      const gr=g.createRadialGradient(cx-bw*.12,cy-rh*.22,2*k,cx,cy,bw*.55); gr.addColorStop(0,`rgb(${c[0]+28|0},${c[1]+24|0},${c[2]+18|0})`); gr.addColorStop(.55,`rgb(${c[0]|0},${c[1]|0},${c[2]|0})`); gr.addColorStop(1,`rgb(${c[0]*.45|0},${c[1]*.42|0},${c[2]*.38|0})`);
+      g.fillStyle=gr; g.fillRect(x,y,bw,rh); g.globalAlpha=.18; for(let yy=y;yy<y+rh;yy+=2*k){ g.fillStyle='#000'; g.fillRect(x,yy,bw,k*.6); } for(let xx=x;xx<x+bw;xx+=2*k){ g.fillStyle='#000'; g.fillRect(xx,y,k*.6,rh); } g.globalAlpha=1;
+      g.strokeStyle='rgba(40,30,18,.45)'; g.lineWidth=k; g.beginPath(); g.moveTo(x+bw*.2,cy+rh*.05); g.quadraticCurveTo(cx,cy+rh*.22,x+bw*.8,cy); g.stroke();
+      g.fillStyle='rgba(40,30,18,.6)'; g.fillRect(x+bw-7*k,cy-rh*.28,2*k,rh*.56); g.fillStyle='rgba(60,46,28,.5)'; g.beginPath(); g.ellipse(rand(x+8*k,x+bw-8*k),rand(y+5*k,y+rh-5*k),rand(3,7)*k,rand(2,4)*k,0,0,7); g.fill(); g.restore(); } }
+  speckle(g,s,300*k,['#5a4e36','#9a8a66'],1,1.5*k); });
 const stoneTex=makeTex(128,(g,s)=>{g.fillStyle='#55534f';g.fillRect(0,0,s,s);speckle(g,s,1400,['#3b3a37','#6d6a64','#47453f'],1,5);
   g.strokeStyle='rgba(25,24,22,.7)';for(let i=0;i<8;i++){g.beginPath();let x=Math.random()*s,y=Math.random()*s;g.moveTo(x,y);for(let k=0;k<4;k++){x+=rand(-16,16);y+=rand(-16,16);g.lineTo(x,y)}g.stroke();}});
 const brickTex=makeTex(128,(g,s)=>{g.fillStyle='#2a1a14';g.fillRect(0,0,s,s);for(let r=0;r<8;r++)for(let i=-1;i<5;i++){const c=rand(95,130)|0;g.fillStyle=`rgb(${c},${c*.5|0},${c*.36|0})`;g.fillRect(i*32+(r%2)*16+1,r*16+1,30,14);}speckle(g,s,600,['#1a100c','#8a5a40'],1,3);});

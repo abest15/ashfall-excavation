@@ -30,14 +30,26 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Production build
+      - uses: dtolnay/rust-toolchain@1.97.0
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Simulation core (Rust unit tests, prebuilt up to date)
+        run: |
+          cargo test --release --manifest-path sim/Cargo.toml
+          node tools/build-sim.mjs --check
+
+      - name: Production build (sim.wasm rebuilt from sim/ by cargo)
         run: npm run build:prod
 
       - name: Install Chromium for Playwright
         run: npx playwright install --with-deps chromium
 
-      - name: Run tests (smoke, full ritual, co-op, knife, perf budget)
+      - name: Run tests on the WASM simulation (smoke, full ritual, co-op, knife, perf budget, wasm-sim)
         run: npm test
+
+      - name: Run tests on the JavaScript fallback (?sim=js)
+        run: npm run test:js
 
       - name: Upload test report
         if: failure()

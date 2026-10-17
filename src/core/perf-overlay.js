@@ -1,5 +1,6 @@
 /* ---------- performance overlay (F3) · lane 5 ----------
-   FPS, frame time, draw calls, triangles, zombie count, quality, renderer backend, network role and ping.
+   FPS, frame time, draw calls, triangles, zombie count, zombie simulation path (WASM/JS) and its cost, quality,
+   renderer backend (WebGPU / WebGL 2), network role and ping.
    Reads only; it never changes game state. Toggle with F3 (remembered per browser).
    Network ping shows when the co-op code provides NET.ping (milliseconds); otherwise "n/a".
    Also fills an element with id "game-version" with GAME_VERSION if the menu provides one. */
@@ -8,7 +9,7 @@ function perfBuild(){ if(PERF.el) return; const d=document.createElement('div');
   d.style.cssText='position:fixed;top:8px;left:8px;z-index:2147483000;pointer-events:none;background:rgba(8,6,4,.78);color:#e8dcc0;font:11px/1.35 ui-monospace,Consolas,Menlo,monospace;padding:6px 9px;border:1px solid rgba(201,163,90,.55);border-radius:4px;white-space:pre;min-width:190px;text-shadow:0 1px 0 #000';
   document.body.appendChild(d); PERF.el=d; }
 function perfToggle(on){ PERF.on=on===undefined?!PERF.on:!!on; perfBuild(); PERF.el.hidden=!PERF.on;
-  renderer.info.autoReset=!PERF.on; renderer.info.reset(); PERF.frames=0; PERF.acc=0; PERF.worst=0; PERF.showT=0;
+  renderer.info.autoReset=!PERF.on; renderer.info.reset(); PERF.frames=0; PERF.acc=0; PERF.worst=0; PERF.showT=0; if(PERF.on) PERF.el.textContent=perfText();
   try{ localStorage.setItem('ashfall:perf',PERF.on?'1':'0'); }catch(e){} }
 addEventListener('keydown',e=>{ if(e.code!=='F3') return; e.preventDefault(); perfToggle(); },true);
 function perfRow(k,v){ return (k+'          ').slice(0,10)+v+'\n'; }
@@ -23,6 +24,7 @@ function perfText(){ const zs=typeof zombies!=='undefined'?zombies:[]; let alive
     perfRow('tris',PERF.tris>=1e6?(PERF.tris/1e6).toFixed(2)+' M':(PERF.tris/1e3).toFixed(1)+' k')+
     perfRow('geo/tex',mem.geometries+' / '+mem.textures)+
     perfRow('zombies',alive+' alive')+
+    (typeof WSIM!=='undefined'?perfRow('sim',wsimLabel()):'')+
     perfRow('quality',qn+' · '+sz.x+'x'+sz.y)+
     perfRow('renderer',(typeof BACKEND!=='undefined'?BACKEND:'WebGL')+(typeof RENDERER_PREF!=='undefined'&&RENDERER_PREF!=='auto'?' (forced)':' (auto)'))+
     perfRow('state',state+(typeof mode!=='undefined'?' · '+mode:''))+

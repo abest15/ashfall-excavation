@@ -2,7 +2,14 @@
 import { expect } from '@playwright/test';
 
 // Low graphics keeps software rendering usable; settings are read from localStorage at boot.
+// ASHFALL_SIM=js runs every test on the JavaScript zombie simulation (adds ?sim=js); default is the WASM core.
+export function simQuery(query = '') {
+  const sim = process.env.ASHFALL_SIM;
+  return sim && !/[?&]sim=/.test(query) ? query + (query.includes('?') ? '&' : '?') + 'sim=' + sim : query;
+}
+
 export async function openGame(page, query = '') {
+  query = simQuery(query);
   const errors = [];
   page.on('pageerror', e => errors.push(String(e && e.message || e)));
   await page.addInitScript(() => {

@@ -1,5 +1,5 @@
 /* ================= settings ================= */
-const SETTINGS={sens:1,scale:0.75,fov:78,vol:0.7,diff:'vet'};
+const SETTINGS={sens:1,scale:0.75,fov:78,vol:0.7,diff:'vet',aim:'std',rumble:true};
 try{Object.assign(SETTINGS,JSON.parse(localStorage.getItem('ashfall:settings')||'{}'));}catch(e){}
 function saveSettings(){try{localStorage.setItem('ashfall:settings',JSON.stringify(SETTINGS));}catch(e){}}
 let BEST=0; try{BEST=+(localStorage.getItem('ashfall:best')||0);}catch(e){}

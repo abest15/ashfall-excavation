@@ -95,7 +95,12 @@ npx playwright install chromium   # once
 npm test                          # smoke, full ritual and co-op tests (about 4 minutes with software rendering)
 npm test -- smoke                 # just one file
 ASHFALL_DESKTOP_TEST=1 xvfb-run -a npm test -- desktop   # the desktop app (after npm run build:prod)
+npm run test:js                   # the same tests on the JavaScript zombie simulation (?sim=js)
+npm run test:bench                # JS vs WASM locomotion benchmark at 24 / 60 / 120 zombies
+npm run sim:test                  # Rust unit tests of the simulation core (needs Rust)
 ```
+
+Zombie movement runs in a small WebAssembly core built from `sim/` (Rust). Building it needs Rust with the `wasm32-unknown-unknown` target (`rustup target add wasm32-unknown-unknown`); without Rust the build uses the committed `sim/prebuilt/sim.wasm`. See docs/ARCHITECTURE.md.
 
 `npm test` builds a test build into `.lane5-test/`, serves it on port 5185, and runs Chromium with software WebGL (SwiftShader), so no GPU is needed. Game time is driven with `__G.tick(0.05)` so long stages run quickly.
 
@@ -104,6 +109,7 @@ ASHFALL_DESKTOP_TEST=1 xvfb-run -a npm test -- desktop   # the desktop app (afte
 | `tests/smoke.spec.js` | page loads, splash and menu, Solo starts, a round begins, a zombie spawns and is shot dead, Esc pauses and Resume continues, the F3 overlay, the dev error box |
 | `tests/ritual.spec.js` | the entire main quest from the Rod fragments to stepping through the gate in the Hollow (victory screen, 12/12 rites) |
 | `tests/coop.spec.js` | two pages host and join through the co-op menu over the local transport (`?net=local`), zombies replicate to the client, a kill by the client is credited to the client |
+| `tests/wasm-sim.spec.js` | the zombie simulation: paths through open doors, stops at closed ones, never passes through walls, no stacking (WASM), co-op zombies chase the nearest player |
 | `tests/desktop.spec.js` | the Electron app boots from `app://`, window title, no menu bar, the bundled PeerJS loads, Esc reaches the game, fullscreen toggles |
 
 Failure screenshots and traces go to `test-results/`.
@@ -152,6 +158,8 @@ tools/
   test-hook.js        window.__G for tests (test builds only)
   error-overlay.js    on-screen error box (dev and test builds only)
   make-icons.mjs      renders desktop/icon.svg to PNG, ICO and ICNS
+  build-sim.mjs       builds sim/ to sim.wasm (cargo, wasm-opt) or uses sim/prebuilt/
+sim/                  Rust simulation core (collision, nav flow fields, crowd steering) compiled to WebAssembly
 desktop/
   main.cjs            Electron main process
   preload.cjs         window.ashfallDesktop bridge

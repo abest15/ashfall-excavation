@@ -10,7 +10,7 @@ function zvoice(z,kind){ const a=AU.ctx; if(!a||!AU.voice||!z||!z.g||auBusy()) r
   const vol=Math.pow(1-d/maxD,1.35)*(z.boss?1.4:1)*(P.inCabin?.5:1); if(vol<.02) return;
   const pri=kind==='death'||kind==='attack'||z.boss; const em=emitAt(p,d,maxD,'voice',.1,pri); if(!em) return; em.follow=p;
   try{ zvBuild(a,em,z,kind,vol); }catch(e){ AU.errs++; AU.lastErr='zvoice: '+e; } }
-function zvBuild(a,em,z,kind,vol){ const t=a.currentTime+.005, V=zvTract(z), hound=z.kind==='hound', hollow=z.kind==='hollow'||z.prime, srcs=[];
+function zvBuild(a,em,z,kind,vol){ const t=Math.max(a.currentTime+.005,(em.t0||0)+.002), V=zvTract(z), hound=z.kind==='hound', hollow=z.kind==='hollow'||z.prime, srcs=[];
   let dur,base,end,fa=V.a,fb=V.b,q=7,grit=0,breath=.12,flut=0,sharp=false,att=.12,sub=.25;
   if(hound){ fa=[700,1600,2900]; fb=[500,1300,2600]; q=4; grit=.6;
     if(kind==='death'){ dur=.55; base=420; end=140; breath=.3; sharp=true; att=.01; }

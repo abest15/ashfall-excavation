@@ -7,6 +7,7 @@
 //   ASHFALL_OUT=name             output folder (default dist); the single-file build goes to name-single/
 //   ASHFALL_TEST=1               inject tools/test-hook.js (window.__G) for automated tests
 //   ASHFALL_VERSION=x.y.z        override the version stamp (default: package.json "version")
+//   ASHFALL_SIM_PREBUILT=1       use sim/prebuilt/sim.wasm instead of running cargo (see tools/build-sim.mjs)
 //
 // Every build prepends `const GAME_VERSION="x.y.z";` inside the game scope, so any src file can show it.
 //
@@ -19,6 +20,7 @@
 import { readFileSync, writeFileSync, mkdirSync, rmSync, existsSync, cpSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { simWasm } from './build-sim.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const src = p => join(root, 'src', p);
@@ -104,6 +106,10 @@ export async function build({ quiet, prod } = {}) {
   const icon = faviconPng();
   if (icon) writeFileSync(join(out, 'assets', 'icon.png'), icon);
   if (existsSync(join(root, 'public'))) cpSync(join(root, 'public'), out, { recursive: true });
+  // WebAssembly simulation core: fetched from assets/ by the multi-file build, inlined as base64 in the single file
+  const sim = simWasm({ quiet });
+  if (sim) writeFileSync(join(out, 'assets', 'sim.wasm'), sim.bytes);
+  const simInline = sim ? `<script>window.__ASHFALL_SIM_WASM="${sim.bytes.toString('base64')}";</script>\n` : '';
   const overlayTag = overlay ? '<script src="assets/error-overlay.js"></script>\n' : '';
   writeFileSync(join(out, 'index.html'), headExtras(html, icon && 'assets/icon.png', version)
     .replace('<!--STYLES-->', '<link rel="stylesheet" href="assets/game.css">')
@@ -113,8 +119,8 @@ export async function build({ quiet, prod } = {}) {
   const overlayInline = overlay ? `<script>\n${overlay}</script>\n` : '';
   writeFileSync(join(single, 'index.html'), headExtras(html, icon && `data:image/png;base64,${icon.toString('base64')}`, version)
     .replace('<!--STYLES-->', () => `<style>\n${css}</style>`)
-    .replace('<!--SCRIPTS-->', () => `${overlayInline}<script type="module">\n${game}</script>`));
-  if (!quiet) console.log(`built ${outName}/ and ${outName}-single/ v${version}${prod ? ' (production, minified)' : ''}${process.env.ASHFALL_TEST ? ' (test hook)' : ''} (${(game.length / 1024).toFixed(0)} KB game code)`);
+    .replace('<!--SCRIPTS-->', () => `${overlayInline}${simInline}<script type="module">\n${game}</script>`));
+  if (!quiet) console.log(`built ${outName}/ and ${outName}-single/ v${version}${prod ? ' (production, minified)' : ''}${process.env.ASHFALL_TEST ? ' (test hook)' : ''} (${(game.length / 1024).toFixed(0)} KB game code${sim ? `, sim.wasm ${(sim.bytes.length / 1024).toFixed(1)} KB from ${sim.source}` : ', no sim.wasm'})`);
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
