@@ -74,7 +74,7 @@ QACT.whack=(i)=>{ const br=PWR.brk[i]; if(!br||br.type!=='jammed'||br.thrown||br
   if(br.whacks>=5) qEv('toast',{s:'The breaker grinds loose'}); };
 QEV.fx=m=>spawnParticles(new V3(m.p[0],m.p[1],m.p[2]),m.t,m.n||4);
 QACT.crate=(i,who)=>{ const c=PWR.crates[i]; if(!c||c.searched) return; c.searched=true; c.lid.rotation.x=-1.9; qSound('crate',c.a.x,c.a.z,25);
-  if(i===PWR.fuseAt&&!QI.has('fuse')&&!PWR.brk.some(b=>b.fused)) qDrop('fuse',c.a.x,c.a.z,'Take the breaker fuse',0xd9a040,.1);
+  if(i===PWR.fuseAt&&!QI.has('fuse')&&!QP.some(e=>e.key==='fuse')&&!PWR.brk.some(b=>b.fused)) qDrop('fuse',c.a.x,c.a.z,'Take the breaker fuse',0xd9a040,.1);
   else if(Math.random()<.35){ addPts(250); qEv('toast',{s:'Tucked under the straw: +250'},who); } else qEv('toast',{s:'Mouldy rations and nothing else'},who); };
 QTAKE.fuse=()=>{ QI.add('fuse'); qSound('pup'); qEv('toast',{s:'Breaker fuse recovered'}); };
 QACT.crank=()=>{ if(POWER.on||brkThrown()<3||PWR.genSurge) return; PWR.genSurge=true; PWR.surge+=4+2*NP(); PWR.surgeT=1; qSound('crank',QA.generator.x,QA.generator.z,50); banner('The generator coughs','Keep cranking. Hold them off'); };
