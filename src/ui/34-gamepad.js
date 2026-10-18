@@ -1,8 +1,24 @@
 /* ---------- gamepad ---------- */
 const PAD={prev:[],active:false,mx:0,my:0,fire:false,aim:false,sprintLatch:false,name:''};
-function getPad(){ let ps=[]; try{ ps=navigator.getGamepads?navigator.getGamepads():[]; }catch(e){} for(const p of ps) if(p&&p.connected) return p; return null; }
+// pick the controller the player is actually using: some PCs expose phantom pads first (Steam Input, virtual
+// devices, a headset or wheel, or the same pad listed twice), so prefer the most recently active one, then a
+// 'standard' layout, then whichever announced itself last
+function getPad(){ let ps=[]; try{ ps=navigator.getGamepads?navigator.getGamepads():[]; }catch(e){} let best=null, bs=-1;
+  for(const p of ps){ if(!p||!p.connected) continue; const live=p.buttons.some(b=>b&&(b.pressed||b.value>.4))||p.axes.some(a=>Math.abs(a)>.3);
+    const sc=(live?4:0)+(p.mapping==='standard'?2:0)+(p.index===PAD.idx?1:0)+(p.timestamp||0)/1e12; if(sc>bs){ bs=sc; best=p; } }
+  if(best&&(best.buttons.some(b=>b&&(b.pressed||b.value>.4))||best.axes.some(a=>Math.abs(a)>.3))) PAD.idx=best.index;
+  return best?normPad(best):null; }
+// non-'standard' layouts (common in Firefox and on Linux): remap the usual XInput-style order onto the standard one
+function normPad(p){ if(p.mapping==='standard'||p.axes.length<4) return p;
+  const B=i=>p.buttons[i]||{pressed:false,value:0}, trig=a=>{ const v=p.axes[a]; const x=v==null?0:(v+1)/2; return {pressed:x>.4,value:x}; };
+  const six=p.axes.length>=6, hat=six&&p.axes.length>=8;
+  const dp=(a,s)=>{ const v=hat?p.axes[a]||0:0; return {pressed:s<0?v<-.5:v>.5,value:0}; };
+  const buttons=[B(0),B(1),B(2),B(3),B(4),B(5), six?trig(2):B(6), six?trig(5):B(7), six?B(6):B(8), six?B(7):B(9), six?B(9):B(10), six?B(10):B(11),
+    hat?dp(7,-1):B(12), hat?dp(7,1):B(13), hat?dp(6,-1):B(14), hat?dp(6,1):B(15)];
+  const axes=six?[p.axes[0],p.axes[1],p.axes[3],p.axes[4]]:p.axes.slice(0,4);
+  return {id:p.id,index:p.index,mapping:'remapped',connected:true,buttons,axes,vibrationActuator:p.vibrationActuator,timestamp:p.timestamp}; }
 function padNote(p){ const e=$('padnote'); if(!e) return; e.textContent=p?`Controller connected: ${p.id.replace(/\s*\(.*$/,'')||'gamepad'}. Press A to start.`:'No controller found. Plug in an Xbox or PlayStation controller and press any button on it.'; }
-addEventListener('gamepadconnected',e=>{ padNote(e.gamepad); if(state==='play') toast('Controller connected'); });
+addEventListener('gamepadconnected',e=>{ PAD.idx=e.gamepad.index; padNote(e.gamepad); if(state==='play') toast('Controller connected'); });
 addEventListener('gamepaddisconnected',()=>{ padNote(getPad()); PAD.fire=PAD.aim=false; PAD.mx=PAD.my=0; if(state==='play'){ toast('Controller disconnected'); } });
 const dz=v=>{ const d=.16; return Math.abs(v)<d?0:(v-Math.sign(v)*d)/(1-d); };
 // radial deadzone with rescale: returns [x,y,magnitude 0..1]

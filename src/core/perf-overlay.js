@@ -13,6 +13,9 @@ function perfToggle(on){ PERF.on=on===undefined?!PERF.on:!!on; perfBuild(); PERF
   try{ localStorage.setItem('ashfall:perf',PERF.on?'1':'0'); }catch(e){} }
 addEventListener('keydown',e=>{ if(e.code!=='F3') return; e.preventDefault(); perfToggle(); },true);
 function perfRow(k,v){ return (k+'          ').slice(0,10)+v+'\n'; }
+// controllers the browser reports, and which one the game is reading
+function perfPad(){ let ps=[]; try{ ps=[...(navigator.getGamepads?navigator.getGamepads():[])].filter(p=>p&&p.connected); }catch(e){ return 'blocked by browser'; }
+  if(!ps.length) return 'none (press a button on it)'; const g=getPad(); return ps.length+' found · using #'+(g?g.index:'-')+' '+(g?String(g.id).slice(0,28)+' ['+g.mapping+']':'')+(PAD.active?' · active':''); }
 function perfText(){ const zs=typeof zombies!=='undefined'?zombies:[]; let alive=0; for(const z of zs) if(!z.dead) alive++;
   const qn=['Low','Medium','High'][QUAL]||QUAL, sz=renderer.getDrawingBufferSize(new THREE.Vector2()), mem=renderer.info.memory;
   let net=NET.role; if(NET.role!=='solo'){ const n=typeof NP==='function'?NP():1; net+=' · '+n+' player'+(n===1?'':'s'); }
@@ -29,6 +32,7 @@ function perfText(){ const zs=typeof zombies!=='undefined'?zombies:[]; let alive
     perfRow('renderer',(typeof BACKEND!=='undefined'?BACKEND:'WebGL')+(typeof RENDERER_PREF!=='undefined'&&RENDERER_PREF!=='auto'?' (forced)':' (auto)'))+
     perfRow('state',state+(typeof mode!=='undefined'?' · '+mode:''))+
     perfRow('net',net)+
+    perfRow('pad',perfPad())+
     perfRow('ping',ping).replace(/\n$/,''); }
 // Runs once per animation frame, registered before the main loop's frame() so it sees the previous frame's
 // renderer counters (autoReset is off while the overlay is open, so all passes of a frame add up).
