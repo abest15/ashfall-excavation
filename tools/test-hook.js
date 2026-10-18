@@ -21,6 +21,7 @@ window.__G=(function(){
   v('updateInteract',()=>updateInteract); v('throwLure',()=>throwLure); v('spawnLure',()=>spawnLure); v('pickBox',()=>pickBox);
   v('zvoice',()=>zvoice); v('pause',()=>pause); v('victory',()=>victory); v('sfx',()=>sfx);
   v('WSIM',()=>WSIM); v('colliders',()=>colliders); v('collide',()=>collide); v('route',()=>route); v('zoneOf',()=>zoneOf); v('updateZombies',()=>updateZombies);
+  v('floorAt',()=>floorAt); v('ceilAt',()=>ceilAt); v('levelOf',()=>levelOf); v('LVL',()=>LVL); v('PORTALS',()=>PORTALS); v('MARKERS',()=>MARKERS); v('LV',()=>LV);
   Object.defineProperties(G,{
     curInter:{get(){ return curInter; },enumerable:true},
     state:{get(){ return state; },enumerable:true},

@@ -70,7 +70,7 @@ test('zombies never pass through walls and only change zone through doorways', a
     const prevZone = zs.map(z => g.zoneOf(z.g.position.x, z.g.position.z));
     for (let i = 0; i < 700; i++) { hold(g); g.P.pos.set(25, 0, -15); g.tick(0.05);
       zs.forEach((z, k) => { if (z.dead || z.rise > 0 || z.wstate) return; const p = z.g.position;
-        for (const c of g.colliders) if (c.on && p.x > c.minX + 0.05 && p.x < c.maxX - 0.05 && p.z > c.minZ + 0.05 && p.z < c.maxZ - 0.05) { inside.push([k, i, +p.x.toFixed(2), +p.z.toFixed(2)]); break; }
+        for (const c of g.colliders) if (c.on && (c.y0 === undefined || (p.y + .35 < c.y1 && p.y + 1.7 > c.y0)) && p.x > c.minX + 0.05 && p.x < c.maxX - 0.05 && p.z > c.minZ + 0.05 && p.z < c.maxZ - 0.05) { inside.push([k, i, +p.x.toFixed(2), +p.z.toFixed(2)]); break; }
         const zn = g.zoneOf(p.x, p.z);
         if (zn && prevZone[k] && zn !== prevZone[k]) { const near = g.DOORS.some(d => d.open && Math.hypot(d.x - p.x, d.z - p.z) < 4.5); if (!near) badCross.push([k, prevZone[k], zn, +p.x.toFixed(1), +p.z.toFixed(1)]); }
         if (zn) prevZone[k] = zn; }); }
