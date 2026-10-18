@@ -14,5 +14,5 @@ const HL={wave:0,toSpawn:0,spawnT:0,breakT:0,inBreak:true,gate:null,gateOpen:fal
   const t=new THREE.Mesh(new THREE.TorusGeometry(2.4,.18,8,32),B({color:0xe8fbff})); t.position.y=2.8; gate.add(t);
   const disc=new THREE.Mesh(new THREE.CircleGeometry(2.3,32),M.add(0xbff3ff,.75)); disc.position.y=2.8; gate.add(disc); HL.disc=disc;
   const col=new THREE.Mesh(new THREE.CylinderGeometry(.4,2.4,60,16,1,true),M.add(0xbff3ff,.12)); col.position.y=30; gate.add(col);
-  addInter({x:HX,z:HZ+1,r:3,prompt:()=>HL.gateOpen?'Step into the light':null,use:()=>{ if(!HL.gateOpen) return; if(NET.role==='client') toHost({t:'shoot',k:'gate'}); else victory(); }});
+  addInter({x:HX,z:HZ+1,r:3,prompt:()=>HL.gateOpen?'Step into the light':null,use:()=>{ if(!HL.gateOpen) return; if(NET.role==='client') toHost({t:'shoot',k:'gate'}); else hollowGate(); }});
 }

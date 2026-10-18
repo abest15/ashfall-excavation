@@ -24,7 +24,7 @@ let lowWarned=false;
 const ppopEl=$('ppop');
 function popPts(v){ const e=document.createElement('div'); e.className='pp'; e.textContent='+'+v; e.style.left=rand(0,20)+'px'; ppopEl.append(e); setTimeout(()=>e.remove(),800); }
 function flashScreen(col){ const e=$('hurtflash'); e.style.background=col||'rgba(255,190,120,.45)'; e.style.opacity=1; setTimeout(()=>{ e.style.opacity=0; e.style.background=''; },160); }
-function journal(){
+function journalBase(){ // wrapped by journal() in gameplay/19e-quest-sync.js
   if(P.inCabin) return {t:`Inside the Colossus. ${Math.ceil(CAB.t)}s before it shakes you loose.`,l:[[!CAB.item,'Take the prize on the pedestal'],[false,'Drop through the floor hatch to leave']]};
   if(mode==='hollow'){ return {t:HL.gateOpen?'The gate is open. Step into the light at the center.':HL.lit?`The Prime is warded. Shatter the glowing crystals (${HL.lit.length} left).`:`Survive the Hollow. Wave ${Math.max(1,HL.wave)} of 4.`,l:[]}; }
   const s=Q.stage, f=Q.frag;
@@ -64,11 +64,12 @@ function updateHud(){
   hudEl.dmg.style.opacity=P.hp<P.maxHp?(1-P.hp/P.maxHp)*.9:0;
   hudEl.hpfill.style.width=Math.max(0,P.hp/P.maxHp*100)+'%'; hudEl.shfill.style.width=P.shield+'%'; hudEl.hpbar.classList.toggle('hurt',P.hp<P.maxHp*.35);
   let pu=''; if(PU.double>0) pu+=`<span class="pup" style="color:#f2cb78">DOUBLE POINTS ${Math.ceil(PU.double)}</span>`; if(PU.insta>0) pu+=`<span class="pup" style="color:#e7ddcc">INSTANT KILL ${Math.ceil(PU.insta)}</span>`; if(PU.freeze>0) pu+=`<span class="pup" style="color:#9fe6ff">STILL TIME ${Math.ceil(PU.freeze)}</span>`; if(PU.sale>0) pu+=`<span class="pup" style="color:#8ad0e8">FIRE SALE ${Math.ceil(PU.sale)}</span>`; if(PU.gatling>0) pu+=`<span class="pup" style="color:#ff6a3a">GATLING ${Math.ceil(PU.gatling)}</span>`; setH(hudEl.pups,'pu',pu);
-  setH(hudEl.items,'it',[...P.items].map(k=>`<span class="item">${ITEM_NAMES[k]}</span>`).join('')+(P.aegis?'<span class="item aegis">Iron Aegis</span>':''));
+  setH(hudEl.items,'it',[...P.items].map(k=>`<span class="item">${ITEM_NAMES[k]}</span>`).join('')+(P.aegis?'<span class="item aegis">Iron Aegis</span>':'')+questItemsHtml());
   if(NET.role!=='solo'){ let h=''; for(const id in NET.remotes){ const r=NET.remotes[id], st=r.st; if(!st) continue; h+=`<span class="mate" style="border-color:${AVCSS[r.color]}">${esc(r.name)} · ${(st.pts||0).toLocaleString()}${st.dn?' · <b>DOWN</b>':st.dd?' · OUT':''}</span>`; } setH(hudEl.team,'tm',h); } else setH(hudEl.team,'tm','');
   const j=(NET.role==='client'&&NET.jr&&!P.inCabin)?NET.jr:journal(); setT(hudEl.jtext,'jt',j.t); setH(hudEl.jlist,'jl',j.l.map(([d,t])=>`<li class="${d?'done':''}">${t}</li>`).join(''));
   let boss=null; for(const z of zombies) if(z.boss&&!z.dead){ boss=z; break; }
-  hudEl.boss.hidden=!boss; if(boss){ hudEl.bossfill.style.width=Math.max(0,boss.hp/boss.maxHp*100)+'%'; setT(hudEl.bossname,'bn',boss.prime?(boss.shield?'Warden Prime · warded':'Warden Prime'):boss.wraithBound?'Wraith-bound Warden':'Iron Warden'); }
+  const qb=!boss&&questBossBar(); hudEl.boss.hidden=!boss&&!qb; if(qb){ hudEl.bossfill.style.width=Math.max(0,qb.f*100)+'%'; setT(hudEl.bossname,'bn',qb.name); }
+  if(boss){ hudEl.bossfill.style.width=Math.max(0,boss.hp/boss.maxHp*100)+'%'; setT(hudEl.bossname,'bn',boss.prime?(boss.shield?'Warden Prime · warded':'Warden Prime'):boss.gravecaller?(boss.shield?'The Gravecaller · warded':'The Gravecaller'):boss.wraithBound?'Wraith-bound Warden':'Iron Warden'); }
   // crosshair gap = the real spread cone projected to pixels
   const px=innerHeight/2/Math.tan(camera.fov*Math.PI/360), gap=clamp((w?spreadNow(w):.02)*px+3,3,110);
   const c=hudEl.cross; c.style.setProperty('--g',gap.toFixed(1)+'px'); c.classList.toggle('sg',!!(w&&statsOf(w).pellets>1));

@@ -20,8 +20,8 @@ function tonicMachine(key,x,z,ry){
   const lab=makeLabel(T.name,{sx:2.4,size:46,color:T.color}); lab.position.set(0,3.45,0); g.add(lab); if(typeof dressTonic==='function') dressTonic(g,T);
   const fx=Math.sin(ry),fz=Math.cos(ry);
   const W=Math.abs(Math.sin(ry))>.7?.9:1.2, D=Math.abs(Math.sin(ry))>.7?1.2:.9; addCol(x,z,W,D);
-  addInter({x:x+fx*1.2,z:z+fz*1.2,r:1.9,prompt:()=>{ if(P.perks.has(key)) return null; if(!T.noPower&&!POWER.on) return '!Requires power'; if(key==='wind'&&P.swBuys>=3) return '!The bottle is dry'; return `Drink ${T.name}, ${T.desc} [${T.cost}]`; },
-    use:()=>{ if(P.perks.has(key)||(!T.noPower&&!POWER.on)||(key==='wind'&&P.swBuys>=3)) return; if(!spend(T.cost)) return; P.perks.add(key); if(key==='wind') P.swBuys++; if(key==='iron'){P.maxHp=175;P.hp=175;} sfx.tonic(); toast(T.name); }});
+  addInter({x:x+fx*1.2,z:z+fz*1.2,r:1.9,prompt:()=>{ if(P.perks.has(key)) return null; if(T.quest&&!Q.tonicOpen) return '!Sealed with black wax. Something in the dig holds the key'; if(!T.noPower&&!POWER.on) return '!Requires power'; if(key==='wind'&&P.swBuys>=3) return '!The bottle is dry'; return `Drink ${T.name}, ${T.desc} [${T.cost}]`; },
+    use:()=>{ if(P.perks.has(key)||(T.quest&&!Q.tonicOpen)||(!T.noPower&&!POWER.on)||(key==='wind'&&P.swBuys>=3)) return; if(!spend(T.cost)) return; P.perks.add(key); if(key==='wind') P.swBuys++; if(key==='iron'){P.maxHp=175;P.hp=175;} sfx.tonic(); toast(T.name); }});
 }
 tonicMachine('wind',-8.6,45,Math.PI/2);
 tonicMachine('iron',28.6,21,-Math.PI/2);

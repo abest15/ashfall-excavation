@@ -1,6 +1,6 @@
 /* ================= co-op networking (peer-to-peer; the host is authoritative) ================= */
 Object.assign(NET,{peer:null,conns:{},host:null,myId:'h',myColor:0,name:'Digger',code:'',sendT:0,shots:0,started:false,credit:null,pts:{},kills:{},zid:0,pupId:0,lastSnap:null,jr:null,np:1,roster:[]});
-const AVC=[0x4a5a3a,0x6a4a2a,0x3a4a6a,0x6a2e2a], AVCSS=['#c9b56a','#e08a3a','#6aa8ff','#e05a4a'], KINDS=['walker','marked','burster','hollow','hound','boss','prime'];
+const AVC=[0x4a5a3a,0x6a4a2a,0x3a4a6a,0x6a2e2a], AVCSS=['#c9b56a','#e08a3a','#6aa8ff','#e05a4a'], KINDS=['walker','marked','burster','hollow','hound','boss','prime','shrieker','sapper','gravecaller'];
 const esc=t=>String(t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 function NP(){ return NET.role==='host'?1+Object.values(NET.remotes).filter(r=>r.st).length:NET.role==='client'?(NET.np||1):1; }
 const LOCALNET=/[?&]net=local/.test(location.search);
@@ -54,12 +54,12 @@ function hostMsg(c,m){ let cn=NET.conns[c.peer];
     case 'st': rp.st=m; break;
     case 'hit': { const z=zombies.find(q=>q.id===m.id); if(z){ NET.credit=id; hitZombie(z,m.dmg,m.mult,m.how); NET.credit=null; } break; }
     case 'door': { const d=DOORS[m.i]; if(d&&!d.open){ openDoor(d); bcast({t:'door',i:m.i}); } break; }
-    case 'power': if(!POWER.on){ powerOn(); bcast({t:'power'}); } break;
+    case 'q': questHostMsg(id,m); break;
     case 'plank': { const W=WINDOWS[m.w]; if(W){ NET.credit=id; rebuildPlank(W); NET.credit=null; } break; }
     case 'trap': if(POWER.on&&TRAP.t<=0&&TRAP.cd<=0){ TRAP.t=22; sfx.fire(); bcast({t:'trap'}); } break;
     case 'grab': { const i=PUPS.findIndex(q=>q.id===m.id); if(i>=0){ const q=PUPS[i]; pupFree(q.g); PUPS.splice(i,1); pupShared(q.type,id); } break; }
     case 'lure': spawnLure(new V3(m.p[0],m.p[1],m.p[2]),new V3(m.v[0],m.v[1],m.v[2])); break;
-    case 'shoot': { const w={id:m.w,up:!!m.up}; if(m.k==='bell') ringBell(); else if(m.k==='reson') hitReson(m.i); else if(m.k==='crystal') hitCrystal(m.i); else if(m.k==='valve') hitValve(m.i,w); else if(m.k==='wraith') hitWraith(w); else if(m.k==='gate'&&HL.gateOpen) victory(); break; }
+    case 'shoot': { const w={id:m.w,up:!!m.up}; if(m.k==='bell') ringBell(); else if(m.k==='reson') hitReson(m.i); else if(m.k==='crystal') hitCrystal(m.i); else if(m.k==='valve') hitValve(m.i,w); else if(m.k==='wraith') hitWraith(w); else if(m.k==='q') questShoot(m.i,w); else if(m.k==='gate'&&HL.gateOpen) hollowGate(); break; }
     case 'revive': if(m.target==='h') gotRevived(rp.name); else sendTo(m.target,{t:'revived',by:rp.name}); break; } }
 function hostDrop(c){ const cn=NET.conns[c.peer]; if(!cn) return; delete NET.conns[c.peer]; const rp=NET.remotes[cn.id]; if(rp){ toast(`${rp.name} left`); dropAvatar(cn.id); delete NET.remotes[cn.id]; } rosterSend(); }
 function clientMsg(m){ switch(m.t){
@@ -79,6 +79,7 @@ function clientMsg(m){ switch(m.t){
   case 'mode': if(m.m==='hollow') clientEnterHollow(); break;
   case 'over': if(state==='play'||state==='paused') gameOver(); break;
   case 'victory': if(state==='play'||state==='paused') victory(); break;
+  case 'qx': questClientEvent(m); break;
   case 'revived': gotRevived(m.by); break; } }
 function creditKill(how){ if(NET.role==='host'&&NET.credit&&NET.credit!=='h'){ const c=NET.kills[NET.credit]||(NET.kills[NET.credit]={k:0,h:0}); c.k++; if(how==='head') c.h++; } else { P.kills++; if(how==='head') P.heads++; } }
 function pupShared(t,by){ if(t!=='gatling'||by==='h') applyPup(t); bcast({t:'pupfx',type:t,by}); }
@@ -92,24 +93,24 @@ function myState(){ const w=curW(); return {t:'st',x:+P.pos.x.toFixed(2),y:+P.po
 function questVis(){ return {res:RESON.map(r=>r.g.visible?[+r.g.position.x.toFixed(1),+r.g.position.z.toFixed(1),+r.g.rotation.y.toFixed(2)]:0), wr:WR.g.visible?[+WR.g.position.x.toFixed(1),+WR.g.position.y.toFixed(1),+WR.g.position.z.toFixed(1)]:0,
   vb:COL.vBurst.slice(), vo:COL.vOn?1:0, cand:CH.cands.map(c=>c.lit?1:0), mur:(CH.mural>0||CH.solved)?1:0, sh:lodeParts.shaft.visible?1:0, ob:+lodeParts.ob.position.y.toFixed(2), cr:HL.crystals.map(c=>c.visible?1:0), lit:HL.lit||0, gate:HL.gateOpen?1:0}; }
 function makeSnap(){ const z=[]; for(const q of zombies){ if(q.gone) continue; const p=q.g.position; let fl=0; if(q.dead) fl|=1; if(q.headKill) fl|=2; if(q.shield) fl|=4; if(q.wraithBound) fl|=8; if(q.swing>0) fl|=16;
-    z.push([q.id,KINDS.indexOf(q.prime?'prime':q.boss?'boss':q.kind),+p.x.toFixed(2),+p.y.toFixed(2),+p.z.toFixed(2),+q.g.rotation.y.toFixed(2),+q.g.rotation.x.toFixed(2),fl,+(Math.max(0,q.hp)/q.maxHp).toFixed(3)]); }
+    z.push([q.id,KINDS.indexOf(q.prime?'prime':q.gravecaller?'gravecaller':q.boss?'boss':q.kind),+p.x.toFixed(2),+p.y.toFixed(2),+p.z.toFixed(2),+q.g.rotation.y.toFixed(2),+q.g.rotation.x.toFixed(2),fl,+(Math.max(0,q.hp)/q.maxHp).toFixed(3)]); }
   const pl={h:Object.assign(myState(),{name:NET.name,color:0})}; for(const id in NET.remotes){ const r=NET.remotes[id]; if(r.st) pl[id]=Object.assign({},r.st,{name:r.name,color:r.color}); }
   const ic=P.inCabin; P.inCabin=false; const jr=journal(); P.inCabin=ic;
   return {t:'snap',z,pl,r:R.n,m:mode,pw:POWER.on?1:0,d:DOORS.map(d=>d.open?1:0),w:WINDOWS.map(W=>W.count()),col:[+COL.s.toFixed(2),+COL.t.toFixed(2),COL.felled?1:0,+COL.fall.toFixed(2)],
     pu:PUPS.map(q=>[q.id,q.type,+q.g.position.x.toFixed(1),+q.g.position.z.toFixed(1)]),lu:LURES.map(q=>[q.id,+q.p.x.toFixed(2),+q.p.y.toFixed(2),+q.p.z.toFixed(2),q.active?1:0]),
-    pr:projs.map(q=>[+q.m.position.x.toFixed(1),+q.m.position.y.toFixed(1),+q.m.position.z.toFixed(1)]),jr,fx:[PU.double>0?Math.ceil(PU.double):0,PU.insta>0?Math.ceil(PU.insta):0,PU.freeze>0?Math.ceil(PU.freeze):0],qv:questVis(),np:NP()}; }
+    pr:projs.map(q=>[+q.m.position.x.toFixed(1),+q.m.position.y.toFixed(1),+q.m.position.z.toFixed(1)]),jr,fx:[PU.double>0?Math.ceil(PU.double):0,PU.insta>0?Math.ceil(PU.insta):0,PU.freeze>0?Math.ceil(PU.freeze):0],qv:questVis(),qx:questVisX(),np:NP()}; }
 const NZ=new Map(), NPU=new Map(), NLU=new Map(), NPR=[];
 function applySnap(m){ NET.lastSnap=m; NET.jr=m.jr; NET.np=m.np; R.n=m.r;
   if(m.pw&&!POWER.on) powerOn(); m.d.forEach((o,i)=>{ if(o&&!DOORS[i].open) openDoor(DOORS[i]); });
   m.w.forEach((n,i)=>{ const W=WINDOWS[i]; while(W.count()>n) tearPlank(W); while(W.count()<n){ const pl=W.planks.find(p=>!p.on); pl.on=true; pl.anim=0; pl.m.visible=true; pl.m.position.copy(pl.p0); pl.m.rotation.copy(pl.r0); } });
   COL.s=m.col[0]; COL.t=m.col[1]; if(m.col[2]&&!COL.felled){ COL.felled=true; COL.fall=m.col[3]; }
   PU.double=m.fx[0]; PU.insta=m.fx[1]; PU.freeze=m.fx[2];
-  syncNetZombies(m.z); applyQuestVis(m.qv);
+  syncNetZombies(m.z); applyQuestVis(m.qv); applyQuestVisX(m.qx);
   while(NPR.length<m.pr.length){ const pm=new THREE.Mesh(projGeo,M.add(0xff7a2a,1)); scene.add(pm); NPR.push(pm); } NPR.forEach((pm,i)=>{ const a=m.pr[i]; pm.visible=!!a; if(a) pm.position.set(a[0],a[1],a[2]); });
   for(const id in m.pl){ if(id===NET.myId) continue; let r=NET.remotes[id]; if(!r) r=NET.remotes[id]={id,name:m.pl[id].name,color:m.pl[id].color}; r.st=m.pl[id]; } }
 function syncNetZombies(arr){ const seen=new Set();
   for(const a of arr){ const [id,ki,x,y,zz,ry,rx,fl,hpf]=a, kind=KINDS[ki]; seen.add(id); let z=NZ.get(id);
-    if(!z){ if(fl&1) continue; z=kind==='boss'||kind==='prime'?makeBoss(kind==='prime'):kind==='hound'?makeHound(mode==='hollow'):makeZombie(kind); Object.assign(z,{id,net:true,rise:0,dead:false,hp:1,maxHp:1,speed:0,phase:rand(0,6),netSwing:0}); z.g.position.set(x,y,zz); z.g.rotation.y=ry; scene.add(z.g); zombies.push(z); zparts=zparts.concat(z.parts); NZ.set(id,z); }
+    if(!z){ if(fl&1) continue; z=kind==='boss'||kind==='prime'?makeBoss(kind==='prime'):kind==='hound'?makeHound(mode==='hollow'):makeZombie(kind); specialInit(z,kind,true); Object.assign(z,{id,net:true,rise:0,dead:false,hp:1,maxHp:1,speed:0,phase:rand(0,6),netSwing:0}); z.g.position.set(x,y,zz); z.g.rotation.y=ry; scene.add(z.g); zombies.push(z); zparts=zparts.concat(z.parts); NZ.set(id,z); }
     z.nx=x; z.ny=y; z.nz=zz; z.nry=ry; z.nrx=rx; z.hp=hpf; z.shield=!!(fl&4); if(z.shieldMesh) z.shieldMesh.visible=z.shield; z.wraithBound=!!(fl&8);
     if((fl&16)&&z.netSwing<=0){ z.netSwing=.45; zvoice(z,'attack'); }
     if((fl&1)&&!z.dead) netKill(z,!!(fl&2)); }

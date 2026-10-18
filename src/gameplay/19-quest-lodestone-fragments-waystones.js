@@ -16,7 +16,7 @@ const lodeParts={};
   addInter({quest:true,x:LODE.x,z:LODE.z+2.9,r:2.3,prompt:lodePrompt,use:lodeUse});
 }
 const hasRod=(up)=>P.weapons.some(w=>w.id==='rod'&&w.up===up);
-const ROD_STAGES={stones:'!The Rod is restless. Wake the three waystones',echoes:'!Something rings out across the site. Find the resonators',candles:'!The chapel bell waits to be rung',ember:"!The Saint's Ember waits on the chapel altar",colossus:'!The Colossus carries what you need. Ride it',gauntlet:'!Take the Ember and the Heart to the chapel workbench'};
+const ROD_STAGES={stones:'!The Rod is restless. Wake the three waystones',echoes:'!Something rings out across the site. Find the resonators',valves:'!The chapel bell is chained. Balance the manifold in the yard',candles:'!The chapel bell waits to be rung',radio:'!The Gauntlet crackles. Listen to the field radio',ember:"!The Saint's Ember waits on the chapel altar",colossus:'!The Colossus carries what you need. Ride it',gauntlet:'!Take the Ember and the Heart to the chapel workbench'};
 function lodePrompt(){
   const s=Q.stage;
   if(s==='frags') return fragCount()===3?'Set the three fragments into the Lodestone':`!The Lodestone hums. Fragments ${fragCount()}/3`;
@@ -28,6 +28,7 @@ function lodePrompt(){
   if(s==='awakenReady') return 'Take the Awakened Rod';
   if(s==='wraith') return hasRod(true)?'!A wraith stalks the site. Wound it with the Awakened Rod':'Reclaim the Awakened Rod';
   if(s==='felling') return hasRod(true)?'!Bring down the Colossus. Breach its glowing valves':'Reclaim the Awakened Rod';
+  if(ROD_UP_STAGES[s]) return hasRod(true)?ROD_UP_STAGES[s]:'Reclaim the Awakened Rod';
   if(s==='strike') return hasRod(true)?'!Strike the Lodestone with the Awakened Rod':'Reclaim the Awakened Rod';
   if(s==='descent') return 'Descend into the Hollow';
   return null;
@@ -39,7 +40,7 @@ function lodeUse(){
   else if((ROD_STAGES[s]||s==='return')&&!hasRod(false)){ giveWeapon(mkInst('rod')); sfx.relic(); }
   else if(s==='return'&&hasRod(false)&&POWER.on){ const i=P.weapons.findIndex(w=>w.id==='rod'); P.weapons.splice(i,1); P.cur=0; buildVM(); Q.stage='awakening'; Q.t=45; Q.spawnT=0; Q.warden=false; lodeParts.rodShow.visible=true; sfx.boss(); banner('The Rod awakens','Stay near the Lodestone for forty-five seconds'); }
   else if(s==='awakenReady'){ Q.stage='wraith'; lodeParts.rodShowUp.visible=false; giveWeapon(mkInst('rod',true)); sfx.relic(); startWraith(); }
-  else if((s==='wraith'||s==='felling'||s==='strike')&&!hasRod(true)){ giveWeapon(mkInst('rod',true)); sfx.relic(); }
+  else if((s==='wraith'||s==='felling'||s==='strike'||ROD_UP_STAGES[s])&&!hasRod(true)){ giveWeapon(mkInst('rod',true)); sfx.relic(); }
   else if(s==='descent'){ enterHollow(); }
 }
 // chapel cipher: ring the bell, read the glass, light the candelabras in its order
@@ -66,15 +67,16 @@ function benchPrompt(){ if(Q.stage==='gauntlet'&&P.items.has('ember')&&P.items.h
   if(!P.aegis&&AEGIS.every(k=>P.items.has(k))) return 'Build the Iron Aegis shield';
   if(P.aegis) return null; return `!Workbench · Iron Aegis parts ${AEGIS.filter(k=>P.items.has(k)).length}/3`; }
 function benchUse(){
-  if(Q.stage==='gauntlet'&&P.items.has('ember')&&P.items.has('heart')&&POWER.on){ P.items.delete('ember'); P.items.delete('heart'); Q.gauntlet=true; giveWeapon(mkInst('gauntlet')); rite(); Q.stage='return'; sfx.forge(); banner('The Tempest Gauntlet','A storm in your fist. Now return the Rod to the Lodestone'); return; }
+  if(Q.stage==='gauntlet'&&P.items.has('ember')&&P.items.has('heart')&&POWER.on){ P.items.delete('ember'); P.items.delete('heart'); Q.gauntlet=true; giveWeapon(mkInst('gauntlet')); rite(); Q.stage='radio'; RAD.spawnT=6; sfx.forge(); banner('The Tempest Gauntlet','A storm in your fist. It crackles with a signal: the Shriekers carry the frequencies'); return; }
   if(Q.gauntlet&&!P.weapons.some(w=>w.id==='gauntlet')){ giveWeapon(mkInst('gauntlet')); sfx.relic(); return; }
   if(!P.aegis&&AEGIS.every(k=>P.items.has(k))){ AEGIS.forEach(k=>P.items.delete(k)); P.aegis=true; sfx.forge(); banner('Iron Aegis','Strapped to your back. Hits from behind glance off',true); } }
 function rite(){ Q.rites=(Q.rites||0)+1; }
 const BLESS={stone:{name:'Stoneskin Blessing: take 25% less damage',letter:'S'},knife:{name:'Resonant Knife: your knife cleaves and kills',letter:'K'},talisman:{name:'Ashen Talisman: every tonic, free',letter:'T'}};
 function grantBless(k){ P.bless.add(k); sfx.relic();
   if(k==='knife') updateKnifeLook();
-  if(k==='talisman'){ for(const t in TONICS) P.perks.add(t); P.maxHp=175; P.hp=175; } }
-function strikeLodestone(w){ if(w.up&&Q.stage==='strike'){ Q.stage='descent'; Q.sink=1; lodeParts.shaft.visible=true; lodeParts.shaftBeam.visible=true; sfx.portal(); rite(); banner('The way below is open','Step into the light at the Lodestone'); } }
+  if(k==='talisman'){ for(const t in TONICS) if(!TONICS[t].quest||Q.tonicOpen) P.perks.add(t); P.maxHp=175; P.hp=175; } }
+function strikeLodestone(w){ if(w.up&&Q.stage==='strike'){ Q.stage='glyphs'; sfx.portal(); rite(); banner('The Lodestone cracks','Four glyphs burn on the walls of the site. The diggers\' strongbox in the dig answers to them'); } }
+const ROD_UP_STAGES={gravecaller:'!The Gravecaller walks. Put it down',glyphs:'!Read the glyphs on the walls. Open the strongbox',souls:'!The soul canisters are empty. Fill them in the ward',braziers:'!Light the braziers in the music box\'s order'};
 // waystones
 function waystone(x,z,name){ const g=new THREE.Group(); g.position.set(x,0,z); scene.add(g);
   const p=box(.9,3.2,.9,L({map:stoneTex,color:0x7a7a74}),0,1.6,0,{parent:g}); p.userData.waystone=Q.stones.length; addSolid(p);
@@ -109,7 +111,7 @@ function startEchoes(){ Q.echo={verse:1,seq:[],order:[0,1,2],moveT:0}; placeReso
 function hitReson(i){ const E=Q.echo; if(Q.stage!=='echoes'||!E||E.moveT>0) return; const r=RESON[i]; if(GT-r.last<.35) return; r.last=GT; r.flash=1; sfx.tone(r.f);
   if(E.order[E.seq.length]===i){ E.seq.push(i); r.gem.material.color.set(0x9af0ff);
     if(E.seq.length===3){ if(E.verse===1){ E.verse=2; E.seq=[]; E.order=[2,1,0]; E.moveT=2.2; sfx.relic(); toast('The echoes shift and scatter. Listen again.'); }
-      else { hideResonators(); Q.stage='candles'; rite(); grantBless('knife'); banner('The Resonant Knife','Your blade sings. Now find the chapel and ring its bell'); } } }
+      else { hideResonators(); Q.stage='valves'; rite(); grantBless('knife'); banner('The Resonant Knife','Your blade sings. The chapel bell is chained: balance the pressure manifold in the yard'); } } }
   else { E.seq=[]; RESON.forEach(x=>x.gem.material.color.set(0x24414a)); setTimeout(()=>sfx.clash(),120); toast('The tones clash. The dead answer.');
     if(mode==='main') for(let k=0;k<2;k++) spawnZombie(R.n>=8&&Math.random()<.4?'burster':'walker'); } }
 // the wraith: wound it three times with the Awakened Rod, then destroy the Warden it possesses
@@ -129,7 +131,7 @@ function hitWraith(w){ const W=Q.wr; if(Q.stage!=='wraith'||!W||W.moving>0||W.bo
   if(W.hits<3){ W.from.copy(WR.g.position); const p=WRAITH_PTS[W.hits]; W.to.set(p[0],2.6,p[1]); W.moving=2.4; toast(`The wraith flees, shrieking (${W.hits}/3)`);
     const n=4+W.hits*2; for(let k=0;k<n;k++) setTimeout(()=>{ if(state==='play'&&mode==='main') spawnZombie(R.n>=8&&Math.random()<.3?'burster':'walker'); },k*350); }
   else { W.bound=true; WR.g.visible=false; removeSolid(WR.hit); const z=spawnZombie('boss'); z.wraithBound=true; z.hp*=1.3; z.maxHp=z.hp; banner('The wraith takes a body','Destroy the bound Warden'); } }
-function wraithDone(){ Q.stage='felling'; rite(); grantBless('talisman'); setValves(true); banner('The Ashen Talisman','Every tonic burns in you. Now bring down the Colossus'); }
+function wraithDone(){ rite(); grantBless('talisman'); startGravecaller(); banner('The Ashen Talisman','Every tonic burns in you. Something answers from the dig…'); }
 // fragments in world
 const pickups=[];
 function spawnFrag(key,x,z){ const m=new THREE.Mesh(new THREE.OctahedronGeometry(.22),B({color:0x74d9ea})); m.scale.y=1.7; m.position.set(x,1,z); scene.add(m);
