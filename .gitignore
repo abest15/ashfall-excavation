@@ -15,3 +15,5 @@ playwright-report/
 .lead*/
 test-results/
 .claude/
+.shots/
+.shots-single/
