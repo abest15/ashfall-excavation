@@ -96,7 +96,7 @@ function makeSnap(){ const z=[]; for(const q of zombies){ if(q.gone) continue; c
   const pl={h:Object.assign(myState(),{name:NET.name,color:0})}; for(const id in NET.remotes){ const r=NET.remotes[id]; if(r.st) pl[id]=Object.assign({},r.st,{name:r.name,color:r.color}); }
   const ic=P.inCabin; P.inCabin=false; const jr=journal(); P.inCabin=ic;
   return {t:'snap',z,pl,r:R.n,m:mode,pw:POWER.on?1:0,d:DOORS.map(d=>d.open?1:0),w:WINDOWS.map(W=>W.count()),col:[+COL.s.toFixed(2),+COL.t.toFixed(2),COL.felled?1:0,+COL.fall.toFixed(2)],
-    pu:PUPS.map(q=>[q.id,q.type,+q.g.position.x.toFixed(1),+q.g.position.z.toFixed(1)]),lu:LURES.map(q=>[q.id,+q.p.x.toFixed(2),+q.p.y.toFixed(2),+q.p.z.toFixed(2),q.active?1:0]),
+    pu:PUPS.map(q=>[q.id,q.type,+q.g.position.x.toFixed(1),+q.g.position.z.toFixed(1),+(q.fy||0).toFixed(1)]),lu:LURES.map(q=>[q.id,+q.p.x.toFixed(2),+q.p.y.toFixed(2),+q.p.z.toFixed(2),q.active?1:0]),
     pr:projs.map(q=>[+q.m.position.x.toFixed(1),+q.m.position.y.toFixed(1),+q.m.position.z.toFixed(1)]),jr,fx:[PU.double>0?Math.ceil(PU.double):0,PU.insta>0?Math.ceil(PU.insta):0,PU.freeze>0?Math.ceil(PU.freeze):0],qv:questVis(),np:NP()}; }
 const NZ=new Map(), NPU=new Map(), NLU=new Map(), NPR=[];
 function applySnap(m){ NET.lastSnap=m; NET.jr=m.jr; NET.np=m.np; R.n=m.r;
@@ -122,8 +122,8 @@ function updateNetZombies(dt){ for(const z of zombies){ const g=z.g, p=g.positio
     if(z.kind==='hound') animHound(z,dt,moving,sp,swT); else if(z.nrx>.05&&z.hips) animWindow(z,dt,'climb',clamp(z.nrx/.5,0,1)*.5,true); else animZombie(z,dt,moving,sp,swT); }
   for(let i=zombies.length-1;i>=0;i--) if(zombies[i].gone) zombies.splice(i,1); }
 function updateNetPups(dt){ const arr=(NET.lastSnap&&NET.lastSnap.pu)||[], seen=new Set();
-  for(const [id,type,x,z] of arr){ seen.add(id); let q=NPU.get(id); if(!q){ q={g:pupVisual(type,x,z),asked:false}; NPU.set(id,q); } q.g.rotation.y+=dt*2; q.g.position.y=1+Math.sin(GT*3+id)*.15;
-    if(!q.asked&&!P.downed&&!P.dead&&Math.hypot(x-P.pos.x,z-P.pos.z)<1.5){ q.asked=true; toHost({t:'grab',id}); } }
+  for(const [id,type,x,z,fy] of arr){ seen.add(id); let q=NPU.get(id); if(!q){ q={g:pupVisual(type,x,z,fy||0),asked:false}; NPU.set(id,q); } q.g.rotation.y+=dt*2; q.g.position.y=(fy||0)+1+Math.sin(GT*3+id)*.15;
+    if(!q.asked&&!P.downed&&!P.dead&&Math.hypot(x-P.pos.x,z-P.pos.z)<1.5&&Math.abs((fy||0)-P.pos.y)<2){ q.asked=true; toHost({t:'grab',id}); } }
   for(const [id,q] of NPU) if(!seen.has(id)){ pupFree(q.g); NPU.delete(id); }
   if(PU.sale>0) PU.sale-=dt; if(PU.gatling>0){ PU.gatling-=dt; if(PU.gatling<=0){ PU.gat=null; P.swapT=.4; buildVM(); toast('The Gatling burns out'); } } }
 function updateNetLures(dt){ const arr=(NET.lastSnap&&NET.lastSnap.lu)||[], seen=new Set();

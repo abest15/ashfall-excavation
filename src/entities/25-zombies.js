@@ -43,20 +43,20 @@ function makeBoss(prime){
   if(prime){ g.scale.setScalar(1.25); const sm=new THREE.Mesh(new THREE.SphereGeometry(2,16,10),M.add(0x9af0ff,.22)); sm.position.y=2; sm.visible=false; g.add(sm); z.shieldMesh=sm; }
   return z;
 }
-const SPAWNS={E:[[34,27],[56,8],[56,27],[44,18]],G:[[45,-27],[97,-27],[97,2],[70,-28],[58,-2]],A:[[-7,47],[7,47],[-7,33]],B:[[-27,27],[27,26],[-27,8],[27,8],[3,9],[12,27]],C:[[-27,1],[-27,-27],[7,-27],[7,-1],[-15,-27]],D:[[37,1],[37,-27],[13,-27],[26,1],[13,-1]]};
+const SPAWNS={E:[[34,27],[56,8],[56,27],[44,18]],G:[[45,-27],[97,-27],[97,2],[70,-28],[58,-2]],A:[[-7,47],[7,47],[-7,33]],B:[[-27,27],[27,26],[-27,8],[27,8],[3,9],[12,27]],C:[[-27,1],[-27,-27],[7,-27],[7,-1],[-15,-27]],D:[[37,1],[37,-27],[13,-27],[26,1],[13,-1]]}; Object.assign(SPAWNS,LEVEL_SPAWNS); // levels: [x,z,y] grates underground (07b-levels-build.js)
 function pickSpawn(kind){
   if(mode==='main'&&(kind==='walker'||kind==='marked'||kind==='burster')&&Math.random()<.8){
     const ws=WINDOWS.filter(w=>ZONES[w.zone]&&ZONES[w.zone].open).map(w=>({w,d:Math.hypot(w.x-P.pos.x,w.z-P.pos.z)})).filter(o=>o.d<45).sort((a,b)=>a.d-b.d).slice(0,4);
     if(ws.length){ const w=pick(ws).w; return {x:w.spX+rand(-.8,.8)*Math.abs(w.nz),z:w.spZ+rand(-.8,.8)*Math.abs(w.nx),win:w}; } }
   if(mode==='hollow'){ for(let k=0;k<12;k++){ const a=rand(0,6.28), x=HX+Math.cos(a)*21, z=HZ+Math.sin(a)*21; if(Math.hypot(x-P.pos.x,z-P.pos.z)>9) return {x,z}; } return {x:HX+21,z:HZ}; }
-  const cands=[]; for(const k in SPAWNS){ if(!ZONES[k].open) continue; for(const s of SPAWNS[k]){ const d=Math.hypot(s[0]-P.pos.x,s[1]-P.pos.z); if(d>6) cands.push({x:s[0],z:s[1],d}); } }
+  const cands=[]; for(const k in SPAWNS){ if(!ZONES[k].open) continue; for(const s of SPAWNS[k]){ const d=Math.hypot(s[0]-P.pos.x,s[1]-P.pos.z)+Math.abs((s[2]||0)-P.pos.y)*1.5; if(d>6) cands.push({x:s[0],z:s[1],y:s[2]||0,d}); } }
   const near=cands.filter(c=>c.d<34); const c=pick(near.length?near:cands); return c||{x:-7,z:47};
 }
 function zHP(n){ return n<10?150+100*(n-1):Math.round(950*Math.pow(1.115,n-9)); }
 function spawnZombie(kind){
   if(NET.role==='client') return null;
   const z=kind==='boss'||kind==='prime'?makeBoss(kind==='prime'):kind==='hound'?makeHound(mode==='hollow'):makeZombie(kind);
-  const sp=pickSpawn(kind); z.win=sp.win||null; z.wstate=z.win?'approach':null; z.g.position.set(sp.x,-2.2,sp.z); z.g.rotation.y=Math.atan2(P.pos.x-sp.x,P.pos.z-sp.z); scene.add(z.g);
+  const sp=pickSpawn(kind); z.win=sp.win||null; z.wstate=z.win?'approach':null; z.fy=sp.y||0; z.g.position.set(sp.x,z.fy-2.2,sp.z); z.g.rotation.y=Math.atan2(P.pos.x-sp.x,P.pos.z-sp.z); scene.add(z.g);
   const n=R.n;
   if(z.boss){ z.hp=z.prime?36000:Math.max(3000,1400*n); z.speed=z.prime?2.1:1.7; z.reach=2.3; z.dmg=z.prime?90:75; z.fireCd=3; }
   else if(kind==='hound'){ z.hp=Math.max(220,zHP(n)*.45); z.speed=rand(5.2,5.9); z.reach=1.25; z.dmg=30; }
@@ -71,7 +71,7 @@ function spawnZombie(kind){
 }
 const aliveCount=()=>{ let c=0; for(const z of zombies) if(!z.dead) c++; return c; };
 function route(a,b){ const prev={}; prev[a]=null; const q=[a];
-  while(q.length){ const z=q.shift(); if(z===b) break; for(const d of DOORS){ if(!d.open) continue; const n=d.a===z?d.b:d.b===z?d.a:null; if(n&&!(n in prev)){ prev[n]={z,d}; q.push(n);} } }
+  while(q.length){ const z=q.shift(); if(z===b) break; for(const d of routeLinks()){ if(!d.open) continue; const n=d.a===z?d.b:d.b===z?d.a:null; if(n&&!(n in prev)){ prev[n]={z,d}; q.push(n);} } }
   if(!(b in prev)) return null; let cur=b; while(prev[cur].z!==a) cur=prev[cur].z; return {door:prev[cur].d,next:cur}; }
 function hitZombie(z,dmg,mult,how){
   if(z.dead) return;
@@ -101,12 +101,12 @@ function killZombie(z,how,silent){
       if(st.kills>=STONE_KILLS){ st.fed=true; st.rm.color.set(0xf2cb78); sfx.ignite(); toast(`The ${st.name} is fed. Strike it with the Rod.`); } } }
     if(z.kind==='marked'&&!Q.frag.marked) spawnFrag('marked',p.x,p.z);
     if(z.kind==='hound') R.houndPos={x:p.x,z:p.z};
-    if(z.boss){ dropPup(p.x,p.z,'ammo'); if(z.prime) primeDown(); if(z.wraithBound) wraithDone(); }
-    else if(mode==='main'?(R.pups<4+Math.floor(R.n/6)&&Math.random()<.04):(HL.pups<3&&Math.random()<.03)){ dropPup(p.x,p.z); if(mode==='main') R.pups++; else HL.pups++; } }
+    if(z.boss){ dropPup(p.x,p.z,'ammo',p.y); if(z.prime) primeDown(); if(z.wraithBound) wraithDone(); }
+    else if(mode==='main'?(R.pups<4+Math.floor(R.n/6)&&Math.random()<.04):(HL.pups<3&&Math.random()<.03)){ dropPup(p.x,p.z,undefined,p.y); if(mode==='main') R.pups++; else HL.pups++; } }
 }
 const _v=new V3();
 function updateWinZombie(z,dt){ const W=z.win, g=z.g, p=g.position, zs=z.speed*(PU.freeze>0?.35:1); let moving=false;
-  const WT=zTarget(p), dP=WT.none?1e9:Math.hypot(WT.x-p.x,WT.z-p.z);
+  const WT=zTarget(p), dP=WT.none?1e9:Math.hypot(WT.x-p.x,WT.z-p.z)+Math.max(0,Math.abs(WT.y-p.y)-1)*4;
   if(z.wstate==='approach'){ const ahead=zombies.some(o=>o!==z&&!o.dead&&o.win===W&&(o.wstate==='tear'||o.wstate==='climb'));
     const back=1.3+(ahead?1.2:0), tx=W.x+W.nx*back+(ahead?rand(-.02,.02):0), tz=W.z+W.nz*back, dx=tx-p.x, dz=tz-p.z, d=Math.hypot(dx,dz);
     if(d>.15){ const st=Math.min(d,Math.max(1.3,zs)*dt); p.x+=dx/d*st; p.z+=dz/d*st; moving=true; } else if(!ahead){ z.wstate='tear'; z.cd=.5; } }
@@ -124,29 +124,30 @@ function updateWinZombie(z,dt){ const W=z.win, g=z.g, p=g.position, zs=z.speed*(
   else if(z.swing>0) animZombie(z,dt,false,0,1-z.swing/.45);
   else animWindow(z,dt,z.wstate==='tear'?'tear':'walk',-1,moving); }
 // the player a zombie hunts (multiplayer adds remote players here)
-function zTarget(p){ let best=null,bd=1e9; const cand=[]; if(!(P.downed||P.dead||P.inCabin)) cand.push({x:P.pos.x,z:P.pos.z,id:'h',remote:false});
-  if(NET.role==='host') for(const id in NET.remotes){ const st=NET.remotes[id].st; if(st&&!st.dn&&!st.dd&&!st.cab&&st.m===mode) cand.push({x:st.x,z:st.z,id,remote:true}); }
-  for(const c of cand){ const d=Math.hypot(c.x-p.x,c.z-p.z); if(d<bd){ bd=d; best=c; } } return best||{x:P.pos.x,z:P.pos.z,id:'h',remote:false,none:true}; }
+// (levels: y is carried along; a floor between hunter and prey counts as distance)
+function zTarget(p){ let best=null,bd=1e9; const cand=[]; if(!(P.downed||P.dead||P.inCabin)) cand.push({x:P.pos.x,y:P.pos.y,z:P.pos.z,id:'h',remote:false});
+  if(NET.role==='host') for(const id in NET.remotes){ const st=NET.remotes[id].st; if(st&&!st.dn&&!st.dd&&!st.cab&&st.m===mode) cand.push({x:st.x,y:st.y||0,z:st.z,id,remote:true}); }
+  for(const c of cand){ const d=Math.hypot(c.x-p.x,c.z-p.z)+Math.abs(c.y-p.y)*2; if(d<bd){ bd=d; best=c; } } return best||{x:P.pos.x,y:P.pos.y,z:P.pos.z,id:'h',remote:false,none:true}; }
 function hurtTarget(t,d,src){ if(t.remote) sendTo(t.id,{t:'hurt',d,s:[+src.x.toFixed(1),+src.z.toFixed(1)]}); else hurtPlayer(d,src); }
 function updateZombies(dt){
   const WS=wsimBegin(dt); // true: locomotion runs in the WASM core this frame (05b-wasm-sim.js)
-  const pz=zoneOf(P.pos.x,P.pos.z)||P.zone; P.zone=pz;
+  const pz=zoneOf(P.pos.x,P.pos.z,P.pos.y)||P.zone; P.zone=pz;
   for(const z of zombies){
     const g=z.g, p=g.position;
     if(z.dead){ if(zDeathUpdate(z,dt)){ scene.remove(g); z.gone=true; } continue; }
     if(z.flash>0){ z.flash-=dt; }
-    if(z.rise>0){ z.rise-=dt; p.y=-2.2*Math.max(0,z.rise/1.2); if(Math.random()<.2) spawnParticles(new V3(p.x,.1,p.z),'dirt',1); continue; }
-    p.y=0;
+    if(z.rise>0){ z.rise-=dt; p.y=(z.fy||0)-2.2*Math.max(0,z.rise/1.2); if(Math.random()<.2) spawnParticles(new V3(p.x,.1,p.z),'dirt',1); continue; }
+    p.y=zFloorY(z,dt); // levels: stand on the floor under the zombie
     if(P.inCabin) continue;
     if(z.wstate){ updateWinZombie(z,dt); continue; }
     // target
     const TG=zTarget(p);
-    const lu=lureFor(p), tgx=lu?lu.p.x:TG.x, tgz=lu?lu.p.z:TG.z, tzone=lu?(zoneOf(lu.p.x,lu.p.z)||pz):(zoneOf(TG.x,TG.z)||pz);
-    const zf=zoneOf(p.x,p.z); let tx=tgx, tz=tgz;
+    const lu=lureFor(p), tgx=lu?lu.p.x:TG.x, tgz=lu?lu.p.z:TG.z, tzone=lu?(zoneOf(lu.p.x,lu.p.z,lu.p.y)||pz):(zoneOf(TG.x,TG.z,TG.y)||pz);
+    const zf=zoneOf(p.x,p.z,p.y); let tx=tgx, tz=tgz;
     if(WS){ const a=wsimAim(z,p,tgx,tgz); tx=a.x; tz=a.z; }
-    else if(zf&&tzone&&zf!==tzone){ const r=route(zf,tzone); if(r){ const d=r.door; const dd=Math.hypot(p.x-d.x,p.z-d.z); if(dd<2.6){ const nc=ZONES[r.next].c; const vx=nc.x-d.x, vz=nc.z-d.z, l=Math.hypot(vx,vz)||1; tx=d.x+vx/l*4; tz=d.z+vz/l*4; } else { tx=d.x; tz=d.z; } } z.tx=tx; z.tz=tz; }
+    else if(zf&&tzone&&zf!==tzone){ const r=route(zf,tzone); if(r&&r.door.portal){ const s=portalSteer(r.door,zf,p); tx=s.x; tz=s.z; } else if(r){ const d=r.door; const dd=Math.hypot(p.x-d.x,p.z-d.z); if(dd<2.6){ const nc=ZONES[r.next].c; const vx=nc.x-d.x, vz=nc.z-d.z, l=Math.hypot(vx,vz)||1; tx=d.x+vx/l*4; tz=d.z+vz/l*4; } else { tx=d.x; tz=d.z; } } z.tx=tx; z.tz=tz; }
     else if(!zf){ tx=z.tx; tz=z.tz; if(Math.hypot(tx-p.x,tz-p.z)<.5){ tx=tgx; tz=tgz; } }
-    const dpx=TG.x-p.x, dpz=TG.z-p.z, dP=TG.none?1e9:Math.hypot(dpx,dpz);
+    const dpx=TG.x-p.x, dpz=TG.z-p.z, dP=TG.none?1e9:Math.hypot(dpx,dpz)+Math.max(0,Math.abs(TG.y-p.y)-1)*4;
     let dx=tx-p.x, dz=tz-p.z; let dl=Math.hypot(dx,dz)||1; dx/=dl; dz/=dl;
     z.cd-=dt;
     // ranged (boss)
@@ -155,12 +156,12 @@ function updateZombies(dt){
     if(z.swing>0){ z.swing-=dt; moving=false; if(!z.hitDone&&z.swing<.22){ z.hitDone=true; if(z.kind==='burster'){ killZombie(z,'self'); continue; } if(dP<z.reach+.35) hurtTarget(TG,z.dmg,p); } }
     else if(dP<z.reach&&z.cd<=0&&(TG.remote||P.revive<=0)){ z.swing=.45; z.hitDone=false; z.cd=.95; moving=false; zvoice(z,'attack'); }
     else if(dP<z.reach*.8) moving=false;
-    if(!(WS&&wsimAgent(z,moving,tgx,tgz,lu))&&moving){ const zs=z.speed*(PU.freeze>0?.35:1);
-      let sx=0,sz=0; for(const o of zombies){ if(o===z||o.dead||o.rise>0||o.wstate) continue; const ox=p.x-o.g.position.x, oz=p.z-o.g.position.z, od=ox*ox+oz*oz; const rr_=(z.boss||o.boss)?1.6:.7; if(od<rr_*rr_&&od>1e-4){ const k=(rr_-Math.sqrt(od))/rr_; sx+=ox*k*2; sz+=oz*k*2; } }
+    if(!(WS&&wsimAgent(z,moving,tgx,tgz,lu,lu?lu.p.y:TG.y))&&moving){ const zs=z.speed*(PU.freeze>0?.35:1);
+      let sx=0,sz=0; for(const o of zombies){ if(o===z||o.dead||o.rise>0||o.wstate||Math.abs(o.g.position.y-p.y)>1.5) continue; const ox=p.x-o.g.position.x, oz=p.z-o.g.position.z, od=ox*ox+oz*oz; const rr_=(z.boss||o.boss)?1.6:.7; if(od<rr_*rr_&&od>1e-4){ const k=(rr_-Math.sqrt(od))/rr_; sx+=ox*k*2; sz+=oz*k*2; } }
       if(z.nudge>0){ z.nudge-=dt; sx+=-dz*z.nside*1.2; sz+=dx*z.nside*1.2; }
       p.x+=(dx*zs+sx)*dt; p.z+=(dz*zs+sz)*dt;
       collide(p,z.boss?.7:.33);
-      const pd=Math.hypot(P.pos.x-p.x,P.pos.z-p.z), minD=z.boss?1.2:.72; if(pd<minD&&pd>1e-3){ p.x-= (P.pos.x-p.x)/pd*(minD-pd); p.z-=(P.pos.z-p.z)/pd*(minD-pd); }
+      const pd=Math.hypot(P.pos.x-p.x,P.pos.z-p.z), minD=z.boss?1.2:.72; if(pd<minD&&pd>1e-3&&Math.abs(P.pos.y-p.y)<1.5){ p.x-= (P.pos.x-p.x)/pd*(minD-pd); p.z-=(P.pos.z-p.z)/pd*(minD-pd); }
       z.stuckT+=dt; if(z.stuckT>.8){ const moved=Math.hypot(p.x-z.lx,p.z-z.lz); if(moved<zs*.8*.25){ z.nudge=.9; z.nside=Math.random()<.5?-1:1; } z.stuckT=0; z.lx=p.x; z.lz=p.z; }
     }
     const face=Math.atan2(dP<6?dpx:dx,dP<6?dpz:dz); let dr=face-g.rotation.y; dr=Math.atan2(Math.sin(dr),Math.cos(dr)); g.rotation.y+=dr*Math.min(1,dt*8);
