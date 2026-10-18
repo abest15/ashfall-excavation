@@ -34,7 +34,7 @@
     "electron": "^44.8.0",
     "electron-builder": "^26.15.3",
     "esbuild": "^0.28.2",
-    "peerjs": "^1.5.4",
+    "peerjs": "^1.5.5",
     "png2icons": "^2.0.1",
     "sharp": "^0.35.5"
   },
