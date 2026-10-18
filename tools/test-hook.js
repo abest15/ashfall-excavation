@@ -9,7 +9,7 @@ window.__G=(function(){
   v('KN',()=>KN); v('VM',()=>VM); v('WR',()=>WR); v('RESON',()=>RESON); v('LODE',()=>LODE); v('WINDOWS',()=>WINDOWS);
   v('COL',()=>COL); v('CAB',()=>CAB); v('CH',()=>CH); v('TRAP',()=>TRAP); v('DOORS',()=>DOORS); v('ZONES',()=>ZONES);
   v('LURES',()=>LURES); v('BOLTS',()=>BOLTS); v('NET',()=>NET); v('pickups',()=>pickups); v('TONICS',()=>TONICS); v('POWER',()=>POWER);
-  v('AU',()=>AU); v('SETTINGS',()=>SETTINGS); v('QUAL',()=>QUAL); v('keys',()=>keys); v('PAD',()=>PAD);
+  v('AU',()=>AU); v('SETTINGS',()=>SETTINGS); v('QUAL',()=>QUAL); v('keys',()=>keys); v('PAD',()=>PAD); v('pollPad',()=>pollPad); v('getPad',()=>getPad);
   v('spawnZombie',()=>spawnZombie); v('killZombie',()=>killZombie); v('hitZombie',()=>hitZombie); v('melee',()=>melee);
   v('applyPup',()=>applyPup); v('dropPup',()=>dropPup); v('startRound',()=>startRound); v('newGame',()=>newGame);
   v('hitReson',()=>hitReson); v('hitWraith',()=>hitWraith); v('enterHollow',()=>enterHollow); v('startWave',()=>startWave);
