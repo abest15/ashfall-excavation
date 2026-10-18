@@ -9,7 +9,7 @@ Five lanes work in parallel. Each owns specific files; edit files you don't own 
 | 3 Weapons, movement & HUD | `src/gameplay/10-weapons.js`, `28-player-combat.js`, `39-player-update.js`, `src/entities/11-*`, `12-*`, `13-*`, `src/ui/31-hud.js`, `src/styles/hud.css`, HUD markup | 5183 / `.lane3` |
 | 4 Audio | `src/audio/*` | 5184 / `.lane4` |
 | 5 Platform, release & QA | `tools/*`, `desktop/*`, `.github/*`, `tests/*`, `package.json`, `README.md`, `docs/*`, `vendor/peerjs.min.js`, `src/core/perf-overlay.js`, `.gitignore` | 5185 / `.lane5` (tests: `.lane5-test`) |
-| 7 WebAssembly simulation | `sim/*`, `src/engine/05b-wasm-sim.js`, `tools/build-sim.mjs`, `tests/wasm-*.spec.js` (hooks in `25-zombies.js` are four marked lines) | 5197 / `.lane7` (tests: `.lane7-test`) |
+| 7 WebAssembly simulation & levels engine | `sim/*`, `src/engine/05b-wasm-sim.js`, `src/world/05c-levels.js`, `src/world/07b-levels-build.js` (graybox; art lanes may dress it), `docs/MAP.md`, `tools/build-sim.mjs`, `tests/wasm-*.spec.js`, `tests/levels.spec.js` (hooks in `25-zombies.js` are marked lines) | 5197 / `.lane7` (tests: `.lane7-test`) |
 
 Shared files (`src/manifest.json`, `src/styles/order.json`, `src/index.template.html`): re-read immediately before editing and change only your own entries or blocks.
 

@@ -110,6 +110,7 @@ Zombie movement runs in a small WebAssembly core built from `sim/` (Rust). Build
 | `tests/ritual.spec.js` | the entire main quest from the Rod fragments to stepping through the gate in the Hollow (victory screen, 12/12 rites) |
 | `tests/coop.spec.js` | two pages host and join through the co-op menu over the local transport (`?net=local`), zombies replicate to the client, a kill by the client is credited to the client |
 | `tests/wasm-sim.spec.js` | the zombie simulation: paths through open doors, stops at closed ones, never passes through walls, no stacking (WASM), co-op zombies chase the nearest player |
+| `tests/levels.spec.js` | floors: walking down the shaft into the Underworks and up the Château stair, the drop hole, ceilings, zombies chasing across floors (both sim paths), co-op heights |
 | `tests/desktop.spec.js` | the Electron app boots from `app://`, window title, no menu bar, the bundled PeerJS loads, Esc reaches the game, fullscreen toggles |
 
 Failure screenshots and traces go to `test-results/`.
