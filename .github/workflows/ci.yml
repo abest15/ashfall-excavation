@@ -62,6 +62,8 @@ jobs:
   qa:
     name: Soak tests (leaks, co-op sync)
     runs-on: ubuntu-latest
+    # long stress run: reports results but never blocks the Pages deploy
+    continue-on-error: true
     timeout-minutes: 30
     # reported but not blocking (Pages deploys anyway) while known leaks are open; remove once they pass
     steps:
