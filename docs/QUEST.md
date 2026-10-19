@@ -219,6 +219,11 @@ To move something into a new area, edit or add rows there; no other file needs t
 | `staffs` | pedestals (47, 15.6) (47, 19.4) (51, 15.6) (51, 19.4); Cinder embers round the Forge; Brine jars in No Man's Land, pump on the flooded gallery walkway (34, y −7, -31.3); Grave skull lamps in the ossuary niches (y −7), gravestone (-15, -26.2), trial (-10, -23); Gale chimes in the Château bell room and balcony (y 4.2), yard zone (25, -14), shrine `chateau.balcony` |
 | `vault` | arrival (-24, y −7, -49.5) ossuary; door use point (-24, y −7, -57.9); gramophone (-27.6, y −7, -58.6); heart over the dais (-28, y −9.6, -75); seals (y −10) (-36, -70.5) (-20, -70.5) (-28, -82.4); lift (-37.6, y −10, -81.6) |
 
+## Performance
+Quest props are culled by distance (`updateQCull` in 19f-staffs.js: 28 m on the surface, 16 m underground, plus each
+prop's own visibility rule) so Graphics Low stays inside `tests/perf-budget.spec.js` on all three floors. Underground
+props live in the `UNDER` group. New props should be added to `qCullList()`.
+
 ## Tests
 - `tests/power.spec.js`: placement (zones, types, seed determinism, variety), every requirement (knife timing reset,
   wrong crate, fuse, surge horde), generator refusal / short crank / full crank, and co-op (same layout on the client,

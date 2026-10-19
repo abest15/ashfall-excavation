@@ -107,7 +107,8 @@ Zombie movement runs in a small WebAssembly core built from `sim/` (Rust). Build
 | Test | Covers |
 |---|---|
 | `tests/smoke.spec.js` | page loads, splash and menu, Solo starts, a round begins, a zombie spawns and is shot dead, Esc pauses and Resume continues, the F3 overlay, the dev error box |
-| `tests/ritual.spec.js` | the entire main quest (22 rites): the three breakers and the generator, every puzzle, the Gravecaller, the Hollow, the Deep Vault and the lift out (ending, 22/22 rites) |
+| `tests/ritual.spec.js` | the entire main quest (23 rites, all four staffs): the three breakers and the generator, every puzzle, the Gravecaller, the Hollow, the Deep Vault and the lift out (ending, 22/22 rites) |
+| `tests/staffs.spec.js` | the four elemental staffs: one built through its real part tasks, claimed, fired, alt-fired and upgraded; all four distinct; a co-op claim |
 | `tests/power.spec.js` | the breaker switches: seeded random placement, each breaker's requirement, cranking the generator, co-op sync |
 | `tests/coop.spec.js` | two pages host and join through the co-op menu over the local transport (`?net=local`), zombies replicate to the client, a kill by the client is credited to the client |
 | `tests/wasm-sim.spec.js` | the zombie simulation: paths through open doors, stops at closed ones, never passes through walls, no stacking (WASM), co-op zombies chase the nearest player |
