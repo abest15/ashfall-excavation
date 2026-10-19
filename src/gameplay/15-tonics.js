@@ -22,6 +22,7 @@ function tonicMachine(key,x,z,ry,y=0){ // y: floor height (levels); underground 
   const W=Math.abs(Math.sin(ry))>.7?.9:1.2, D=Math.abs(Math.sin(ry))>.7?1.2:.9; if(y) addColY(x-W/2,x+W/2,z-D/2,z+D/2,y-.5,y+3); else addCol(x,z,W,D);
   addInter({y,x:x+fx*1.2,z:z+fz*1.2,r:1.9,prompt:()=>{ if(P.perks.has(key)) return null; if(T.quest&&!Q.tonicOpen) return '!Sealed with black wax. Something in the dig holds the key'; if(!T.noPower&&!POWER.on) return '!Requires power'; if(key==='wind'&&P.swBuys>=3) return '!The bottle is dry'; return `Drink ${T.name}, ${T.desc} [${T.cost}]`; },
     use:()=>{ if(P.perks.has(key)||(T.quest&&!Q.tonicOpen)||(!T.noPower&&!POWER.on)||(key==='wind'&&P.swBuys>=3)) return; if(!spend(T.cost)) return; P.perks.add(key); if(key==='wind') P.swBuys++; if(key==='iron'){P.maxHp=175;P.hp=175;} sfx.tonic(); toast(T.name); }});
+  return g;
 }
 tonicMachine('wind',-8.6,45,Math.PI/2);
 tonicMachine('iron',28.6,21,-Math.PI/2);

@@ -117,7 +117,7 @@ const SOUL={k:0,n:0,need:10,spots:[0,1,2],g:null};
   const fill=new THREE.Mesh(new THREE.CylinderGeometry(.16,.16,1,10),B({color:0x9af0ff})); fill.position.y=.12; fill.scale.y=.01; can.add(fill); SOUL.fill=fill; }
 function soulStart(){ SOUL.k=0; SOUL.n=0; SOUL.need=10+2*(NP()-1); soulPlace(); }
 function soulPlace(){ const a=QA.souls[SOUL.spots[SOUL.k]]; SOUL.g.position.set(a.x,qy(a),a.z); qPar(qy(a)).add(SOUL.g); SOUL.g.visible=Q.stage==='souls'; }
-function soulKill(p){ if(Q.stage!=='souls'||!SOUL.g.visible) return; const a=SOUL.g.position; if(Math.hypot(p.x-a.x,p.z-a.z)>4.5||Math.abs(p.y-a.y)>2) return;
+function soulKill(p){ if(Q.stage!=='souls'||SOUL.k>=3) return; const a=SOUL.g.position; if(Math.hypot(p.x-a.x,p.z-a.z)>4.5||Math.abs(p.y-a.y)>2) return;
   SOUL.n++; qSound('soul',a.x+4.9,a.z,40,SOUL.n/SOUL.need); qEv('fx',{p:[a.x+4.9,a.y+1.2,a.z],t:'relic',n:6});
   if(SOUL.n<SOUL.need) return; SOUL.k++; SOUL.n=0;
   if(SOUL.k<3){ soulPlace(); banner(`Canister sealed (${SOUL.k}/3)`,'The ward fades and is redrawn elsewhere'); qSound('relic'); return; }
@@ -156,7 +156,7 @@ function updatePuzzles(dt){
   RAD.knob.rotation.y=RAD.dial*.6; if(RAD.labV!==RAD.dial){ RAD.labV=RAD.dial; RAD.lab.userData.draw(RADIO_DIAL[RAD.dial]+' kc'); } RAD.lamp.material.color.set(Q.stage==='radio'?(Math.sin(GT*6)>0?0x9ad06a:0x2a3a1a):0x3a2a1a);
   const d=RAD.drop; if(d){ DROP.g.visible=true; if(d.y>0&&NET.role!=='client') d.y=Math.max(0,d.y-dt*7); DROP.g.position.set(d.x,d.y,d.z); DROP.chute.visible=d.y>0; DROP.smoke.material.opacity=d.open?0:.12+Math.sin(GT*3)*.04; DROP.o.x=d.x; DROP.o.z=d.z; if(d.y>0&&Math.random()<dt*20) spawnParticles(new V3(d.x,.3,d.z),'ember',1); } else DROP.g.visible=false;
   const lit=Q.stage==='glyphs'; GLY.walls.forEach(w=>w.m.material.color.set(lit?0xffffff:0x6a6a6a));
-  if(SOUL.g.visible){ SOUL.ring.rotation.z+=dt*.3; SOUL.inner.rotation.z-=dt; SOUL.fill.scale.y=Math.max(.01,SOUL.n/SOUL.need)*.86; SOUL.fill.position.y=.12+SOUL.fill.scale.y*.5; SOUL.ring.material.opacity=.45+Math.sin(GT*3)*.15; }
+  if(Q.stage==='souls'){ SOUL.ring.rotation.z+=dt*.3; SOUL.inner.rotation.z-=dt; SOUL.fill.scale.y=Math.max(.01,SOUL.n/SOUL.need)*.86; SOUL.fill.position.y=.12+SOUL.fill.scale.y*.5; SOUL.ring.material.opacity=.45+Math.sin(GT*3)*.15; }
   for(const br of BRZ.list){ if(br.lit){ br.fl.scale.set(1,.8+Math.random()*.5,1); if(Math.random()<dt*8) spawnParticles(new V3(br.a.x,qy(br.a)+1.8,br.a.z),'ember',1); }
     br.humT-=dt; if(br.humT<=0){ br.humT=3; if(mode==='main'&&Math.hypot(P.pos.x-br.a.x,P.pos.z-br.a.z)<3.5&&qdy(P.pos,br.a)<2) sfxAt('bowl',{x:br.a.x,z:br.a.z},12,BRZ_NOTES[BRZ.notes[br.i]]); } }
   if(BRZ.playT>0){ BRZ.playT-=dt; BRZ.crank.rotation.x+=dt*8; }

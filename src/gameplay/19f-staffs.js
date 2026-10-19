@@ -57,7 +57,7 @@ function sholdPrompt(k){ const S=STF[k]; if(S.parts[2]||!POWER.on) return S.part
 const VANE={};
 { const a=QA.staffs.gale.shrine, g=new THREE.Group(); g.position.set(a.x,qy(a),a.z); qPar(qy(a)).add(g); VANE.g=g;
   const b=GB(); b.add(new THREE.CylinderGeometry(.08,.1,3.2,6),0x4b4e51,{p:[0,1.6,0]}); b.add(new THREE.CylinderGeometry(1.4,1.5,.1,16),0x5a554c,{p:[0,.05,0]}); g.add(new THREE.Mesh(b.done(),L({vertexColors:true})));
-  const vane=new THREE.Group(); vane.position.y=3.2; g.add(vane); for(let i=0;i<4;i++){ const f=box(.9,.04,.25,B({color:0xd8f0ff}),.45,0,0,{parent:vane}); f.position.set(Math.cos(i*Math.PI/2)*.45,0,Math.sin(i*Math.PI/2)*.45); f.rotation.y=-i*Math.PI/2; } VANE.vane=vane;
+  const vane=new THREE.Group(); vane.position.y=3.2; g.add(vane); { const fb=GB(); for(let i=0;i<4;i++) fb.add(new THREE.BoxGeometry(.9,.04,.25),0xd8f0ff,{p:[Math.cos(i*Math.PI/2)*.45,0,Math.sin(i*Math.PI/2)*.45],r:[0,-i*Math.PI/2,0]}); vane.add(new THREE.Mesh(fb.done(),B({vertexColors:true}))); } VANE.vane=vane;
   const ring=new THREE.Mesh(new THREE.RingGeometry(2.2,2.4,24),M.add(0xd8f0ff,.2)); ring.rotation.x=-Math.PI/2; ring.position.y=.07; g.add(ring); VANE.ring=ring; qCol(a.x,a.z,.4,.4,qy(a)); }
 // ----- elemental effects in the world (host simulates, clients draw from the snapshot): slag pools and glass cyclones
 const SFX_POOL=[]; const SFX_LIVE=[];
@@ -192,3 +192,15 @@ function dressStaff(g,id,up,override){ if(override) return; const ud=g.userData,
   else if(id==='brine') for(let i=0;i<3;i++){ const s=new THREE.Mesh(new THREE.SphereGeometry(.018,6,4),om), a=i/3*Math.PI*2; s.position.set(Math.cos(a)*.09,Math.sin(a)*.09,-.02); s.scale.z=1.6; head.add(s); }
   else if(id==='grave'){ const s=new THREE.Mesh(new THREE.SphereGeometry(.032,8,6),L({color:0xd8d0c0})); s.position.set(0,.07,.02); head.add(s); for(const sx of [-1,1]){ const e=new THREE.Mesh(new THREE.SphereGeometry(.008,4,3),om); e.position.set(sx*.012,.072,-.008); head.add(e); } }
   else for(let i=0;i<6;i++){ const s=new THREE.Mesh(new THREE.TetrahedronGeometry(.02),M.add(c,.8)), a=i/6*Math.PI*2; s.position.set(Math.cos(a)*.13,Math.sin(a)*.13,-.06); s.rotation.set(a,a*2,0); head.add(s); } }
+// ----- distance culling for quest props: they draw only near the player (underground the tunnels hide them anyway).
+// Keeps Graphics Low within its draw-call budgets now that props are spread over three floors. cond = the prop's own rule.
+let QCULL=null;
+function qCullList(){ const L_=[], add=(o,cond)=>o&&L_.push({o,cond});
+  PWR.brk.forEach(b=>add(b.g,()=>!!b.a)); PWR.crates.forEach(c=>add(c.g)); add(VAL.g); add(RAD.g); add(GLY.g); add(BRZ.mg); BRZ.list.forEach(b=>add(b.g));
+  GLY.walls.forEach(w=>add(w.m,()=>!!w.a)); add(SOUL.g,()=>Q.stage==='souls'&&SOUL.k<3); add(DROP.g,()=>!!RAD.drop); GC.lan.forEach(l=>add(l.g,()=>Q.stage==='gravecaller'));
+  PED.forEach(p=>add(p.g)); STAFF_IDS.forEach(k=>STQ[k].forEach(t=>add(t.m,()=>POWER.on&&!STF[k].parts[1]))); for(const k in SHOLD) add(SHOLD[k].g); add(VANE.g); add(WAKE_G);
+  return L_; }
+const _qcv=new V3();
+function updateQCull(){ if(!QCULL) QCULL=qCullList(); const px=P.pos.x, py=P.pos.y, pz=P.pos.z, under=py<-2;
+  for(const e of QCULL){ const o=e.o; o.getWorldPosition(_qcv); const d=Math.hypot(_qcv.x-px,_qcv.z-pz)+Math.max(0,Math.abs(_qcv.y-py)-1.5)*3;
+    o.visible=(!e.cond||e.cond())&&mode==='main'&&d<((under||_qcv.y<-2)?16:28); } }

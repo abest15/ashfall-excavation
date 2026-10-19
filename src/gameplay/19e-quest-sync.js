@@ -26,7 +26,7 @@ function questKill(z,how,p){ soulKill(p); staffKill(z,p); staffKillNear(p);
 function questShoot(id,w){ if(NET.role==='client') return; if(typeof id!=='string') return;
   if(id.startsWith('gd')) glyphShoot(+id[2]); else if(id.startsWith('gl')) lanternShot(+id[2]); else if(id==='fh') heartShot(w); else if(id.startsWith('st_')) staffShoot(id); }
 function questHoldsRound(){ return PWR.surge>0||Q.stage==='seals'||Q.stage==='furnace'||Q.stage==='escape'||VSTATE.hymnT>0; }
-function updateQuestX(dt){ updatePower(dt); updatePuzzles(dt); updateQPicks(dt); updateSpecials(dt); updateGravecaller(dt); updateVault(dt); updateEmber(); updateStaffs(dt);
+function updateQuestX(dt){ updatePower(dt); updatePuzzles(dt); updateQPicks(dt); updateSpecials(dt); updateGravecaller(dt); updateVault(dt); updateEmber(); updateStaffs(dt); updateQCull();
   if(NET.role!=='client') updateRadioStage(dt); }
 // journal: new stages get their own page; the power hunt is listed under whatever the ritual is doing
 function questJournal(j){ if(P.inCabin||mode==='hollow') return j; const s=Q.stage, rom=['I','II','III'];
@@ -56,7 +56,7 @@ function questVisX(){ return {sd:Q.seed,st:Q.stage,ri:Q.rites||0,
   pw:PWR.brk.map(b=>(b.found?1:0)|(b.thrown?2:0)|(b.fused?4:0)|(b.whacks<<3)),cr:PWR.crates.map(c=>c.searched?1:0),qi:[...QI],
   qp:QP.map(e=>[e.id,e.key,+e.x.toFixed(2),+e.z.toFixed(2),e.label,e.col,e.y||0]),
   vs:VAL.set,vo:VAL.solved?1:0,rd:[RAD.dial,RAD.seq],dr:RAD.drop?[RAD.drop.x,+RAD.drop.y.toFixed(2),RAD.drop.z,RAD.drop.open?1:0]:0,
-  gd:GLY.dials,go:GLY.open?1:0,so:[SOUL.g.visible?1:0,SOUL.k,SOUL.n,SOUL.need],bz:BRZ.list.map(b=>b.lit?1:0),gl:GC.lan.map(l=>l.lit?1:0),
+  gd:GLY.dials,go:GLY.open?1:0,so:[Q.stage==='souls'?1:0,SOUL.k,SOUL.n,SOUL.need],bz:BRZ.list.map(b=>b.lit?1:0),gl:GC.lan.map(l=>l.lit?1:0),
   vt:[VSTATE.hymn?1:0,+VSTATE.hymnT.toFixed(1),VSTATE.open?1:0,VT.seals.map(q=>+q.p.toFixed(1)),+(VSTATE.hp/VSTATE.maxHp).toFixed(3),+VSTATE.rise.toFixed(2),+VSTATE.escT.toFixed(1)],
   st:staffVis(),ch:CHG.map(q=>[+q.m.position.x.toFixed(2),+q.m.position.y.toFixed(2),+q.m.position.z.toFixed(2),q.t>=q.dur?1:0]),tn:Q.tonicOpen?1:0}; }
 function applyQuestVisX(v){ if(!v) return; if(v.sd&&v.sd!==Q.seed) questLayout(v.sd); Q.stage=v.st; Q.rites=v.ri; Q.tonicOpen=!!v.tn;
@@ -67,7 +67,7 @@ function applyQuestVisX(v){ if(!v) return; if(v.sd&&v.sd!==Q.seed) questLayout(v
   for(let i=QP.length-1;i>=0;i--) if(!seen.has(QP[i].id)){ qPickFree(QP[i]); QP.splice(i,1); }
   VAL.set=v.vs.slice(); VAL.solved=!!v.vo; RAD.dial=v.rd[0]; RAD.seq=v.rd[1]; RAD.drop=v.dr?{x:v.dr[0],y:v.dr[1],z:v.dr[2],open:!!v.dr[3]}:null;
   if(String(v.gd)!==String(GLY.dials)){ GLY.dials=v.gd.slice(); drawLockFace(); } if(!!v.go!==GLY.open){ GLY.open=!!v.go; GLY.lid.rotation.x=GLY.open?-1.4:0; }
-  SOUL.g.visible=!!v.so[0]; if(SOUL.k!==v.so[1]){ SOUL.k=v.so[1]; if(SOUL.k<3) soulPlace(); SOUL.g.visible=!!v.so[0]; } SOUL.n=v.so[2]; SOUL.need=v.so[3];
-  BRZ.list.forEach((b,i)=>{ b.lit=!!v.bz[i]; b.fl.visible=b.lit; }); GC.lan.forEach((l,i)=>{ l.lit=!!v.gl[i]; l.g.visible=Q.stage==='gravecaller'; });
+  if(SOUL.k!==v.so[1]){ SOUL.k=v.so[1]; if(SOUL.k<3) soulPlace(); } SOUL.n=v.so[2]; SOUL.need=v.so[3];
+  BRZ.list.forEach((b,i)=>{ b.lit=!!v.bz[i]; b.fl.visible=b.lit; }); GC.lan.forEach((l,i)=>{ l.lit=!!v.gl[i]; });
   VSTATE.hymn=!!v.vt[0]; VSTATE.hymnT=v.vt[1]; VSTATE.open=!!v.vt[2]; VT.seals.forEach((q,i)=>{ q.p=v.vt[3][i]; q.done=q.p>=12; }); VSTATE.maxHp=1; VSTATE.hp=v.vt[4]; VSTATE.rise=v.vt[5]; VSTATE.escT=v.vt[6];
   applyCharges(v.ch); applyStaffVis(v.st); }

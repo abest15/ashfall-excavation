@@ -22,7 +22,7 @@ function updateGravecaller(dt){ if(Q.stage!=='gravecaller'||mode!=='main') retur
   else if(!zombies.some(z=>z.gravecaller&&!z.dead)){ GC.due=true; GC.t=10; } }
 // ----- the Emberwake Draught: a sealed tonic machine; the Gravecaller's death unseals it. Kills feed your magazine.
 TONICS.wake={name:'Emberwake Draught',cost:3500,hex:0xe0602a,color:'#f07a3a',letter:'E',desc:'every kill feeds your magazine and mends you a little',quest:true};
-tonicMachine('wake',QA.tonic.x,QA.tonic.z,QA.tonic.ry,qy(QA.tonic));
+const WAKE_G=tonicMachine('wake',QA.tonic.x,QA.tonic.z,QA.tonic.ry,qy(QA.tonic));
 const WAKE={k:0};
 function updateEmber(){ if(P.kills<WAKE.k) WAKE.k=P.kills; if(P.kills===WAKE.k) return; const n=P.kills-WAKE.k; WAKE.k=P.kills; if(!P.perks.has('wake')) return;
   const w=P.weapons[P.cur]; if(w&&w.id!=='gatling'){ const s=statsOf(w); w.mag=Math.min(s.mag,w.mag+n); } P.hp=Math.min(P.maxHp,P.hp+4*n); }
