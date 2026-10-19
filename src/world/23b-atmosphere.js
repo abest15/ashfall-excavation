@@ -107,8 +107,32 @@ function fogCull(dt){ if(QUAL) return; FC.t-=dt; FC.rb-=dt; const cp=camera.posi
       const g=o.geometry; if(!g) return; if(!g.boundingSphere) g.computeBoundingSphere(); o.updateMatrixWorld(); if(g.boundingSphere.radius*o.matrixWorld.getMaxScaleOnAxis()>4) return; FC.list.push(o); }); FC.t=0; }
   if(FC.t>0&&!moved) return; FC.t=.25; FC.lx=cp.x; FC.lz=cp.z; const lim=1.6/Math.max(.008,scene.fog.density), l2=lim*lim;
   for(const o of FC.list){ const e=o.matrixWorld.elements, dx=e[12]-cp.x, dz=e[14]-cp.z; o.layers.set(dx*dx+dz*dz>l2?1:0); } }
+// ---- underground: the surface is hidden (one group), sky lights dim, low warm fog, and a pool of real lamps
+// (Medium/High) follows the camera through the Underworks so zombies and lit props pick up the lamp light
+const UG={surf:null,on:false,pool:[]};
+if(QUAL) for(let i=0;i<4;i++){ const l=new THREE.PointLight(0xffb060,0,10,1.6); l.position.set(0,-50,0); scene.add(l); UG.pool.push(l); }
+function initSurfaceGroup(){ if(UG.surf) return; const S_=new THREE.Group(); S_.name='surface'; const keep=new Set([camera,sky,DECALS.m,CAS.m]); for(const q of LVIS.groups) if(q.under) keep.add(q.g); if(typeof UART!=='undefined') keep.add(UART);
+  for(const b of BEAMS) keep.add(b.m); for(const z of zombies) keep.add(z.g); const bb=new THREE.Box3(), c=new V3();
+  for(const o of scene.children.slice()){ if(keep.has(o)||o.isLight||o.isCamera||o.isSprite) continue; let lit=false; o.traverse(q=>{ if(q.isLight) lit=true; }); if(lit) continue;
+    bb.setFromObject(o); if(!bb.isEmpty()){ bb.getCenter(c); if(bb.max.y<-1) continue; } S_.add(o); }
+  scene.add(S_); UG.surf=S_;
+  // world objects now live in the surface group: let scene.remove() keep working for them
+  const rm=scene.remove.bind(scene); scene.remove=function(...objs){ for(const o of objs){ if(o&&o.parent===S_) S_.remove(o); else rm(o); } return scene; }; }
+const UNDER_ENV=(()=>{ const f=()=>{ const c=document.createElement('canvas'); c.width=c.height=32; const g=c.getContext('2d'); g.fillStyle='#0a0806'; g.fillRect(0,0,32,32); for(let i=0;i<3;i++){ const x=rand(4,28), y=rand(4,20), gr=g.createRadialGradient(x,y,0,x,y,6); gr.addColorStop(0,'rgba(255,170,90,.8)'); gr.addColorStop(1,'rgba(0,0,0,0)'); g.fillStyle=gr; g.fillRect(0,0,32,32); } return c; };
+  const t=new THREE.CubeTexture([f(),f(),f(),f(),f(),f()]); t.needsUpdate=true; return t; })();
+if(QUAL&&typeof LVL!=='undefined'&&LVL.water){ LVL.water.material=new THREE.MeshPhongMaterial({color:0x061214,specular:0x5a6a70,shininess:90,envMap:UNDER_ENV,reflectivity:.5,combine:THREE.MixOperation,transparent:true,opacity:.9,depthWrite:false}); }
+function updateUnder(dt){ if(!UG.surf) return; const c=camera.position, onStair=(c.x>-7&&c.x<9&&c.z>-25&&c.z<-19.4)||(c.x>-57.5&&c.x<-43.5&&c.z>-13.6&&c.z<-8.6);
+  const under=mode==='main'&&!P.inCabin&&c.y<-1.6; UG.surf.visible=!(under&&!onStair);
+  if(typeof UART!=='undefined') UART.visible=mode==='main'&&(c.y<-1.2||onStair);
+  if(under){ hemi.color.set(0x6a5a48); hemi.groundColor.set(0x1a120c); hemi.intensity=.32; sun.intensity=0; scene.fog.color.set(0x0b0907); scene.fog.density=.045; scene.background.set(0x050403); sky.visible=onStair; }
+  else if(UG.on&&mode==='main'&&!P.inCabin) setAtmosphere('main');
+  UG.on=under;
+  if(UG.pool.length){ if(under&&typeof LART!=='undefined'){ const L_=LART.ulamps.slice().sort((a,b)=>Math.hypot(a[0]-c.x,a[1]-c.y,a[2]-c.z)-Math.hypot(b[0]-c.x,b[1]-c.y,b[2]-c.z));
+      UG.pool.forEach((l,i)=>{ const q=L_[i]; if(!q){ l.intensity=0; return; } l.position.set(q[0],q[1]-.25,q[2]); l.color.setHex(q[5]); l.distance=q[3]*.85; l.intensity=q[4]*.75*(.92+Math.random()*.08); }); }
+    else for(const l of UG.pool) l.intensity=0; }
+  if(typeof updateLevelArt==='function') updateLevelArt(dt); }
 const _sc=new V3();
-function updateAtmos(dt){ fogCull(dt); ATM.t+=dt; const main=mode==='main'&&!P.inCabin;
+function updateAtmos(dt){ fogCull(dt); updateUnder(dt); ATM.t+=dt; const main=mode==='main'&&!P.inCabin;
   if(ATM.clouds) ATM.clouds.rotation.y+=dt*.003;
   for(const c of ATM.cones){ const on=main&&c.l.intensity>.05; c.m.visible=c.halo.visible=c.pool.visible=on; if(on){ const f=c.l.intensity/1.1; c.m.material.uniforms.op.value=.2*f; } }
   for(const s of ATM.shafts) s.visible=main;

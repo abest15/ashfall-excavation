@@ -5,7 +5,7 @@
 const LVL={doors:{},windows:[],lamps:[]};
 // ---- builder: boxes -> one merged mesh, world-space UVs, baked lamp light in the vertex colours
 function lvBuilder(){ const b=GB(); let n=0;
-  return { box(x0,x1,y0,y1,z0,z1,col,seg=3){ const w=x1-x0, h=y1-y0, d=z1-z0; if(w<=.001||h<=.001||d<=.001) return this;
+  return { box(x0,x1,y0,y1,z0,z1,col,seg=3){ if(x1<x0) [x0,x1]=[x1,x0]; if(y1<y0) [y0,y1]=[y1,y0]; if(z1<z0) [z0,z1]=[z1,z0]; const w=x1-x0, h=y1-y0, d=z1-z0; if(w<=.001||h<=.001||d<=.001) return this;
       b.add(new THREE.BoxGeometry(w,h,d,Math.max(1,Math.ceil(w/seg)),Math.max(1,Math.ceil(h/seg)),Math.max(1,Math.ceil(d/seg))),col,{p:[(x0+x1)/2,(y0+y1)/2,(z0+z1)/2]}); n++; return this; },
     add(geo,col,o){ b.add(geo,col,o); n++; return this; },
     get count(){ return n; },
@@ -90,7 +90,7 @@ const CHATEAU=levelGroup('chateau');
   { const U=lvBuilder(); for(let i=0;i<22;i++){ const x1=-44.5-i*12/22, x0=x1-12/22, h=-7*(i+1)/22; U.box(x0,x1,h-.3,h+7/22,-12.6,-9.6,0x7a7068,3); }
     U.box(-56.5,-44.5,-11,-.05,-13.0,-12.6,0x6a6058); U.box(-56.5,-46,-7.3,1.1,-9.6,-9.2,0x6a6058);
     lvAdd(U.done([[-50,-3,-11,10,1.4,0xffa860],[-45,1.5,-11,6,.8,0xffa860]],.26,2.4,null,-2.2),lvMat(stoneTex,0xffffff),UNDER,true); }
-  LVIS.near.push({x:-44.5,z:-11,r:28});
+  LVIS.near.push({x:-50.5,z:-11.1,r:9});
   addLevelZone('K',-58.4,-30.6,-26.4,2.4,-2.5,2.5);
   addLevelZone('L',-58.4,-30.6,-26.4,2.4,2.5,40); addLevelZone('L',-30.6,-27,-24.4,-15.6,2.5,40);
   // props (graybox): map table, radio desk, kitchen range, beds, bell frame
@@ -103,7 +103,7 @@ const CHATEAU=levelGroup('chateau');
   const BELL=new THREE.Mesh(new THREE.CylinderGeometry(.3,.6,.9,10,1,true),L({color:0x8a6a30,side:THREE.DoubleSide})); BELL.position.set(-35,UF0+2.5,-19); CHATEAU.add(BELL); LVL.bell=BELL;
   const lights=[[-36,2.9,-7,12,1.0,0xffb060],[-36,2.9,-20,12,.9,0xffb060],[-50,2.9,-20,12,.9,0xffa850],[-50,2.9,-5,11,.9,0xffa850],[-36,7.2,-7,12,.8,0xffc080],[-50,7.2,-19,12,.8,0xffc080],[-50,7.2,-5,10,.7,0xffc080]];
   const sun={dir:[.4,.8,.35],k:.28};
-  lvAdd(B.done(lights,.36,2.6,sun),lvMat(stoneTex,0xffffff),CHATEAU,true);
+  lvAdd(B.done(lights,.36,2.6,sun),lvMat(plasterTex,0xffffff),CHATEAU,true); LVL.chLights=lights; LVL.chSun=sun;
   lvAdd(F.done(lights,.34,1.6,sun),lvMat(plankTex,0xffffff),CHATEAU,true);
   lvGlows(lights.map(l=>[l[0],l[1],l[2]]),CHATEAU);
   // zombie windows: radio room (west), kitchen (north), map room (south)
@@ -170,7 +170,7 @@ function lvRoom(B,x0,x1,z0,z1,fy,cy,gaps,col,o={}){ const t=.6, wy0=-11, wy1=o.w
   lvRoom(B,24,46,-32,-12,-7.4,-2.6,{w:[[-24,-20]]},brick,{floorCol:0x3a3c3a});
   for(const [x0,x1,z0,z1] of [[24,46,-23,-21],[33,35,-32,-12],[24,46,-14,-12]]){ addSlab(x0,x1,z0,z1,U,{ceil:false}); B.box(x0,x1,U-.25,U,z0,z1,0x7a6048,3); }
   addLevelZone('U4',24,46,-32,-12,-12,-2.5);
-  const water=new THREE.Mesh(new THREE.PlaneGeometry(22,20),new THREE.MeshBasicMaterial({color:0x1e3a40,transparent:true,opacity:.62,depthWrite:false})); water.rotation.x=-Math.PI/2; water.position.set(35,-7.12,-22); UNDER.add(water);
+  const water=new THREE.Mesh(new THREE.PlaneGeometry(22,20),new THREE.MeshBasicMaterial({color:0x1e3a40,transparent:true,opacity:.62,depthWrite:false})); water.rotation.x=-Math.PI/2; water.position.set(35,-7.12,-22); UNDER.add(water); LVL.water=water;
   // spawn grates
   for(const k in LEVEL_SPAWNS) for(const s of LEVEL_SPAWNS[k]) B.box(s[0]-.6,s[0]+.6,s[2],s[2]+.04,s[1]-.6,s[1]+.6,0x262422,2);
   // doors: debris at the shaft top, then the tunnel network (the vault door is sealed for the quest lane)
@@ -186,7 +186,7 @@ function lvRoom(B,x0,x1,z0,z1,fy,cy,gaps,col,o={}){ const t=.6, wy0=-11, wy1=o.w
     [-24,-3.5,-44,8,.7,0xd8e8c0],[-30,-4.5,-50,10,.9,0xd8e8c0],[-18,-4.5,-56,10,.9,0xd8e8c0],[-24,-3.5,-53,9,.8,0xe8f0d0],
     [-24,-4,-63,8,.7,0xc06050],[-28,-3,-75,20,1.2,0xc04838],[-20,-6,-80,10,.8,0x60c0d0],[-36,-6,-70,10,.8,0x60c0d0],
     [29,-4,-16,10,.9,0x80b0d0],[40,-4,-28,11,.9,0x80b0d0],[34,-4,-22,10,.8,0x90c0d8]];
-  lvAdd(B.done(lights.map(l=>[l[0],l[1],l[2],l[3]*1.25,l[4]*1.35,l[5]]),.24,2.2,null,-2.2),lvMat(stoneTex,0xffffff),UNDER,true);
+  LVL.uLights=lights.map(l=>[l[0],l[1],l[2],l[3]*1.25,l[4]*1.35,l[5]]); lvAdd(B.done(LVL.uLights,.24,2.2,null,-2.2),lvMat(rockTex,0xffffff),UNDER,true);
   lvGlows(lights.map(l=>[l[0],l[1],l[2]]),UNDER);
   addMarker('under.pump.valve',{x:12,y:U,z:-14.6,kind:'switch',zone:'U1',note:'pipe valve on the north wall'});
   addMarker('under.pump.perk',{x:23.4,y:U,z:-16,ry:-Math.PI/2,kind:'perk',zone:'U1',note:'east wall, north end'});

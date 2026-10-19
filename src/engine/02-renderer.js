@@ -92,7 +92,7 @@ if(POST.on){ const T=TSL, {texture,uniform,uv,vec2,vec3,vec4,float,smoothstep,mi
 function postResize(){ if(!POST.on) return; const v=new THREE.Vector2(); renderer.getDrawingBufferSize(v); POST.rt.setSize(v.x,v.y); const qw=Math.max(1,v.x>>2), qh=Math.max(1,v.y>>2); POST.a.setSize(qw,qh); POST.b.setSize(qw,qh); POST.res.value.set(v.x,v.y); POST.texel=new THREE.Vector2(1/qw,1/qh); }
 let FIRST_FRAME=true;
 function renderFrame(withVM){
-  if(FIRST_FRAME){ FIRST_FRAME=false; if(typeof flushBatches==='function') flushBatches(); if(typeof initShadowFlags==='function') initShadowFlags(); }
+  if(FIRST_FRAME){ FIRST_FRAME=false; if(typeof flushBatches==='function') flushBatches(); if(typeof initShadowFlags==='function') initShadowFlags(); if(typeof initSurfaceGroup==='function') initSurfaceGroup(); }
   if(typeof FXT!=='undefined') FXT.value=performance.now()*.001%1000;
   if(!POST.on){ renderer.setRenderTarget(null); renderer.clear(); renderer.render(scene,camera); if(withVM){ renderer.clearDepth(); renderer.render(vmScene,vmCam); } return; }
   renderer.setRenderTarget(POST.rt); renderer.clear(); renderer.render(scene,camera); if(withVM){ renderer.clearDepth(); renderer.render(vmScene,vmCam); }
