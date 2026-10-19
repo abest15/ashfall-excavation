@@ -5,6 +5,7 @@ function fire(){
   if(w.reloadEnd){ if(w.rlShell&&w.mag>0&&trigFresh&&w.rlPh!=='out'){ w.rlPh='out'; w.rlPump=false; w.rlA=GT; w.rlB=w.reloadEnd=GT+.22; } return; }
   const s=statsOf(w); if(GT<w.next) return;
   if(w.mag<=0){ if(trigFresh){ sfx.dry(); trigFresh=false; } if(w.res>0) reload(); return; }
+  if(s.staff&&P.ads>.6&&trigFresh&&typeof staffAlt==='function'){ trigFresh=false; staffAlt(w); return; } // staff alt-fire (19f-staffs.js)
   if(!s.auto&&!trigFresh) return; trigFresh=false;
   NET.shots++; w.mag--; if(w.id==='gatling') w.mag=999; w.next=GT+s.rate*(P.perks.has('rapid')?.75:1); P.sprint=false; P.slideT=0;
   camera.updateMatrixWorld(); const origin=camera.position.clone(); const fwd=new V3(0,0,-1).applyQuaternion(camera.quaternion);
@@ -29,6 +30,7 @@ function fire(){
     if(s.jump){ const e=end||origin.clone().addScaledVector(dir,50); arc(muzzleW,e,1.6,w.up?0xff8a6a:0xcfe8ff); if(pz) chainJump(pz.z,s,w.up); else spawnParticles(e,'spark',6); continue; }
     if(s.splash){ const e=end||origin.clone().addScaledVector(dir,40); explode(e,s.splash,s.dmg*.85); }
     if(s.beam){ const e=end||origin.clone().addScaledVector(dir,60); (s.arc?arc:beam)(muzzleW,e,w.up?2.2:1.3,s.bcol); if(w.id==='rod'){ beam(muzzleW,e,w.up?7:5,w.up?0x2a6a80:0x1a4a5a); spawnParticles(e,'relic',w.up?10:6); }
+      if(s.staff&&typeof staffImpact==='function') staffImpact(w,s,e,seen);
       if(s.chain){ let n=0; for(const z of zombies){ if(n>=(s.chainN||3)) break; if(z.dead||seen.has(z)||z.rise>0) continue; const zp=z.g.position; if(Math.hypot(zp.x-e.x,zp.z-e.z)<6.5){ n++; (s.arc?arc:beam)(e,new V3(zp.x,1.3,zp.z),.8,s.bcol); hitZombie(z,s.dmg*(s.chainMul||.5),1,'gun'); } } } }
   }
   if(typeof muzzleLight==='function'&&!s.beam&&!s.jump) muzzleLight(muzzleW);

@@ -34,7 +34,7 @@ const VT={door:null,seals:[],heart:null};
   b.add(new THREE.CylinderGeometry(.5,.5,.2,S(12,8)),0x6a3a24,{p:[0,.45,0]}); for(const r of [0,Math.PI/2]) b.add(new THREE.BoxGeometry(3.6,.12,.2),0x6a3a24,{p:[0,.5,0],r:[0,r,0]});
   const lid=new THREE.Mesh(b.done(),L({vertexColors:true})); g.add(lid); VT.lid=lid;
   const glow=new THREE.Mesh(new THREE.CircleGeometry(2.4,24),M.add(0xff7a2a,0)); glow.rotation.x=-Math.PI/2; glow.position.y=.08; g.add(glow); VT.glow=glow;
-  VT.doorO=addInter({x:d.x,z:d.z+3.4,r:2.2,prompt:vaultDoorPrompt,use:()=>qAct('vdoor')});
+  VT.doorO=addInter({x:d.x,z:d.z+3.4,r:2.2,prompt:vaultDoorPrompt,use:()=>vaultDoorUse()});
   // the gramophone
   const gp=V.gramophone, gg=new THREE.Group(); gg.position.set(gp.x,0,gp.z); gg.visible=false; scene.add(gg); VT.gram=gg;
   box(.8,.8,.6,M.wood,0,.4,0,{parent:gg}); const disc=cyl(.28,.28,.02,B({color:0x1a1410}),0,.82,0,16,gg); VT.disc=disc;
@@ -62,12 +62,14 @@ const VSTATE={hymnT:0,hymn:false,open:false,spT:0,hp:0,maxHp:1,rise:0,pulse:0,es
 function gramPrompt(){ if(Q.stage!=='vault') return null; if(VSTATE.hymn) return null; if(VSTATE.hymnT>0) return '!The Deep Hymn is playing…';
   const n=['shard1','shard2','shard3'].filter(k=>QI.has(k)).length; return n<3?`!The gramophone needs its record. Shards ${n}/3`:'Set the three record shards on the gramophone'; }
 function vaultDoorPrompt(){ if(Q.stage!=='vault') return null; if(!VSTATE.hymn) return '!The Deep Vault is sealed. Something must be played to it';
+  if(staffsPlaced()<4){ const k=STAFF_IDS.find(q=>STF[q].up&&!STF[q].placed&&P.weapons.some(w=>w.id===q)); return k?`Set the ${WD[k].name} in the vault door`:`!Four staff sockets (${staffsPlaced()}/4). Bring every upgraded staff`; }
   if(!QI.has('vkey')||!QI.has('lantern')) return `!The door wants the vault key and the soul lantern (${QI.has('vkey')?'key ✓':'no key'}, ${QI.has('lantern')?'lantern ✓':'no lantern'})`;
   return 'Unlock the Deep Vault'; }
+function vaultDoorUse(){ if(VSTATE.hymn&&staffsPlaced()<4) qAct('splace'); else qAct('vdoor'); }
 QACT.gram=()=>{ if(Q.stage!=='vault'||VSTATE.hymn||VSTATE.hymnT>0) return; if(!['shard1','shard2','shard3'].every(k=>QI.has(k))) return;
   ['shard1','shard2','shard3'].forEach(k=>QI.delete(k)); VSTATE.hymnT=7; qEv('hymn',{p:[QA.vault.gramophone.x,QA.vault.gramophone.z]}); banner('The Deep Hymn','Hold them off while the record plays'); };
 QEV.hymn=m=>{ const f=[220,261.6,329.6,293.7,246.9,220,196,220]; f.forEach((x,k)=>setTimeout(()=>sfxAt('hymn',{x:m.p[0],z:m.p[1]},60,x),k*800)); };
-QACT.vdoor=()=>{ if(Q.stage!=='vault'||!VSTATE.hymn||VSTATE.open||!QI.has('vkey')||!QI.has('lantern')) return; VSTATE.open=true; QI.delete('vkey'); QI.delete('lantern');
+QACT.vdoor=()=>{ if(Q.stage!=='vault'||!VSTATE.hymn||VSTATE.open||staffsPlaced()<4||!QI.has('vkey')||!QI.has('lantern')) return; VSTATE.open=true; QI.delete('vkey'); QI.delete('lantern'); staffsReturn();
   Q.stage='seals'; VT.seals.forEach(s=>{ s.p=0; s.done=false; }); VSTATE.spT=2; const d=QA.vault.door; qSound('vaultOpen',d.x,d.z,120); banner('The Deep Vault opens','Stand on the three seal plates until they burn white. The dead will pour in'); };
 QACT.escape=()=>{ if(Q.stage!=='escape') return; Q.stage='won'; victory(); };
 // the gate out of the Hollow brings everyone back up into the vault

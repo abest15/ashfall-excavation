@@ -22,7 +22,7 @@ window.__G=(function(){
   v('zvoice',()=>zvoice); v('pause',()=>pause); v('victory',()=>victory); v('sfx',()=>sfx);
   v('WSIM',()=>WSIM); v('colliders',()=>colliders); v('collide',()=>collide); v('route',()=>route); v('zoneOf',()=>zoneOf); v('updateZombies',()=>updateZombies);
   // quest systems (gameplay/16*-19* quest files): power breakers, puzzles, specials, the vault
-  v('QUEST',()=>({PWR,GEN,QI,QP,QA,VAL,RAD,GLY,SOUL,BRZ,GC,VSTATE,VT,CHG,RADIO_DIAL,RITES_TOTAL,BRZ_NOTES,qAct,questLayout,questShoot,questKill,glyphShoot,lanternShot,heartShot,hollowGate,skipEnding,journal,specialInit,pickSpecial,maxAlive,zCount,openDescent,startGravecaller,genPrompt,brkPrompt,questMelee,questVisX}));
+  v('QUEST',()=>({PWR,GEN,QI,QP,QA,VAL,RAD,GLY,SOUL,BRZ,GC,VSTATE,VT,CHG,RADIO_DIAL,RITES_TOTAL,BRZ_NOTES,qAct,questLayout,questShoot,questKill,glyphShoot,lanternShot,heartShot,hollowGate,skipEnding,journal,specialInit,pickSpecial,maxAlive,zCount,openDescent,startGravecaller,genPrompt,brkPrompt,questMelee,questVisX,STF,STQ,PED,SHOLD,STAFF_IDS,STAFF_PARTS,SFX_LIVE,staffShoot,staffUpgrade,staffAlt,pedPrompt,vaultDoorPrompt,QACT}));
   Object.defineProperties(G,{
     curInter:{get(){ return curInter; },enumerable:true},
     state:{get(){ return state; },enumerable:true},

@@ -29,6 +29,7 @@
   "gameplay/19c-specials.js",
   "gameplay/19d-quest-finale.js",
   "gameplay/19e-quest-sync.js",
+  "gameplay/19f-staffs.js",
   "world/20-the-hollow.js",
   "world/21-lights-atmosphere-switching.js",
   "world/21b-combat-fx.js",

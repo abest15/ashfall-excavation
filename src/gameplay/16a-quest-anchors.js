@@ -12,7 +12,7 @@ const QA={
     {id:'trench-east',x:25.5,z:6.7,ry:0,zone:'B',hint:'by the sandbags where the east trench meets the yard wall'},
     {id:'dig-southeast',x:2.5,z:-24,ry:Math.PI,zone:'C',hint:'south-east of the pit, near the Quickhand machine'},
     {id:'dig-south',x:-22,z:-28.5,ry:0,zone:'C',hint:'against the south wall of the dig, near the Forge'},
-    {id:'yard-corner',x:13,z:-24,ry:Math.PI/2,zone:'D',hint:'in the south-west corner of the generator yard'},
+    {id:'yard-corner',x:13.5,z:-21.5,ry:Math.PI/2,zone:'D',hint:'near the south-west corner of the generator yard'},
     {id:'yard-gate',x:38.4,z:-2.2,ry:-Math.PI/2,zone:'D',hint:'next to the gate out to No Man\'s Land'},
     {id:'chapel-vestry',x:58.4,z:12.4,ry:-Math.PI/2,zone:'E',hint:'in the chapel, beside the vestry glass'},
     {id:'nml-crater',x:96.5,z:-26,ry:-Math.PI/2,zone:'G',hint:'in the far shell crater of No Man\'s Land'},
@@ -38,10 +38,19 @@ const QA={
   lanterns:[{x:-17,z:-14},{x:-3,z:-14},{x:-10,z:-6},{x:-10,z:-22},{x:-20,z:-24}],
   gravecaller:{x:-10,z:-5,zone:'C'},
   tonic:{x:-28.6,z:-2,ry:Math.PI/2,zone:'C',hint:'the wax-sealed machine on the dig\'s west wall'},
+  // STAFF_ANCHORS: the four staff pedestals (shared workbench / swap point) and each staff's part tasks and trial.
+  // seq: three shootable targets (h = height above the floor); seqDrop: where that part falls; hold / zone / shrine / trial: defences and trials.
+  staffs:{
+    pedestals:[{x:47,z:15.6,zone:'E'},{x:47,z:19.4,zone:'E'},{x:51,z:15.6,zone:'E'},{x:51,z:19.4,zone:'E'}],
+    cinder:{seq:[{x:-22.6,z:-28.9,h:1.9},{x:-28.9,z:-22.6,h:2.5},{x:-26.6,z:-26.6,h:3.6}],seqDrop:{x:-22,z:-22},zone:'fuel trench (TRAP)'},
+    brine:{seq:[{x:62,z:-28.9,h:1.3},{x:98.9,z:-18,h:1.5},{x:75,z:4.1,h:1.7}],seqDrop:{x:96,z:-22},hold:{x:90,z:-27.2}},
+    grave:{seq:[{x:30.9,z:20.5,h:1.4},{x:30.9,z:24.5,h:2.3},{x:43,z:29.1,h:3.2}],seqDrop:{x:33,z:22},hold:{x:-15,z:-26.2},trial:{x:-10,z:-23}},
+    gale:{seq:[{x:-20,z:29.1,h:2.9},{x:12,z:29.1,h:3.1},{x:14,z:5.9,h:2.8}],seqDrop:{x:-2,z:24},zone:{x:25,z:-14},shrine:{x:70,z:1.5}},
+  },
   // VAULT_ANCHORS: the deep vault finale. It belongs in the Underworks (Lane 7); until then it sits in the dig pit.
   vault:{temp:true,future:'underworks:vault',zone:'C',
     spawn:{x:-10,z:-1.5}, door:{x:-10,z:-14,ry:0}, gramophone:{x:-6.5,z:-6.5}, heart:{x:-10,z:-14},
-    seals:[{x:-16.5,z:-14},{x:-3.5,z:-14},{x:-10,z:-21}], exit:{x:-22.5,z:-8}},
+    seals:[{x:-16.5,z:-14},{x:-3.5,z:-14},{x:-10,z:-21}], exit:{x:-19.5,z:-26.5}},
 };
 const POWER_ANCHORS=QA.power;
 // seeded randomness: one seed per game (host-chosen, replicated), so every layout pick is the same on every machine

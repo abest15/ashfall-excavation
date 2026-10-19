@@ -20,5 +20,12 @@ Object.assign(sfx,{
   shriek:()=>{ tn(900,1.1,'sawtooth',.13,0,1800,.02); tn(1340,1,'square',.05,.05,2400); nz(1,3800,2,.25,'bandpass',0,6000); tn(160,.9,'sawtooth',.08,0,90); },
   tick:()=>{ clk(4200,.22); tn(1800,.03,'square',.04); },
   hymn:f=>{ tn(f,1.6,'sine',.12,0,null,.15); tn(f*1.5,1.4,'sine',.05,.05,null,.2); tn(f/2,1.8,'triangle',.06,0,null,.3); },
+  // the four staffs (u = upgraded): each its own voice
+  staffCinder:u=>{ nz(.35,700,1.2,.32,'lowpass',0,2400); tn(u?70:95,.3,'sawtooth',.16,0,40); nz(.5,2600,3,.1,'bandpass',.08,600); tn(u?330:440,.25,'square',.03,0,180); },
+  staffBrine:u=>{ nz(.45,500,.8,.3,'lowpass',0,1800); tn(u?150:200,.4,'sine',.2,0,80); for(let i=0;i<3;i++) tn(rand(600,1400),.08,'sine',.03,.05+i*.05,rand(300,700)); },
+  staffGrave:u=>{ tn(u?110:146.8,.18,'triangle',.12,0,u?82:110); tn(u?165:220,.16,'sine',.05,0,null,.01); nz(.12,3200,5,.05,'bandpass'); },
+  staffGale:u=>{ nz(.3,4200,2,.25,'highpass',0,7000); for(let i=0;i<4;i++) tn(rand(2200,4200),.12,'triangle',.03,i*.03); tn(u?260:340,.2,'sawtooth',.04,0,120); },
+  staffAlt:k=>{ if(k==='cinder'){ nz(1.2,400,1,.45,'lowpass',0,90); tn(50,1,'sawtooth',.2,0,30); } else if(k==='brine'){ nz(1.4,800,.6,.4,'lowpass',0,200); tn(90,1.2,'sine',.22,0,45); }
+    else if(k==='grave'){ [220,207.6,196,185].forEach((f,i)=>tn(f,.9,'sine',.07,i*.12)); nz(.8,1800,4,.12,'bandpass',0,400); } else { nz(2,3000,1,.3,'bandpass',0,6000); for(let i=0;i<8;i++) tn(rand(2000,5000),.1,'triangle',.025,i*.15); } },
   vaultOpen:()=>{ for(let i=0;i<5;i++) clk(rand(600,1200),.3,i*.25); tn(38,3.5,'sawtooth',.25,0,60,.4); nz(3,300,1,.45,'lowpass',.2,90); },
 });

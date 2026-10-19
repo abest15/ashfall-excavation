@@ -1,5 +1,5 @@
 /* ---------- quest glue: per-game layout, reset, hooks from combat, the journal, and co-op replication ---------- */
-const RITES_TOTAL=22;
+const RITES_TOTAL=23;
 const QUEST_STAGES=['frags','assembling','rodReady','stones','echoes','valves','candles','ember','colossus','gauntlet','radio','return','awakening','awakenReady','wraith','gravecaller','felling','strike','glyphs','souls','braziers','descent','vault','seals','furnace','escape','won'];
 // everything random about the quest comes from one seed, so host and clients lay it out identically
 function questLayout(seed){ Q.seed=seed; const r=qrng(seed);
@@ -10,7 +10,8 @@ function questLayout(seed){ Q.seed=seed; const r=qrng(seed);
   GLY.walls.forEach((w,j)=>{ const a=ga[j]; w.a=a; w.m.position.set(a.x+Math.sin(a.ry)*.02,2.1+qy(a),a.z+Math.cos(a.ry)*.02); w.m.rotation.y=a.ry; w.m.visible=true; drawGlyphWall(w,j,GLY.tally[j]); }); drawLockFace();
   SOUL.spots=qShuffle([0,1,2,3,4],r).slice(0,3); SOUL.k=0; SOUL.n=0; SOUL.g.visible=false;
   BRZ.notes=qShuffle([0,1,2,3],r); BRZ.order=qShuffle([0,1,2,3],r); BRZ.seq=0; BRZ.list.forEach((b,i)=>{ b.lit=false; b.fl.visible=false; const s=BRZ_SIZE[BRZ.notes[i]]; b.bowl.scale.setScalar(s); }); drawMusicStrip();
-  const la=qShuffle(QA.lanterns,r).slice(0,3); GC.lan.forEach((l,i)=>{ l.a=la[i]; l.g.position.set(la[i].x,0,la[i].z); l.g.visible=false; l.lit=false; removeSolid(l.hit); }); }
+  const la=qShuffle(QA.lanterns,r).slice(0,3); GC.lan.forEach((l,i)=>{ l.a=la[i]; l.g.position.set(la[i].x,0,la[i].z); l.g.visible=false; l.lit=false; removeSolid(l.hit); });
+  staffLayout(r); }
 function questReset(){ QI.clear(); clearQPicks(); clearCharges(); P.drum=false; Q.tonicOpen=false; Q.seed=0; WAKE.k=0;
   GC.due=false; Object.assign(VSTATE,{hymnT:0,hymn:false,open:false,spT:0,hp:0,maxHp:1,rise:0,pulse:0,escT:0,half:false}); VT.door.position.y=0; VT.heart.position.y=-4; removeSolid(VT.hit); VT.seals.forEach(s=>{ s.p=0; s.done=false; });
   PWR.brk.forEach(b=>{ b.g.visible=false; b.col.on=false; removeSolid(b.hit); b.a=null; });
@@ -18,14 +19,14 @@ function questReset(){ QI.clear(); clearQPicks(); clearCharges(); P.drum=false; 
   if(NET.role==='client') return; // the host's seed arrives in the first snapshot
   const m=/[?&]seed=(\d+)/.exec(location.search); questLayout(m?+m[1]:(Math.random()*2147483647)|0); }
 // hooks called from combat and zombies (host)
-function questKill(z,how,p){ soulKill(p);
+function questKill(z,how,p){ soulKill(p); staffKill(z,p); staffKillNear(p);
   if(z.kind==='shrieker') radioTagDrop(p);
   if(z.gravecaller) gravecallerDown();
   if(!POWER.on&&!QI.has('fuse')&&!QP.some(e=>e.key==='fuse')&&PWR.brk.some(b=>b.type==='fuse'&&b.found&&!b.fused)&&Math.random()<.04) qDrop('fuse',p.x,p.z,'Take the breaker fuse',0xd9a040); }
 function questShoot(id,w){ if(NET.role==='client') return; if(typeof id!=='string') return;
-  if(id.startsWith('gd')) glyphShoot(+id[2]); else if(id.startsWith('gl')) lanternShot(+id[2]); else if(id==='fh') heartShot(w); }
+  if(id.startsWith('gd')) glyphShoot(+id[2]); else if(id.startsWith('gl')) lanternShot(+id[2]); else if(id==='fh') heartShot(w); else if(id.startsWith('st_')) staffShoot(id); }
 function questHoldsRound(){ return PWR.surge>0||Q.stage==='seals'||Q.stage==='furnace'||Q.stage==='escape'||VSTATE.hymnT>0; }
-function updateQuestX(dt){ updatePower(dt); updatePuzzles(dt); updateQPicks(dt); updateSpecials(dt); updateGravecaller(dt); updateVault(dt); updateEmber();
+function updateQuestX(dt){ updatePower(dt); updatePuzzles(dt); updateQPicks(dt); updateSpecials(dt); updateGravecaller(dt); updateVault(dt); updateEmber(); updateStaffs(dt);
   if(NET.role!=='client') updateRadioStage(dt); }
 // journal: new stages get their own page; the power hunt is listed under whatever the ritual is doing
 function questJournal(j){ if(P.inCabin||mode==='hollow') return j; const s=Q.stage, rom=['I','II','III'];
@@ -36,12 +37,13 @@ function questJournal(j){ if(P.inCabin||mode==='hollow') return j; const s=Q.sta
     glyphs:()=>({t:'Four glyphs are scratched into the site\'s walls, each with tally marks. The strongbox in the dig has a dial under each glyph: shoot a dial to turn it until it matches its glyph\'s count, then try the lid.',l:GLY.dials.map((v,k)=>[false,`Dial ${k+1} (${['sun','moon','star','eye'][GLY.order[k]]}): ${v}`])}),
     souls:()=>({t:'Kill the dead inside the chalk ward to fill the soul canister. Three canisters; the ward moves after each.',l:[[SOUL.k>0,`Canisters ${SOUL.k}/3`],[false,`This canister: ${SOUL.n}/${SOUL.need}`]]}),
     braziers:()=>({t:'Wind the music box on the chapel altar and listen. Light the four braziers round the pit in the order it plays (bigger bowls ring deeper).',l:[[BRZ.seq>0,`Braziers lit in order: ${BRZ.seq}/4`],[false,'A wrong flame puts them all out']]}),
-    vault:()=>({t:VSTATE.hymn?'Open the Deep Vault with the vault key and the soul lantern.':'Play the Deep Hymn: set the three record shards on the gramophone by the vault door.',l:[[VSTATE.hymn,'The Deep Hymn'],[QI.has('vkey'),'Vault key'],[QI.has('lantern'),'Soul lantern']]}),
+    vault:()=>({t:!VSTATE.hymn?'Play the Deep Hymn: set the three record shards on the gramophone by the vault door.':staffsPlaced()<4?'Set all four upgraded staffs in the vault door (solo: carry them in one at a time).':'Open the Deep Vault with the vault key and the soul lantern.',l:[[VSTATE.hymn,'The Deep Hymn'],[staffsPlaced()===4,`Staffs set: ${staffsPlaced()}/4`],[QI.has('vkey'),'Vault key'],[QI.has('lantern'),'Soul lantern']]}),
     seals:()=>({t:'Stand on each seal plate until it burns white. The dead pour in.',l:VT.seals.map((q,i)=>[q.done,`Seal ${i+1}: ${q.done?'burning':Math.floor(q.p/12*100)+'%'}`])}),
     furnace:()=>({t:'Destroy the Furnace Heart. Relic weapons bite deepest. Stay out of its pulse.',l:[[false,`Heart ${Math.ceil(VSTATE.hp/VSTATE.maxHp*100)}%`]]}),
     escape:()=>({t:'Get to the lift and ride it out!',l:[[false,`The dig is coming down: ${Math.ceil(VSTATE.escT)}s`]]}),
   };
   if(pages[s]) j=pages[s]();
+  if(POWER.on&&!['seals','furnace','escape','won'].includes(s)) j={t:j.t,l:j.l.concat([[staffsUp(),staffJournalLine()]])};
   if(!POWER.on){ const f=brkFound(), t=brkThrown(); const l=[[t>=3,`Power: breakers found ${f}/3 · thrown ${t}/3`]];
     PWR.brk.forEach(b=>{ if(!b.a||b.thrown) return; if(!b.found) l.push([false,`A hum from ${ZONES[b.a.zone].name.toLowerCase()}…`]); else l.push([false,b.type==='jammed'?`Breaker ${b.a.hint}: rusted (knife it, ${b.whacks}/5)`:b.type==='fuse'?`Breaker ${b.a.hint}: ${b.fused?'fused, throw it':QI.has('fuse')?'seat the fuse':'needs a fuse (search the crates)'}`:`Breaker ${b.a.hint}: throwing it sounds the alarm`]); });
     if(t>=3) l.push([false,'Hold E at the generator to crank it']);
@@ -56,7 +58,7 @@ function questVisX(){ return {sd:Q.seed,st:Q.stage,ri:Q.rites||0,
   vs:VAL.set,vo:VAL.solved?1:0,rd:[RAD.dial,RAD.seq],dr:RAD.drop?[RAD.drop.x,+RAD.drop.y.toFixed(2),RAD.drop.z,RAD.drop.open?1:0]:0,
   gd:GLY.dials,go:GLY.open?1:0,so:[SOUL.g.visible?1:0,SOUL.k,SOUL.n,SOUL.need],bz:BRZ.list.map(b=>b.lit?1:0),gl:GC.lan.map(l=>l.lit?1:0),
   vt:[VSTATE.hymn?1:0,+VSTATE.hymnT.toFixed(1),VSTATE.open?1:0,VT.seals.map(q=>+q.p.toFixed(1)),+(VSTATE.hp/VSTATE.maxHp).toFixed(3),+VSTATE.rise.toFixed(2),+VSTATE.escT.toFixed(1)],
-  ch:CHG.map(q=>[+q.m.position.x.toFixed(2),+q.m.position.y.toFixed(2),+q.m.position.z.toFixed(2),q.t>=q.dur?1:0]),tn:Q.tonicOpen?1:0}; }
+  st:staffVis(),ch:CHG.map(q=>[+q.m.position.x.toFixed(2),+q.m.position.y.toFixed(2),+q.m.position.z.toFixed(2),q.t>=q.dur?1:0]),tn:Q.tonicOpen?1:0}; }
 function applyQuestVisX(v){ if(!v) return; if(v.sd&&v.sd!==Q.seed) questLayout(v.sd); Q.stage=v.st; Q.rites=v.ri; Q.tonicOpen=!!v.tn;
   PWR.brk.forEach((b,i)=>{ const f=v.pw[i]; b.found=!!(f&1); const th=!!(f&2); if(th&&!b.thrown) b.lever.rotation.x=.7; b.thrown=th; b.fused=!!(f&4); b.whacks=f>>3; });
   PWR.crates.forEach((c,i)=>{ c.searched=!!v.cr[i]; c.lid.rotation.x=c.searched?-1.9:0; });
@@ -68,4 +70,4 @@ function applyQuestVisX(v){ if(!v) return; if(v.sd&&v.sd!==Q.seed) questLayout(v
   SOUL.g.visible=!!v.so[0]; if(SOUL.k!==v.so[1]){ SOUL.k=v.so[1]; if(SOUL.k<3) soulPlace(); SOUL.g.visible=!!v.so[0]; } SOUL.n=v.so[2]; SOUL.need=v.so[3];
   BRZ.list.forEach((b,i)=>{ b.lit=!!v.bz[i]; b.fl.visible=b.lit; }); GC.lan.forEach((l,i)=>{ l.lit=!!v.gl[i]; l.g.visible=Q.stage==='gravecaller'; });
   VSTATE.hymn=!!v.vt[0]; VSTATE.hymnT=v.vt[1]; VSTATE.open=!!v.vt[2]; VT.seals.forEach((q,i)=>{ q.p=v.vt[3][i]; q.done=q.p>=12; }); VSTATE.maxHp=1; VSTATE.hp=v.vt[4]; VSTATE.rise=v.vt[5]; VSTATE.escT=v.vt[6];
-  applyCharges(v.ch); }
+  applyCharges(v.ch); applyStaffVis(v.st); }

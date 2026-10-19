@@ -1,10 +1,11 @@
-// Full ritual: drives the whole main quest (the easter egg, 22 rites) to the victory screen through window.__G.
+// Full ritual: drives the whole main quest (the easter egg, 23 rites) to the victory screen through window.__G.
 // Each step uses the same function the game calls when the player does that thing (interactions go through the
 // prompt under the player, shooting a strongbox dial calls questShoot, knifing a breaker calls melee, ...), and game
 // time is advanced with __G.tick so the timed stages (generator crank, binding, awakening, the supply drop, the Deep
 // Hymn, the seals, the Furnace Heart rising) run for real. Solutions come from the per-game layout (seeded).
 import { test, expect } from '@playwright/test';
 import { openGame, toMainMenu, startSolo, advance, tickUntil, KEEP_ALIVE } from './helpers.js';
+import { staffBuild, staffClaim, staffUpgrade } from './staff-helpers.js';
 
 // keep the player alive and the site from filling up while game time runs
 const CALM = KEEP_ALIVE + 'for(const z of g.zombies){ if(!z.dead&&!z.boss&&!z.prime&&z.rise<=0&&Math.random()<.05) g.killZombie(z,"self"); }';
@@ -12,7 +13,7 @@ const stage = page => page.evaluate(() => window.__G.Q.stage);
 const step = (page, fn, arg) => page.evaluate(fn, arg);
 // stand at x,z and use whatever prompt is under the player
 const useAt = (page, x, z) => step(page, ([x, z]) => { const g = window.__G; g.P.pos.set(x, 0, z); g.P.vy = 0; g.updateInteract(); const c = g.curInter; if (!c || c.t[0] === '!') return c ? c.t : null; c.o.use(); return c.t; }, [x, z]);
-const takeAll = (page, key) => step(page, key => { const g = window.__G, Q = g.QUEST; let n = 0; for (const e of Q.QP.slice()) if (!key || e.key.startsWith(key)) { g.P.pos.set(e.x, 0, e.z); g.updateInteract(); g.curInter.o.use(); n++; } return n; }, key);
+const takeAll = (page, key) => step(page, key => { const g = window.__G, Q = g.QUEST; let n = 0; for (const e of Q.QP.slice()) if (!key || e.key.startsWith(key)) { g.P.pos.set(e.x, 0, e.z); g.updateInteract(); e.o.use(); n++; } return n; }, key);
 
 test('full ritual reaches the victory screen', async ({ page }) => {
   test.setTimeout(600_000);
@@ -95,8 +96,10 @@ test('full ritual reaches the victory screen', async ({ page }) => {
 
   // 7. the field radio: Shriekers drop three dog tags; transmit each tag's frequency in order; open the supply drop
   for (let n = 1; n <= 3; n++) {
-    await tickUntil(page, "g.zombies.some(z=>z.kind==='shrieker'&&!z.dead&&z.rise<=0)", 30, KEEP_ALIVE);
-    await step(page, () => { const g = window.__G, z = g.zombies.find(q => q.kind === 'shrieker' && !q.dead); g.killZombie(z, 'head'); });
+    await step(page, () => { const g = window.__G; for (const z of g.zombies) if (!z.dead && !z.boss) g.killZombie(z, 'self', true); });
+    // (a stray blast may kill the Shrieker first; its tag drops all the same)
+    await tickUntil(page, "g.QUEST.QP.some(e=>e.key.startsWith('tag'))||g.zombies.some(z=>z.kind==='shrieker'&&!z.dead&&z.rise<=0)", 40, CALM.replace('!z.boss', "!z.boss&&z.kind!=='shrieker'"));
+    await step(page, () => { const g = window.__G, z = g.zombies.find(q => q.kind === 'shrieker' && !q.dead); if (z && !g.QUEST.QP.some(e => e.key.startsWith('tag'))) g.killZombie(z, 'head'); });
     expect(await takeAll(page, 'tag')).toBe(1);
   }
   for (let k = 0; k < 3; k++) {
@@ -157,7 +160,7 @@ test('full ritual reaches the victory screen', async ({ page }) => {
   const lb = await step(page, () => { const Q = window.__G.QUEST, a = Q.QA.lockbox; return { x: a.x + Math.sin(a.ry) * 1.5, z: a.z + Math.cos(a.ry) * 1.5 }; });
   expect(await useAt(page, lb.x, lb.z)).toMatch(/strongbox/);
   expect(await stage(page)).toBe('souls');
-  expect(await takeAll(page)).toBe(2); // the vault key and the last record shard
+  expect(await takeAll(page, 'vkey') + await takeAll(page, 'shard3')).toBe(2); // the vault key and the last record shard
 
   // 13. soul canisters: kill the dead inside the chalk ward, three canisters
   for (let c = 0; c < 3; c++) {
@@ -169,6 +172,15 @@ test('full ritual reaches the victory screen', async ({ page }) => {
   // 14. wind the music box, light the braziers in the order it plays
   await step(page, () => { const Q = window.__G.QUEST; Q.qAct('wind'); for (const i of Q.BRZ.order) Q.qAct('brz', i); });
   expect(await stage(page)).toBe('descent');
+
+  // 14b. the four elemental staffs: solo builds every one (its parts, its binding) and upgrades each in turn
+  for (const k of ['cinder', 'brine', 'grave', 'gale']) {
+    await staffBuild(page, k);
+    await staffClaim(page, k);
+    await advance(page, .6, CALM);
+    await staffUpgrade(page, k);
+  }
+  expect(await step(page, () => window.__G.QUEST.STAFF_IDS.every(k => window.__G.QUEST.STF[k].up))).toBe(true);
 
   // 15. the Hollow: the Warden Prime raises two wards; shatter the lit crystals each time; step into the gate
   await step(page, () => window.__G.enterHollow());
@@ -187,6 +199,12 @@ test('full ritual reaches the victory screen', async ({ page }) => {
   const V = await step(page, () => window.__G.QUEST.QA.vault);
   expect(await useAt(page, V.gramophone.x, V.gramophone.z + 1.1)).toMatch(/record shards/);
   await tickUntil(page, 'g.QUEST.VSTATE.hymn', 10, CALM);
+  // set all four upgraded staffs in the door, one at a time (a solo player carries one)
+  for (const k of ['cinder', 'brine', 'grave', 'gale']) {
+    await staffClaim(page, k);
+    expect(await useAt(page, V.door.x, V.door.z + 3.4)).toMatch(/Set the .* Staff in the vault door/);
+  }
+  expect(await step(page, () => window.__G.QUEST.STAFF_IDS.every(k => window.__G.QUEST.STF[k].placed))).toBe(true);
   expect(await useAt(page, V.door.x, V.door.z + 3.4)).toMatch(/Unlock the Deep Vault/);
   expect(await stage(page)).toBe('seals');
 
@@ -208,6 +226,6 @@ test('full ritual reaches the victory screen', async ({ page }) => {
   await expect(page.locator('#over-eyebrow')).toHaveText(/Escaped/i);
   const rites = await page.locator('#st-rites').textContent();
   console.log('rites recorded on the victory screen:', rites);
-  expect(rites).toBe('22/22');
+  expect(rites).toBe('23/23');
   expect(errors).toEqual([]);
 });

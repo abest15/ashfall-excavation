@@ -1,6 +1,6 @@
 # Ashfall Excavation: quest, power and puzzles (dev docs, full spoilers)
 
-This page documents the power restoration, the main quest ("the rite", 22 rites), every puzzle and its solution,
+This page documents the power restoration, the main quest ("the rite", 23 rites), the four elemental staffs, every puzzle and its solution,
 the special dead, the rewards, and the anchor tables that place all of it. It is for developers and testers.
 
 Code map:
@@ -55,7 +55,7 @@ Generator: with all three thrown, **hold E for 3 s** at the generator (progress 
 The first crank calls 4 + 2 per player runners. When it catches: power on (rite 1). Everything power-dependent is
 unchanged (tonics, the Forge, the field locker, the fuel trench, the Colossus hatch, the Lodestone's awakening).
 
-## The rite: all 22 steps
+## The rite: all 23 steps
 
 | # | Stage(s) | Step | Rite awarded when |
 |---|---|---|---|
@@ -78,11 +78,12 @@ unchanged (tonics, the Forge, the field locker, the fuel trench, the Colossus ha
 | 17 | `braziers` | **Brazier melody** (puzzle 5): opens the shaft at the Lodestone | fourth brazier lit |
 | 18 | `descent` + the Hollow | Descend; survive four Hollow waves; the Warden Prime wards twice (shatter the lit crystals) | Prime falls |
 | 19 | `vault` | The Hollow's gate throws everyone into the **Deep Vault**. Set the three record shards on the gramophone; hold out while the Deep Hymn plays (7 s) | hymn ends |
-| 20 | `seals` | Unlock the vault door (vault key + soul lantern). Stand on each of the three seal plates until it burns white (12 s each, any player counts); the dead pour in | third seal |
-| 21 | `furnace` | The Furnace Heart rises (3 s). Destroy it (30 000 HP, +60% per extra player; relic weapons ×2.5; at most 2 500 per hit). Every 7 s it pulses (30 damage within 6.5 m); at half health a Sapper and a Shrieker climb out | Heart breaks |
-| 22 | `escape` → `won` | Reach the lift (60 s on the clock, the dead keep coming) and ride it out: victory, ending text | lift ridden |
+| 20 | `vault` | Set all four **upgraded staffs** in the vault door sockets (each holder sets their own; solo: claim, carry and set them one at a time) | fourth staff set |
+| 21 | `seals` | Unlock the vault door (vault key + soul lantern). Stand on each of the three seal plates until it burns white (12 s each, any player counts); the dead pour in | third seal |
+| 22 | `furnace` | The Furnace Heart rises (3 s). Destroy it (30 000 HP, +60% per extra player; relic weapons ×2.5; at most 2 500 per hit). Every 7 s it pulses (30 damage within 6.5 m); at half health a Sapper and a Shrieker climb out | Heart breaks |
+| 23 | `escape` → `won` | Reach the lift (60 s on the clock, the dead keep coming) and ride it out: victory, ending text | lift ridden |
 
-The end screen shows `rites/22` (`RITES_TOTAL`).
+The end screen shows `rites/23` (`RITES_TOTAL`). The staffs are built alongside the chain (their parts need power) and must all be upgraded before the vault door (rite 20). When the door opens, the staffs go back to the players who set them (solo: the last one returns to you, the rest to their pedestals).
 
 ## Puzzle solutions
 
@@ -124,6 +125,30 @@ The end screen shows `rites/22` (`RITES_TOTAL`).
 - Solve: light the braziers in the melody's order. Notes: 196, 246.9, 293.7, 392 Hz.
 - Wrong: all flames die, 3 dead. Seeded: which bowl has which note (`BRZ.notes`), the order (`BRZ.order`).
 
+## The four elemental staffs (`src/gameplay/19f-staffs.js`)
+
+One staff per player, enough for a full squad of four. Each has its own element, three parts with three different
+tasks (a special dead, a target puzzle, a defence), its own binding condition at the shared pedestals, and its own
+upgrade trial. Staffs are claimed per player and tracked by the host (`STF[k].owner`); a claimed staff shows
+"<name> carries the …" to everyone else. A solo player can build all four but carries one at a time: claiming another
+staff puts the carried one back on its pedestal (swap). If you lose your staff (bleed out), take it again at its
+pedestal. **Alt-fire: aim (right click / LT) and fire**; it costs three charges.
+
+| Staff | Primary fire | Alt-fire | Part 1 (special) | Part 2 (puzzle) | Part 3 (defence) | Binding | Upgrade trial |
+|---|---|---|---|---|---|---|---|
+| **Cinder** (molten slag, orange) | slag bolt; leaves a burning slag pool (2 m, 3 s; upgraded 2.8 m, 5 s) | **Slag Geyser**: eruption at the aim point (4 m) and a big pool; upgraded: three in a line | slag core: a **Sapper** drops it | bellows grip: shoot the three embers round the Forge **smallest to largest** | quench ring: kill **8 dead in the burning fuel trench** | needs **power** (4 s) | **Quench**: 12 dead die in its slag (pools from its holder) |
+| **Brine** (tidal pressure, teal) | piercing pressure jet that knocks the dead back | **Undertow**: wave round the holder, pushes everything within 7 m 4 m away (upgraded 5 m) and hurts it | tide gem: an **ash hound** may swallow it (35% per hound) | barnacle haft: shoot the brine jars in No Man's Land **largest to smallest** | pressure cap: **hold E 8 s at the crater pump** (the dead come) | needs the **manifold solved** (4 s) | **Turn the tide**: push 20 dead with its Undertow |
+| **Grave** (soul-drain, violet) | automatic drain tether that chains to 2 (upgraded 4) and heals the holder 1.5 per hit | **Soul Harvest**: soul pulse at the aim point (6 m); each kill heals 10 and refunds a charge | bone finial: an **Iron Warden** drops it | mourning band: shoot the chapel's skull lamps **lowest to highest** | vigil candle: **hold E 8 s at the dig's gravestone** | wants a **soul**: kill one of the dead within 12 m during its 20 s binding | **Lay the Grave Warden to rest**: start it at the pedestal (holding the staff); a Grave Warden rises in the dig |
+| **Gale** (glass-storm, white) | spray of six glass shards (eight upgraded) | **Glass Cyclone**: 4 s vortex at the aim point that drags the dead in (7 m) and shreds them | glass eye: a **Shrieker** keeps it | chime spindle: shoot the trench wire chimes **in the order they flash** (they flash in sequence every 6 s) | vane blade: kill **10 dead in the middle of the generator yard** (6 m) | stand **within 3 m for 6 s** while it spins | **Charge** it at the vane shrine in No Man's Land: its holder stands there 20 s during a live round |
+
+Part drops and targets only count once the power is on. A wrong target order resets that puzzle and wakes two dead.
+Seeded per game: which target is which size (Cinder/Brine) and the Gale flash order. The pedestal prompt lists each
+staff's parts (✓/✗) and its binding condition; the journal shows one line with every staff's state.
+Each staff has its own firing sound (`staffCinder`, `staffBrine`, `staffGrave`, `staffGale`) and alt-fire sound
+(`staffAlt`), its own beam colour and its own head ornament on the shared staff model (`dressStaff`).
+Co-op: claims, bindings, part tasks and trials run on the host; alt-fire effects run on the host (`QACT.stfx`, the
+shooter's position travels with the shot); slag pools and cyclones are drawn on clients from the snapshot.
+
 ## The Gravecaller (mid-quest boss, stage `gravecaller`)
 Eight seconds after the wraith-bound Warden dies, the Gravecaller (a giant Shrieker) rises near the Lodestone
 (`QA.gravecaller`). HP max(9 000, 1 500 × round) before difficulty and player scaling. It summons 3 dead every 9 s
@@ -162,6 +187,9 @@ To move something into a new area, edit or add rows there; no other file needs t
   `y` for an upper floor). Three distinct zones are picked per game.
 - `QA.fuse`, `QA.drop`, `QA.glyphs`, `QA.souls`, `QA.lanterns`, `QA.braziers`: pools; extra rows are fine except
   `braziers` (exactly 4) and `glyphs` (at least 4), `souls` (at least 3), `lanterns` (at least 3).
+- `QA.staffs`: the four pedestals (chapel nave), and per staff its three puzzle targets (`seq`, `h` = height),
+  where that part falls (`seqDrop`), its hold point / kill zone, and the trial places (Grave Warden spawn, Gale shrine).
+  Cinder's kill zone is the fuel trench (`TRAP`). These are good candidates to move into the Underworks / Château.
 - `QA.vault` is **temporary** (`temp:true, future:'underworks:vault'`): spawn point after the Hollow, door, gramophone,
   Furnace Heart, three seal plates and the lift, all currently around the Lodestone pit in the dig (zone C). When
   docs/MAP.md gives the Underworks vault anchor, move these coordinates (and set `y`) and the finale follows.
@@ -170,7 +198,7 @@ To move something into a new area, edit or add rows there; no other file needs t
 
 | Table | Current rows |
 |---|---|
-| `power` | bunker-corner (-8.7, 33.2, A), trench-cart (-13.5, 25, B), trench-east (25.5, 6.7, B), dig-southeast (2.5, -24, C), dig-south (-22, -28.5, C), yard-corner (13, -24, D), yard-gate (38.4, -2.2, D), chapel-vestry (58.4, 12.4, E), nml-crater (96.5, -26, G), nml-north (44.5, 1.2, G) |
+| `power` | bunker-corner (-8.7, 33.2, A), trench-cart (-13.5, 25, B), trench-east (25.5, 6.7, B), dig-southeast (2.5, -24, C), dig-south (-22, -28.5, C), yard-corner (13.5, -21.5, D), yard-gate (38.4, -2.2, D), chapel-vestry (58.4, 12.4, E), nml-crater (96.5, -26, G), nml-north (44.5, 1.2, G) |
 | `fuse` | (7.6, 47.4) (-25.6, 8.4) (6.6, -4.2) (19, -27.8) (32.4, 21.5) (97, 1.5) |
 | `valves` / `chalk` / `radio` | (10.9, -17) yard west wall / (-9.3, 37.3) bunker / (6.9, 34.1) bunker map table |
 | `drop` | (24, -20) (-18, -22) (-20, 14) (46, 20) |
@@ -179,11 +207,16 @@ To move something into a new area, edit or add rows there; no other file needs t
 | `braziers` | (-17, -9) (-3, -9) (-3, -19.5) (-17, -19.5) |
 | `souls` | (-12, 14) (-18, -6) (24, -16) (46, 13) (-16, 22) |
 | `lanterns` / `gravecaller` / `tonic` | 5 spots round the pit / (-10, -5) / (-28.6, -2) |
-| `vault` (temp) | spawn (-10, -1.5), door (-10, -14), gramophone (-6.5, -6.5), heart (-10, -14), seals (-16.5, -14) (-3.5, -14) (-10, -21), exit (-22.5, -8) |
+| `staffs` | pedestals (47, 15.6) (47, 19.4) (51, 15.6) (51, 19.4); Cinder embers round the Forge; Brine jars in No Man's Land, pump (90, -27.2); Grave skull lamps in the chapel, gravestone (-15, -26.2), trial (-10, -23); Gale chimes on the trench wire, yard zone (25, -14), shrine (70, 1.5) |
+| `vault` (temp) | spawn (-10, -1.5), door (-10, -14), gramophone (-6.5, -6.5), heart (-10, -14), seals (-16.5, -14) (-3.5, -14) (-10, -21), exit (-19.5, -26.5) |
 
 ## Tests
 - `tests/power.spec.js`: placement (zones, types, seed determinism, variety), every requirement (knife timing reset,
   wrong crate, fuse, surge horde), generator refusal / short crank / full crank, and co-op (same layout on the client,
   the client throws breakers and cranks through its own prompts).
-- `tests/ritual.spec.js`: the whole 22-rite quest from the breakers to the ending through `window.__G` (`__G.QUEST`
+- `tests/staffs.spec.js`: the Cinder Staff built through its real tasks (Sapper drop, ember order incl. a wrong
+  order, fuel-trench kills, powered binding), claimed, fired (slag pool), alt-fired (three charges) and upgraded (slag
+  kills); all four staffs distinct (tasks, alt-fire effects); solo swap; co-op claim (the client takes the Brine Staff,
+  the host sees it carried, the client's Undertow pushes the host's zombie).
+- `tests/ritual.spec.js`: the whole 23-rite quest (all four staffs built and upgraded through their tasks) from the breakers to the ending through `window.__G` (`__G.QUEST`
   exposes the quest systems; see `tools/test-hook.js`).
