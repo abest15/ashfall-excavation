@@ -48,9 +48,9 @@ function powerLayout(r){ const pool=qShuffle(QA.power,r), used=new Set(), pickA=
   for(const a of pool){ if(pickA.length>=3) break; if(used.has(a.zone)) continue; used.add(a.zone); pickA.push(a); }
   const types=qShuffle(['jammed','fuse','surge'],r);
   PWR.brk.forEach((br,i)=>{ const a=pickA[i]; br.a=a; br.type=types[i]; br.found=br.thrown=br.fused=false; br.whacks=0; br.whackT=-9;
-    br.g.position.set(a.x,qy(a),a.z); br.g.rotation.y=a.ry||0; br.g.visible=true; br.lever.rotation.x=-.7; br.bulb.material.color.set(0xf2cb78);
-    Object.assign(br.col,{minX:a.x-.4,maxX:a.x+.4,minZ:a.z-.4,maxZ:a.z+.4,on:true}); addSolid(br.hit);
-    const fx=Math.sin(a.ry||0), fz=Math.cos(a.ry||0); br.o.x=a.x+fx*1.1; br.o.z=a.z+fz*1.1; });
+    br.g.position.set(a.x,qy(a),a.z); br.g.rotation.y=a.ry||0; br.g.visible=true; qPar(qy(a)).add(br.g); br.lever.rotation.x=-.7; br.bulb.material.color.set(0xf2cb78);
+    Object.assign(br.col,{minX:a.x-.4,maxX:a.x+.4,minZ:a.z-.4,maxZ:a.z+.4,y0:qy(a)-.5,y1:qy(a)+3,on:true}); addSolid(br.hit);
+    const fx=Math.sin(a.ry||0), fz=Math.cos(a.ry||0); br.o.x=a.x+fx*1.1; br.o.z=a.z+fz*1.1; br.o.y=qy(a); });
   PWR.fuseAt=Math.floor(r()*QA.fuse.length); PWR.fuse=false; PWR.crank=0; PWR.genSurge=false; PWR.surge=0;
   PWR.crates.forEach(c=>{ c.searched=false; c.lid.rotation.x=0; }); GEN.lamps.forEach(m=>m.material.color.set(0x3a2a1a)); }
 const brkThrown=()=>PWR.brk.filter(b=>b.thrown).length, brkFound=()=>PWR.brk.filter(b=>b.found).length;
@@ -70,7 +70,7 @@ QACT.brk=(i)=>{ const br=PWR.brk[i]; if(!br||!br.a||br.thrown||POWER.on) return;
   if(n===3) banner('All three breakers thrown','Crank the main generator in the yard. Hold on while it catches'); };
 QACT.whack=(i)=>{ const br=PWR.brk[i]; if(!br||br.type!=='jammed'||br.thrown||br.whacks>=5) return; br.found=true;
   if(GT-br.whackT>2.2&&br.whacks>0){ br.whacks=0; qEv('toast',{s:'It seized up again. Keep the blows coming'}); }
-  br.whacks++; br.whackT=GT; qSound('jam',br.a.x,br.a.z,30,br.whacks); qEv('fx',{p:[br.a.x,1.4,br.a.z],t:'spark',n:5});
+  br.whacks++; br.whackT=GT; qSound('jam',br.a.x,br.a.z,30,br.whacks); qEv('fx',{p:[br.a.x,qy(br.a)+1.4,br.a.z],t:'spark',n:5});
   if(br.whacks>=5) qEv('toast',{s:'The breaker grinds loose'}); };
 QEV.fx=m=>spawnParticles(new V3(m.p[0],m.p[1],m.p[2]),m.t,m.n||4);
 QACT.crate=(i,who)=>{ const c=PWR.crates[i]; if(!c||c.searched) return; c.searched=true; c.lid.rotation.x=-1.9; qSound('crate',c.a.x,c.a.z,25);
@@ -81,15 +81,15 @@ QACT.crank=()=>{ if(POWER.on||brkThrown()<3||PWR.genSurge) return; PWR.genSurge=
 QACT.gen=()=>{ if(POWER.on||brkThrown()<3) return; powerOn(); bcast({t:'power'}); rite(); };
 function questMelee(){ const fx=-Math.sin(P.yaw), fz=-Math.cos(P.yaw);
   for(const br of PWR.brk){ if(!br.a||br.thrown||br.type!=='jammed'||br.whacks>=5) continue; const dx=br.a.x-P.pos.x, dz=br.a.z-P.pos.z, d=Math.hypot(dx,dz);
-    if(d<2.6&&(d<.8||(dx*fx+dz*fz)/d>.3)){ qAct('whack',br.i); return; } } }
+    if(qdy(P.pos,br.a)<1.5&&d<2.6&&(d<.8||(dx*fx+dz*fz)/d>.3)){ qAct('whack',br.i); return; } } }
 function updatePower(dt){
   const host=NET.role!=='client';
   for(const br of PWR.brk){ if(!br.a) continue; const ax=br.a.x, az=br.a.z;
-    if(host&&!br.found&&!POWER.on){ for(const p of questPlayers()) if(p.m==='main'&&Math.hypot(p.x-ax,p.z-az)<7){ br.found=true; const n=brkFound(); banner(`A breaker switch (${n}/3 found)`,`This one is ${BRK_TYPES[br.type]}`); qSound('relic'); break; } }
+    if(host&&!br.found&&!POWER.on){ for(const p of questPlayers()) if(p.m==='main'&&Math.hypot(p.x-ax,p.z-az)<7&&qdy(p,br.a)<2.5){ br.found=true; const n=brkFound(); banner(`A breaker switch (${n}/3 found)`,`This one is ${BRK_TYPES[br.type]}`); qSound('relic'); break; } }
     if(POWER.on||br.thrown){ br.bulb.material.color.set(POWER.on?0xffe0a0:0x9ad06a); br.glow.material.opacity=.25; continue; }
-    const d=Math.hypot(P.pos.x-ax,P.pos.z-az);
+    const d=Math.hypot(P.pos.x-ax,P.pos.z-az)+qdy(P.pos,br.a)*3;
     br.flick-=dt; if(br.flick<=0){ br.flick=rand(.05,.35); const on=Math.random()<.6; br.bulb.material.color.set(on?0xf2cb78:0x3a3326); br.glow.material.opacity=on?.3:.02; }
-    if(d<30&&mode==='main'&&Math.random()<dt*2.5){ const k=rand(.6,4), a=br.g.rotation.y; spawnParticles(new V3(ax-Math.sin(a)*k,.12,az-Math.cos(a)*k),'spark',2); }
+    if(d<30&&mode==='main'&&Math.random()<dt*2.5){ const k=rand(.6,4), a=br.g.rotation.y; spawnParticles(new V3(ax-Math.sin(a)*k,qy(br.a)+.12,az-Math.cos(a)*k),'spark',2); }
     br.humT-=dt; if(br.humT<=0){ br.humT=2.4; if(d<26&&mode==='main'&&!P.inCabin) sfxAt('hum',{x:ax,z:az},26); } }
   for(let i=0;i<3;i++) GEN.lamps[i].material.color.set(POWER.on?0xffe0a0:i<brkThrown()?0x9ad06a:0x3a2a1a);
   // hold E at the generator

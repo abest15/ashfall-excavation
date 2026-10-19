@@ -6,11 +6,16 @@
      F3 overlay     "sim" row: active path and ms per frame spent in updateZombies (+ the WASM step)
      ashfallSim     console helpers: .mode, .use('js'|'wasm'), .spawn(n), .bench()
    The .wasm comes from window.__ASHFALL_SIM_WASM (base64, single-file build) or assets/sim.wasm.
-   Hooks called from 25-zombies.js: wsimBegin, wsimAim, wsimAgent, wsimEnd. */
+   Hooks called from 25-zombies.js: wsimBegin, wsimAim, wsimAgent, wsimEnd.
+   Levels: one nav grid per floor (trenches+château ground, Hollow, Underworks, château upper floor) with the walkable
+   floor mask from levelHasFloor, portal links from PORTALS (05c-levels.js) and collider heights (y0..y1). */
 const WSIM={want:true,ready:false,on:false,failed:null,ex:null,A:null,C:null,O:null,MAXA:0,NF:0,MAXC:0,NS:0,
   owner:[],seen:null,hwm:0,frame:0,colN:-1,t0:0,ms:0,stepMs:0,fields:0,agents:0,aim:{x:0,z:0}};
 // agent struct-of-arrays field order (must match sim/src/lib.rs)
-const WF={X:0,Z:1,VX:2,VZ:3,SPD:4,RAD:5,TX:6,TZ:7,STOP:8,FLAGS:9,SLOT:10,DX:11,DZ:12,ST:13,LX:14,LZ:15,NUDGE:16,NSIDE:17};
+const WF={X:0,Z:1,VX:2,VZ:3,SPD:4,RAD:5,TX:6,TZ:7,STOP:8,FLAGS:9,SLOT:10,DX:11,DZ:12,ST:13,LX:14,LZ:15,NUDGE:16,NSIDE:17,Y:18,TY:19};
+// nav grids: [x0,z0,w,h,circle cx,cz,r, nominal floor y, agent band ylo,yhi, floor-mask height range lo,hi]
+const WNAV=[[-68,-36,174,92,0,0,0,0,-3,3,-3.6,3.6],null,[-68,-86,116,82,0,0,0,-7,-20,-3,-12,-2.4],[-60,-28,36,32,0,0,0,4.2,3,20,2.4,9]];
+const wsimRegionOfY=y=>y<-3?2:y>=3?3:0;
 try{ if(new URLSearchParams(location.search).get('sim')==='js') WSIM.want=false; }catch(e){}
 
 function wsimLoad(){
@@ -23,23 +28,27 @@ function wsimLoad(){
     WSIM.failed=String(e&&e.message||e); console.warn('[sim] WebAssembly core unavailable, using the JavaScript path:',WSIM.failed); });
 }
 function wsimInit(inst){
-  const ex=inst.exports; WSIM.ex=ex; ex.sim_init(0x9e3779b9);
+  const ex=inst.exports; if(!ex.sim_version||ex.sim_version()<2||ex.sim_limits(7)!==7) throw new Error('sim.wasm is older than this game (rebuild sim/)');
+  WSIM.ex=ex; ex.sim_init(0x9e3779b9);
   WSIM.MAXC=ex.sim_limits(0); WSIM.MAXA=ex.sim_limits(1); WSIM.NF=ex.sim_limits(2); WSIM.NS=ex.sim_limits(3);
   WSIM.seen=new Int32Array(WSIM.MAXA); wsimViews();
   ex.sim_bounds(CABX,HX,HZ,22.5);
-  // nav grids, 1 m cells: the trench network (with a margin outside the outer walls) and the Hollow's arena
-  ex.sim_nav_region(0,-36,-36,142,92,1,0,0,0);
-  ex.sim_nav_region(1,HX-24,HZ-24,48,48,1,HX,HZ,22.5);
-  WSIM.colN=-1; WSIM.ready=true; WSIM.on=WSIM.want;
+  // nav grids, 1 m cells: trenches + château ground floor, the Hollow's arena, the Underworks, the château upper floor
+  WNAV[1]=[HX-24,HZ-24,48,48,HX,HZ,22.5,0,-3,3,-3.6,3.6];
+  WNAV.forEach((n,i)=>{ ex.sim_nav_region(i,n[0],n[1],n[2],n[3],1,n[4],n[5],n[6],n[7],n[8],n[9]);
+    const fm=new Float32Array(ex.memory.buffer,ex.sim_nav_floor_ptr(i),n[2]*n[3]);
+    for(let j=0;j<n[3];j++) for(let k=0;k<n[2];k++) fm[j*n[2]+k]=levelFloorIn(n[0]+k+.5,n[1]+j+.5,n[10],n[11]); });
+  PORTALS.forEach((p,i)=>ex.sim_portal(i,wsimRegionOfY(p.ay),wsimRegionOfY(p.by),p.x0,p.x1,p.z0,p.z1));
+  ex.sim_nav_dirty(); WSIM.colN=-1; WSIM.ready=true; WSIM.on=WSIM.want;
 }
 function wsimViews(){ const buf=WSIM.ex.memory.buffer; if(WSIM.A&&WSIM.A.buffer===buf) return;
   WSIM.A=new Float32Array(buf,WSIM.ex.sim_agents_ptr(),WSIM.NF*WSIM.MAXA);
-  WSIM.C=new Float64Array(buf,WSIM.ex.sim_col_ptr(),WSIM.MAXC*5);
+  WSIM.C=new Float64Array(buf,WSIM.ex.sim_col_ptr(),WSIM.MAXC*7);
   WSIM.O=new Float64Array(buf,WSIM.ex.sim_out_ptr(),4); }
-// mirror `colliders` (the boxes collide() uses); only a real change rebuilds the broadphase and nav grids
+// mirror `colliders` (the boxes collide() uses, with their heights); only a real change rebuilds the broadphase and nav grids
 function wsimSyncWorld(){ const C=WSIM.C, n=Math.min(colliders.length,WSIM.MAXC); let dirty=n!==WSIM.colN;
-  for(let i=0;i<n;i++){ const c=colliders[i], b=i*5, on=c.on?1:0;
-    if(C[b]!==c.minX||C[b+1]!==c.maxX||C[b+2]!==c.minZ||C[b+3]!==c.maxZ||C[b+4]!==on){ C[b]=c.minX; C[b+1]=c.maxX; C[b+2]=c.minZ; C[b+3]=c.maxZ; C[b+4]=on; dirty=true; } }
+  for(let i=0;i<n;i++){ const c=colliders[i], b=i*7, on=c.on?1:0, y0=colY0(c), y1=colY1(c);
+    if(C[b]!==c.minX||C[b+1]!==c.maxX||C[b+2]!==c.minZ||C[b+3]!==c.maxZ||C[b+4]!==on||C[b+5]!==y0||C[b+6]!==y1){ C[b]=c.minX; C[b+1]=c.maxX; C[b+2]=c.minZ; C[b+3]=c.maxZ; C[b+4]=on; C[b+5]=y0; C[b+6]=y1; dirty=true; } }
   if(dirty){ WSIM.ex.sim_world_commit(n); WSIM.colN=n; } }
 
 // start of updateZombies: returns true when this frame's locomotion goes through WASM
@@ -47,13 +56,13 @@ function wsimBegin(dt){ WSIM.t0=performance.now(); if(!WSIM.on) return false;
   const ex=WSIM.ex; wsimViews(); wsimSyncWorld(); WSIM.frame++;
   // slot 0 seeds: every player zTarget would hunt, so the field leads each zombie to the nearest one by path
   ex.sim_targets_clear(); ex.sim_players_clear(); let nt=0;
-  if(!(P.downed||P.dead||P.inCabin)){ ex.sim_target_add(0,P.pos.x,P.pos.z); nt++; }
-  ex.sim_player_add(P.pos.x,P.pos.z);
-  if(NET.role==='host') for(const id in NET.remotes){ const st=NET.remotes[id].st; if(!st) continue; if(st.m===mode) ex.sim_player_add(st.x,st.z);
-    if(!st.dn&&!st.dd&&!st.cab&&st.m===mode){ ex.sim_target_add(0,st.x,st.z); nt++; } }
-  if(!nt) ex.sim_target_add(0,P.pos.x,P.pos.z);
+  if(!(P.downed||P.dead||P.inCabin)){ ex.sim_target_add(0,P.pos.x,P.pos.y,P.pos.z); nt++; }
+  ex.sim_player_add(P.pos.x,P.pos.y,P.pos.z);
+  if(NET.role==='host') for(const id in NET.remotes){ const st=NET.remotes[id].st; if(!st) continue; if(st.m===mode) ex.sim_player_add(st.x,st.y||0,st.z);
+    if(!st.dn&&!st.dd&&!st.cab&&st.m===mode){ ex.sim_target_add(0,st.x,st.y||0,st.z); nt++; } }
+  if(!nt) ex.sim_target_add(0,P.pos.x,P.pos.y,P.pos.z);
   // slots 1..: active lures (more than that steer straight at the lure)
-  let s=1; for(const q of LURES){ q._wslot=0; if(q.active&&s<WSIM.NS){ q._wslot=s; ex.sim_target_add(s,q.p.x,q.p.z); s++; } }
+  let s=1; for(const q of LURES){ q._wslot=0; if(q.active&&s<WSIM.NS){ q._wslot=s; ex.sim_target_add(s,q.p.x,q.p.y,q.p.z); s++; } }
   WSIM.fields+=ex.sim_fields_update(); WSIM.agents=0;
   return true; }
 function wsimSlot(z){ const MA=WSIM.MAXA; let i=z._ws;
@@ -66,8 +75,8 @@ function wsimAim(z,p,tgx,tgz){ const a=WSIM.aim, i=z._ws, MA=WSIM.MAXA; a.x=tgx;
   if(i!=null&&WSIM.owner[i]===z){ const dx=WSIM.A[WF.DX*MA+i], dz=WSIM.A[WF.DZ*MA+i]; if(dx||dz){ a.x=p.x+dx; a.z=p.z+dz; } }
   return a; }
 // registers one zombie for this frame's batch step; false (slots full) means "move it the JS way"
-function wsimAgent(z,moving,tgx,tgz,lu){ const i=wsimSlot(z); if(i<0) return false; const A=WSIM.A, MA=WSIM.MAXA, p=z.g.position;
-  A[WF.X*MA+i]=p.x; A[WF.Z*MA+i]=p.z; A[WF.SPD*MA+i]=z.speed*(PU.freeze>0?.35:1); A[WF.RAD*MA+i]=z.boss?.7:.33;
+function wsimAgent(z,moving,tgx,tgz,lu,tgy){ const i=wsimSlot(z); if(i<0) return false; const A=WSIM.A, MA=WSIM.MAXA, p=z.g.position;
+  A[WF.X*MA+i]=p.x; A[WF.Z*MA+i]=p.z; A[WF.Y*MA+i]=p.y; A[WF.TY*MA+i]=tgy===undefined?p.y:tgy; A[WF.SPD*MA+i]=z.speed*(PU.freeze>0?.35:1); A[WF.RAD*MA+i]=z.boss?.7:.33;
   A[WF.TX*MA+i]=tgx; A[WF.TZ*MA+i]=tgz; A[WF.STOP*MA+i]=lu?1:z.reach*.8;
   A[WF.FLAGS*MA+i]=1|(moving?2:0)|(z.boss?4:0); A[WF.SLOT*MA+i]=lu?(lu._wslot||WSIM.NS):0; WSIM.agents++;
   return true; }

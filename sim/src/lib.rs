@@ -14,6 +14,10 @@
 //!   look-ahead avoidance, overlap relaxation (no stacking), wall collision and player push-out. Agents live in
 //!   a struct-of-arrays f32 block that JS reads and writes in place.
 //!
+//! **Levels**: colliders carry vertical extents (y0..y1) and every query takes the body's height; each nav grid
+//! is one floor (with a walkable-floor mask uploaded from JS), and portals (stairs, hatches) link cells of two
+//! grids, so one Dijkstra per slot spans every floor and zombies follow players up and down stairs.
+//!
 //! No allocator and no imports: all state is one static struct in linear memory.
 #![cfg_attr(target_arch = "wasm32", no_std)]
 
@@ -25,15 +29,18 @@ fn panic(_: &core::panic::PanicInfo) -> ! {
 
 // ---------------------------------------------------------------- limits and layout (mirrored in 05b-wasm-sim.js)
 pub const MAXC: usize = 1024; // colliders
-pub const COLW: usize = 5; // f64 per collider row: minX maxX minZ maxZ on
+pub const COLW: usize = 7; // f64 per collider row: minX maxX minZ maxZ on y0 y1
 pub const CG_MAX: usize = 8192; // collision grid cells
 pub const CG_ITEMS: usize = 32768; // collision grid entries
 pub const MAXA: usize = 512; // agents
-pub const NR: usize = 2; // nav regions
+pub const NR: usize = 4; // nav regions (floors): trenches, Hollow, Underworks, château upper floor
 pub const NS: usize = 4; // flow-field slots per region
 pub const NAVMAX: usize = 16384; // cells per nav region
 pub const MAXT: usize = 16; // seed targets per frame
 pub const MAXP: usize = 8; // player discs
+pub const MAXPORT: usize = 16; // portals between nav regions
+pub const MAXL: usize = 4096; // portal cell links
+const GN: usize = NR * NAVMAX; // global nav node count
 const AH: usize = 1024; // agent hash buckets
 const AGENT_CELL: f32 = 2.0;
 const INFL: f64 = 0.45; // nav inflation around boxes
@@ -58,7 +65,9 @@ pub const F_LX: usize = 14; // stuck reference point
 pub const F_LZ: usize = 15;
 pub const F_NUDGE: usize = 16; // side-step timer
 pub const F_NSIDE: usize = 17;
-pub const NF: usize = 18;
+pub const F_Y: usize = 18; // floor height of the agent (levels)
+pub const F_TY: usize = 19; // height of the steering target
+pub const NF: usize = 20;
 
 pub const FL_ACTIVE: u32 = 1;
 pub const FL_MOVING: u32 = 2;
@@ -135,15 +144,18 @@ pub struct Region {
     ccx: f64,
     ccz: f64,
     cr: f64,
+    fy: f64,  // nominal floor height: colliders block this grid if they overlap fy+.35..fy+1.7
+    ylo: f64, // agents with ylo <= y < yhi (inside the rectangle) belong to this grid
+    yhi: f64,
     dirty: bool,
+    floor: [f32; NAVMAX], // walkable floor height per cell from JS (< -1e8: no floor on this level)
+    lk: [u8; NAVMAX],    // cell has a portal link
     blocked: [u8; NAVMAX],
     cost: [f32; NAVMAX],
     dist: [[f32; NAVMAX]; NS],
     dirx: [[f32; NAVMAX]; NS],
     dirz: [[f32; NAVMAX]; NS],
     has: [bool; NS],
-    sig: [[u32; MAXT]; NS],
-    sig_n: [usize; NS],
 }
 
 pub struct State {
@@ -164,13 +176,19 @@ pub struct State {
     agents: [f32; NF * MAXA],
     head: [i32; AH],
     next: [i32; MAXA],
-    tgt: [[f32; 3]; MAXT],
+    tgt: [[f32; 4]; MAXT],
     ntgt: usize,
-    ply: [[f32; 2]; MAXP],
+    ply: [[f32; 3]; MAXP],
     nply: usize,
     regions: [Region; NR],
-    heap: [u32; NAVMAX],
-    hpos: [i32; NAVMAX],
+    sig: [[u32; MAXT]; NS],
+    sig_n: [usize; NS],
+    portals: [[f64; 6]; MAXPORT],
+    nport: usize,
+    links: [[u32; 2]; MAXL],
+    nlinks: usize,
+    heap: [u32; GN],
+    hpos: [i32; GN],
     hn: usize,
     out: [f64; 4],
     rng: u32,
@@ -188,15 +206,18 @@ const fn region0() -> Region {
         ccx: 0.0,
         ccz: 0.0,
         cr: 0.0,
+        fy: 0.0,
+        ylo: 0.0,
+        yhi: 0.0,
         dirty: false,
+        floor: [0.0; NAVMAX],
+        lk: [0; NAVMAX],
         blocked: [0; NAVMAX],
         cost: [0.0; NAVMAX],
         dist: [[0.0; NAVMAX]; NS],
         dirx: [[0.0; NAVMAX]; NS],
         dirz: [[0.0; NAVMAX]; NS],
         has: [false; NS],
-        sig: [[0; MAXT]; NS],
-        sig_n: [0; NS],
     }
 }
 
@@ -219,13 +240,19 @@ static mut STATE: State = State {
     agents: [0.0; NF * MAXA],
     head: [0; AH],
     next: [0; MAXA],
-    tgt: [[0.0; 3]; MAXT],
+    tgt: [[0.0; 4]; MAXT],
     ntgt: 0,
-    ply: [[0.0; 2]; MAXP],
+    ply: [[0.0; 3]; MAXP],
     nply: 0,
-    regions: [region0(), region0()],
-    heap: [0; NAVMAX],
-    hpos: [0; NAVMAX],
+    regions: [region0(), region0(), region0(), region0()],
+    sig: [[0; MAXT]; NS],
+    sig_n: [0; NS],
+    portals: [[0.0; 6]; MAXPORT],
+    nport: 0,
+    links: [[0; 2]; MAXL],
+    nlinks: 0,
+    heap: [0; GN],
+    hpos: [0; GN],
     hn: 0,
     out: [0.0; 4],
     rng: 0,
@@ -400,13 +427,21 @@ impl State {
         n
     }
 
-    /// Exactly the JS `collide(p,r)`: boxes in index order, then the cabin and Hollow bounds.
-    fn collide(&self, mut x: f64, mut z: f64, r: f64) -> (f64, f64) {
+    /// A body standing at y occupies y+.35..y+1.7; a box blocks it only if their heights overlap (JS colHits).
+    #[inline]
+    fn hits(&self, b: usize, y: f64) -> bool {
+        y + 0.35 < self.col[b + 6] && y + 1.7 > self.col[b + 5]
+    }
+    /// Exactly the JS `collide(p,r)`: boxes on the body's level in index order, then the cabin and Hollow bounds.
+    fn collide(&self, mut x: f64, mut z: f64, r: f64, y: f64) -> (f64, f64) {
         let mut buf = [0u16; 128];
         // a box can push at most r, so 2r of margin covers every box the sequential walk can reach
         let n = self.candidates(x - 2.0 * r, x + 2.0 * r, z - 2.0 * r, z + 2.0 * r, &mut buf);
         for k in 0..n {
             let b = buf[k] as usize * COLW;
+            if !self.hits(b, y) {
+                continue;
+            }
             let (mnx, mxx, mnz, mxz) = (self.col[b], self.col[b + 1], self.col[b + 2], self.col[b + 3]);
             if x < mnx - r || x > mxx + r || z < mnz - r || z > mxz + r {
                 continue;
@@ -456,11 +491,14 @@ impl State {
         (x, z)
     }
 
-    fn point_blocked(&self, x: f64, z: f64, infl: f64) -> bool {
+    fn point_blocked(&self, x: f64, z: f64, infl: f64, fy: f64) -> bool {
         let mut buf = [0u16; 128];
         let n = self.candidates(x - infl, x + infl, z - infl, z + infl, &mut buf);
         for k in 0..n {
             let b = buf[k] as usize * COLW;
+            if !self.hits(b, fy) {
+                continue;
+            }
             if x > self.col[b] - infl && x < self.col[b + 1] + infl && z > self.col[b + 2] - infl && z < self.col[b + 3] + infl {
                 return true;
             }
@@ -469,11 +507,12 @@ impl State {
     }
 }
 
-// ---------------------------------------------------------------- navigation
+// ---------------------------------------------------------------- navigation (one grid per floor, portal links)
 impl State {
-    fn region_of(&self, x: f64, z: f64) -> Option<usize> {
+    /// The nav grid an agent at (x, y, z) stands on: first region whose rectangle holds x,z and ylo <= y < yhi.
+    fn region_of(&self, x: f64, y: f64, z: f64) -> Option<usize> {
         for (i, r) in self.regions.iter().enumerate() {
-            if !r.on {
+            if !r.on || y < r.ylo || y >= r.yhi {
                 continue;
             }
             if x >= r.x0 && z >= r.z0 && x < r.x0 + r.cs * r.w as f64 && z < r.z0 + r.cs * r.h as f64 {
@@ -482,23 +521,35 @@ impl State {
         }
         None
     }
+    #[inline]
+    fn cell_at(&self, ri: usize, x: f64, z: f64) -> Option<usize> {
+        let r = &self.regions[ri];
+        let i = floor64((x - r.x0) / r.cs);
+        let j = floor64((z - r.z0) / r.cs);
+        if i < 0.0 || j < 0.0 || i >= r.w as f64 || j >= r.h as f64 {
+            return None;
+        }
+        Some(j as usize * r.w + i as usize)
+    }
 
     fn rebuild_region(&mut self, ri: usize) {
-        let (w, h, x0, z0, cs, ccx, ccz, cr) = {
+        let (w, h, x0, z0, cs, ccx, ccz, cr, fy) = {
             let r = &self.regions[ri];
-            (r.w, r.h, r.x0, r.z0, r.cs, r.ccx, r.ccz, r.cr)
+            (r.w, r.h, r.x0, r.z0, r.cs, r.ccx, r.ccz, r.cr, r.fy)
         };
         for j in 0..h {
             for i in 0..w {
                 let x = x0 + (i as f64 + 0.5) * cs;
                 let z = z0 + (j as f64 + 0.5) * cs;
-                let mut b = self.point_blocked(x, z, INFL);
+                let idx = j * w + i;
+                let fh = self.regions[ri].floor[idx];
+                let mut b = fh < -1.0e8 || self.point_blocked(x, z, INFL, if fh.is_nan() { fy } else { fh as f64 });
                 if !b && cr > 0.0 {
                     let dx = x - ccx;
                     let dz = z - ccz;
                     b = dx * dx + dz * dz > (cr - INFL) * (cr - INFL);
                 }
-                self.regions[ri].blocked[j * w + i] = b as u8;
+                self.regions[ri].blocked[idx] = b as u8;
             }
         }
         // wall proximity cost keeps paths off corners and centred in doorways
@@ -531,25 +582,62 @@ impl State {
             }
         }
         r.dirty = false;
-        for s in 0..NS {
-            r.sig_n[s] = usize::MAX; // force every field to rebuild
+    }
+
+    /// Portal links: every cell inside a portal rectangle that is free on both floors joins the two grids.
+    fn rebuild_links(&mut self) {
+        self.nlinks = 0;
+        for r in self.regions.iter_mut() {
+            for v in r.lk.iter_mut() {
+                *v = 0;
+            }
+        }
+        for p in 0..self.nport {
+            let [ra, rb, x0, x1, z0, z1] = self.portals[p];
+            let (ra, rb) = (ra as usize, rb as usize);
+            if ra >= NR || rb >= NR || !self.regions[ra].on || !self.regions[rb].on {
+                continue;
+            }
+            let (cs, rx0, rz0) = (self.regions[ra].cs, self.regions[ra].x0, self.regions[ra].z0);
+            let mut z = rz0 + (floor64((z0 - rz0) / cs) + 0.5) * cs;
+            while z < z1 {
+                let mut x = rx0 + (floor64((x0 - rx0) / cs) + 0.5) * cs;
+                while x < x1 {
+                    if x >= x0 && z >= z0 {
+                        if let (Some(ca), Some(cb)) = (self.cell_at(ra, x, z), self.cell_at(rb, x, z)) {
+                            if self.regions[ra].blocked[ca] == 0 && self.regions[rb].blocked[cb] == 0 && self.nlinks < MAXL {
+                                self.links[self.nlinks] = [(ra * NAVMAX + ca) as u32, (rb * NAVMAX + cb) as u32];
+                                self.nlinks += 1;
+                                self.regions[ra].lk[ca] = 1;
+                                self.regions[rb].lk[cb] = 1;
+                            }
+                        }
+                    }
+                    x += cs;
+                }
+                z += cs;
+            }
         }
     }
 
-    fn heap_push_or_decrease(&mut self, ri: usize, s: usize, c: u32) {
-        let d = &self.regions[ri].dist[s];
-        let mut i = if self.hpos[c as usize] >= 0 {
-            self.hpos[c as usize] as usize
+    #[inline]
+    fn gdist(&self, s: usize, g: u32) -> f32 {
+        let g = g as usize;
+        self.regions[g / NAVMAX].dist[s][g % NAVMAX]
+    }
+    fn heap_push_or_decrease(&mut self, s: usize, g: u32) {
+        let mut i = if self.hpos[g as usize] >= 0 {
+            self.hpos[g as usize] as usize
         } else {
             let i = self.hn;
             self.hn += 1;
-            self.heap[i] = c;
-            self.hpos[c as usize] = i as i32;
+            self.heap[i] = g;
+            self.hpos[g as usize] = i as i32;
             i
         };
         while i > 0 {
             let p = (i - 1) / 2;
-            if d[self.heap[p] as usize] <= d[self.heap[i] as usize] {
+            if self.gdist(s, self.heap[p]) <= self.gdist(s, self.heap[i]) {
                 break;
             }
             self.heap.swap(p, i);
@@ -558,8 +646,7 @@ impl State {
             i = p;
         }
     }
-    fn heap_pop(&mut self, ri: usize, s: usize) -> u32 {
-        let d = &self.regions[ri].dist[s];
+    fn heap_pop(&mut self, s: usize) -> u32 {
         let top = self.heap[0];
         self.hn -= 1;
         self.hpos[top as usize] = -2; // settled
@@ -570,10 +657,10 @@ impl State {
             loop {
                 let (l, r) = (2 * i + 1, 2 * i + 2);
                 let mut m = i;
-                if l < self.hn && d[self.heap[l] as usize] < d[self.heap[m] as usize] {
+                if l < self.hn && self.gdist(s, self.heap[l]) < self.gdist(s, self.heap[m]) {
                     m = l;
                 }
-                if r < self.hn && d[self.heap[r] as usize] < d[self.heap[m] as usize] {
+                if r < self.hn && self.gdist(s, self.heap[r]) < self.gdist(s, self.heap[m]) {
                     m = r;
                 }
                 if m == i {
@@ -587,31 +674,42 @@ impl State {
         }
         top
     }
+    fn relax(&mut self, s: usize, g: u32, nd: f32) {
+        let gu = g as usize;
+        let (ri, c) = (gu / NAVMAX, gu % NAVMAX);
+        if self.hpos[gu] == -2 || nd >= self.regions[ri].dist[s][c] {
+            return;
+        }
+        self.regions[ri].dist[s][c] = nd;
+        self.heap_push_or_decrease(s, g);
+    }
 
-    /// Dijkstra from the seed targets of `slot` in region `ri`, then a steepest-descent direction per cell.
-    fn build_field(&mut self, ri: usize, s: usize) {
-        let (w, h, x0, z0, cs) = {
-            let r = &self.regions[ri];
-            (r.w, r.h, r.x0, r.z0, r.cs)
-        };
-        let cells = w * h;
-        for c in 0..cells {
-            self.regions[ri].dist[s][c] = INF;
-            self.regions[ri].dirx[s][c] = 0.0;
-            self.regions[ri].dirz[s][c] = 0.0;
-            self.hpos[c] = -1;
+    /// One Dijkstra over every floor from the seed targets of `slot` (portal links cost nothing), then a
+    /// steepest-descent direction per cell.
+    fn build_field(&mut self, s: usize) {
+        for ri in 0..NR {
+            let cells = self.regions[ri].w * self.regions[ri].h;
+            for c in 0..cells {
+                self.regions[ri].dist[s][c] = INF;
+                self.regions[ri].dirx[s][c] = 0.0;
+                self.regions[ri].dirz[s][c] = 0.0;
+                self.hpos[ri * NAVMAX + c] = -1;
+            }
+            self.regions[ri].has[s] = false;
         }
         self.hn = 0;
         let mut seeded = false;
         for t in 0..self.ntgt {
-            let [tx, tz, ts] = self.tgt[t];
+            let [tx, ty, tz, ts] = self.tgt[t];
             if ts as usize != s {
                 continue;
             }
-            let (tx, tz) = (tx as f64, tz as f64);
-            if self.region_of(tx, tz) != Some(ri) {
-                continue;
-            }
+            let (tx, ty, tz) = (tx as f64, ty as f64, tz as f64);
+            let Some(ri) = self.region_of(tx, ty, tz) else { continue };
+            let (w, h, x0, z0, cs) = {
+                let r = &self.regions[ri];
+                (r.w, r.h, r.x0, r.z0, r.cs)
+            };
             let ci = floor64((tx - x0) / cs) as i32;
             let cj = floor64((tz - z0) / cs) as i32;
             // the target's cell, or (if a wall inflation covers it) the free cells around it
@@ -633,10 +731,7 @@ impl State {
                         let cx = x0 + (ni as f64 + 0.5) * cs;
                         let cz = z0 + (nj as f64 + 0.5) * cs;
                         let d0 = sqrt64((cx - tx) * (cx - tx) + (cz - tz) * (cz - tz)) as f32;
-                        if d0 < self.regions[ri].dist[s][idx] {
-                            self.regions[ri].dist[s][idx] = d0;
-                            self.heap_push_or_decrease(ri, s, idx as u32);
-                        }
+                        self.relax(s, (ri * NAVMAX + idx) as u32, d0);
                         any = true;
                     }
                 }
@@ -646,10 +741,12 @@ impl State {
                 }
             }
         }
-        self.regions[ri].has[s] = seeded;
         self.rebuilt += 1;
         if !seeded {
             return;
+        }
+        for ri in 0..NR {
+            self.regions[ri].has[s] = self.regions[ri].on;
         }
         const N8: [(i32, i32, f32); 8] = [
             (1, 0, 1.0),
@@ -661,9 +758,11 @@ impl State {
             (1, -1, core::f32::consts::SQRT_2),
             (-1, -1, core::f32::consts::SQRT_2),
         ];
-        let csf = cs as f32;
         while self.hn > 0 {
-            let c = self.heap_pop(ri, s) as usize;
+            let g = self.heap_pop(s);
+            let gu = g as usize;
+            let (ri, c) = (gu / NAVMAX, gu % NAVMAX);
+            let (w, h, csf) = (self.regions[ri].w, self.regions[ri].h, self.regions[ri].cs as f32);
             let (ci, cj) = ((c % w) as i32, (c / w) as i32);
             let dc = self.regions[ri].dist[s][c];
             let cc = self.regions[ri].cost[c];
@@ -674,7 +773,7 @@ impl State {
                 }
                 let n = nj as usize * w + ni as usize;
                 let r = &self.regions[ri];
-                if r.blocked[n] != 0 || self.hpos[n] == -2 {
+                if r.blocked[n] != 0 {
                     continue;
                 }
                 if di != 0 && dj != 0 {
@@ -684,90 +783,105 @@ impl State {
                     }
                 }
                 let nd = dc + len * csf * 0.5 * (cc + r.cost[n]);
-                if nd < r.dist[s][n] {
-                    self.regions[ri].dist[s][n] = nd;
-                    self.heap_push_or_decrease(ri, s, n as u32);
+                self.relax(s, (ri * NAVMAX + n) as u32, nd);
+            }
+            // stairs and hatches: the same spot on the linked floor
+            if self.regions[ri].lk[c] != 0 {
+                for l in 0..self.nlinks {
+                    let [a, b] = self.links[l];
+                    if a == g {
+                        self.relax(s, b, dc);
+                    } else if b == g {
+                        self.relax(s, a, dc);
+                    }
                 }
             }
         }
-        // direction: towards the lowest neighbour
-        let r = &mut self.regions[ri];
-        for j in 0..h as i32 {
-            for i in 0..w as i32 {
-                let c = j as usize * w + i as usize;
-                let dc = r.dist[s][c];
-                if dc >= INF {
-                    continue;
-                }
-                let (mut best, mut bx, mut bz) = (dc, 0.0f32, 0.0f32);
-                for &(di, dj, len) in N8.iter() {
-                    let (ni, nj) = (i + di, j + dj);
-                    if ni < 0 || nj < 0 || ni >= w as i32 || nj >= h as i32 {
+        // direction: towards the lowest neighbour on the same floor
+        for ri in 0..NR {
+            let r = &mut self.regions[ri];
+            if !r.on {
+                continue;
+            }
+            let (w, h) = (r.w, r.h);
+            for j in 0..h as i32 {
+                for i in 0..w as i32 {
+                    let c = j as usize * w + i as usize;
+                    let dc = r.dist[s][c];
+                    if dc >= INF {
                         continue;
                     }
-                    let n = nj as usize * w + ni as usize;
-                    if di != 0 && dj != 0 && (r.blocked[j as usize * w + ni as usize] != 0 || r.blocked[nj as usize * w + i as usize] != 0) {
-                        continue;
+                    let (mut best, mut bx, mut bz) = (dc, 0.0f32, 0.0f32);
+                    for &(di, dj, len) in N8.iter() {
+                        let (ni, nj) = (i + di, j + dj);
+                        if ni < 0 || nj < 0 || ni >= w as i32 || nj >= h as i32 {
+                            continue;
+                        }
+                        let n = nj as usize * w + ni as usize;
+                        if di != 0 && dj != 0 && (r.blocked[j as usize * w + ni as usize] != 0 || r.blocked[nj as usize * w + i as usize] != 0) {
+                            continue;
+                        }
+                        let dn = r.dist[s][n];
+                        if dn < best {
+                            best = dn;
+                            bx = di as f32 / len;
+                            bz = dj as f32 / len;
+                        }
                     }
-                    let dn = r.dist[s][n];
-                    if dn < best {
-                        best = dn;
-                        bx = di as f32 / len;
-                        bz = dj as f32 / len;
-                    }
+                    r.dirx[s][c] = bx;
+                    r.dirz[s][c] = bz;
                 }
-                r.dirx[s][c] = bx;
-                r.dirz[s][c] = bz;
             }
         }
     }
 
     fn update_fields(&mut self) -> u32 {
         let before = self.rebuilt;
+        let mut any_dirty = false;
         for ri in 0..NR {
-            if !self.regions[ri].on {
+            if self.regions[ri].on && self.regions[ri].dirty {
+                self.rebuild_region(ri);
+                any_dirty = true;
+            }
+        }
+        if any_dirty {
+            self.rebuild_links();
+            for s in 0..NS {
+                self.sig_n[s] = usize::MAX; // force every field to rebuild
+            }
+        }
+        for s in 0..NS {
+            // signature: sorted seed nodes (floor and cell) of this slot
+            let mut sig = [0u32; MAXT];
+            let mut n = 0usize;
+            for t in 0..self.ntgt {
+                let [tx, ty, tz, ts] = self.tgt[t];
+                if ts as usize != s {
+                    continue;
+                }
+                let Some(ri) = self.region_of(tx as f64, ty as f64, tz as f64) else { continue };
+                let Some(c) = self.cell_at(ri, tx as f64, tz as f64) else { continue };
+                let key = (ri * NAVMAX + c) as u32;
+                let mut j = n;
+                while j > 0 && sig[j - 1] > key {
+                    sig[j] = sig[j - 1];
+                    j -= 1;
+                }
+                sig[j] = key;
+                n += 1;
+            }
+            if self.sig_n[s] == n && self.sig[s][..n] == sig[..n] {
                 continue;
             }
-            if self.regions[ri].dirty {
-                self.rebuild_region(ri);
-            }
-            let (w, x0, z0, cs) = {
-                let r = &self.regions[ri];
-                (r.w, r.x0, r.z0, r.cs)
-            };
-            for s in 0..NS {
-                // signature: sorted seed cells of this slot inside this region
-                let mut sig = [0u32; MAXT];
-                let mut n = 0usize;
-                for t in 0..self.ntgt {
-                    let [tx, tz, ts] = self.tgt[t];
-                    if ts as usize != s || self.region_of(tx as f64, tz as f64) != Some(ri) {
-                        continue;
-                    }
-                    let ci = floor64((tx as f64 - x0) / cs) as u32;
-                    let cj = floor64((tz as f64 - z0) / cs) as u32;
-                    let key = cj * w as u32 + ci;
-                    let mut j = n;
-                    while j > 0 && sig[j - 1] > key {
-                        sig[j] = sig[j - 1];
-                        j -= 1;
-                    }
-                    sig[j] = key;
-                    n += 1;
-                }
-                let r = &self.regions[ri];
-                let same = r.sig_n[s] == n && r.sig[s][..n] == sig[..n];
-                if same {
-                    continue;
-                }
-                self.regions[ri].sig[s] = sig;
-                self.regions[ri].sig_n[s] = n;
-                if n == 0 {
+            self.sig[s] = sig;
+            self.sig_n[s] = n;
+            if n == 0 {
+                for ri in 0..NR {
                     self.regions[ri].has[s] = false;
-                    continue;
                 }
-                self.build_field(ri, s);
+                continue;
             }
+            self.build_field(s);
         }
         self.rebuilt - before
     }
@@ -808,7 +922,7 @@ impl State {
                 return Some((sx / l, sz / l));
             }
         }
-        // inside a wall's inflation: head for the best free cell close by
+        // inside a wall's inflation (or at a portal cell): head for the best free cell close by
         let ci = floor64((x - r.x0) / r.cs) as i32;
         let cj = floor64((z - r.z0) / r.cs) as i32;
         let (mut best, mut bi, mut bj) = (INF, 0i32, 0i32);
@@ -838,7 +952,7 @@ impl State {
         Some(((cx / l) as f32, (cz / l) as f32))
     }
 
-    /// Grid line of sight (every cell the segment touches is free).
+    /// Grid line of sight on one floor (every cell the segment touches is free).
     fn los(&self, ri: usize, ax: f64, az: f64, bx: f64, bz: f64) -> bool {
         let r = &self.regions[ri];
         let (fx0, fz0) = ((ax - r.x0) / r.cs, (az - r.z0) / r.cs);
@@ -943,7 +1057,7 @@ impl State {
             if fl & FL_ACTIVE == 0 {
                 continue;
             }
-            let (x, z) = (self.a(F_X, i), self.a(F_Z, i));
+            let (x, z, y) = (self.a(F_X, i), self.a(F_Z, i), self.a(F_Y, i) as f64);
             let (tx, tz) = (self.a(F_TX, i), self.a(F_TZ, i));
             let (ddx, ddz) = (tx - x, tz - z);
             let dt_ = sqrt32(ddx * ddx + ddz * ddz);
@@ -951,8 +1065,9 @@ impl State {
             let mut dir: Option<(f32, f32)> = None;
             let slot = self.a(F_SLOT, i) as usize;
             if slot < NS {
-                if let Some(ri) = self.region_of(x as f64, z as f64) {
-                    if dt_ < 14.0 && self.region_of(tx as f64, tz as f64) == Some(ri) && self.los(ri, x as f64, z as f64, tx as f64, tz as f64) {
+                if let Some(ri) = self.region_of(x as f64, y, z as f64) {
+                    let ty = self.a(F_TY, i) as f64;
+                    if dt_ < 14.0 && self.region_of(tx as f64, ty, tz as f64) == Some(ri) && self.los(ri, x as f64, z as f64, tx as f64, tz as f64) {
                         dir = None; // straight line below
                     } else {
                         dir = self.sample_flow(ri, slot, x as f64, z as f64);
@@ -987,7 +1102,7 @@ impl State {
                 while o >= 0 {
                     let ou = o as usize;
                     o = self.next[ou];
-                    if ou == i {
+                    if ou == i || (self.a(F_Y, ou) - y as f32).abs() > 1.5 {
                         continue;
                     }
                     let (oxp, ozp) = (self.a(F_X, ou), self.a(F_Z, ou));
@@ -1052,7 +1167,7 @@ impl State {
                 while o >= 0 {
                     let j = o as usize;
                     o = self.next[j];
-                    if j <= i {
+                    if j <= i || (self.a(F_Y, j) - self.a(F_Y, i)).abs() > 1.5 {
                         continue;
                     }
                     let fj = self.flags(j);
@@ -1080,15 +1195,16 @@ impl State {
             if fl & FL_ACTIVE == 0 {
                 continue;
             }
-            let (cx, cz) = self.collide(self.a(F_X, i) as f64, self.a(F_Z, i) as f64, self.a(F_RAD, i) as f64);
+            let ay = self.a(F_Y, i);
+            let (cx, cz) = self.collide(self.a(F_X, i) as f64, self.a(F_Z, i) as f64, self.a(F_RAD, i) as f64, ay as f64);
             let (mut x, mut z) = (cx as f32, cz as f32);
             if fl & FL_MOVING != 0 {
                 let min_d = if fl & FL_BOSS != 0 { 1.2 } else { 0.72 };
                 for p in 0..self.nply {
-                    let [px, pz] = self.ply[p];
+                    let [px, py, pz] = self.ply[p];
                     let (vx, vz) = (px - x, pz - z);
                     let pd = sqrt32(vx * vx + vz * vz);
-                    if pd < min_d && pd > 1e-3 {
+                    if pd < min_d && pd > 1e-3 && (py - ay).abs() < 1.5 {
                         x -= vx / pd * (min_d - pd);
                         z -= vz / pd * (min_d - pd);
                     }
@@ -1125,6 +1241,8 @@ pub extern "C" fn sim_init(seed: u32) {
     s.cg_h = 0;
     s.ntgt = 0;
     s.nply = 0;
+    s.nport = 0;
+    s.nlinks = 0;
     s.rng = seed | 1;
     for r in s.regions.iter_mut() {
         r.on = false;
@@ -1135,7 +1253,7 @@ pub extern "C" fn sim_init(seed: u32) {
 }
 #[no_mangle]
 pub extern "C" fn sim_version() -> u32 {
-    1
+    2
 }
 #[no_mangle]
 pub extern "C" fn sim_limits(which: u32) -> u32 {
@@ -1146,6 +1264,9 @@ pub extern "C" fn sim_limits(which: u32) -> u32 {
         3 => NS as u32,
         4 => MAXT as u32,
         5 => MAXP as u32,
+        6 => NR as u32,
+        7 => COLW as u32,
+        8 => MAXPORT as u32,
         _ => 0,
     }
 }
@@ -1161,7 +1282,19 @@ pub extern "C" fn sim_agents_ptr() -> *mut f32 {
 pub extern "C" fn sim_out_ptr() -> *mut f64 {
     st().out.as_mut_ptr()
 }
-/// Collider rows 0..n were written: rebuild the broadphase and mark every nav region for a rebuild.
+/// Per-cell floor heights of nav grid `i` (w*h f32; below -1e8 means no floor on that level). Colliders are tested
+/// against a body standing at that height, so a stair over a room counts as the stair. Call sim_nav_dirty after writing.
+#[no_mangle]
+pub extern "C" fn sim_nav_floor_ptr(i: u32) -> *mut f32 {
+    st().regions[(i as usize).min(NR - 1)].floor.as_mut_ptr()
+}
+#[no_mangle]
+pub extern "C" fn sim_nav_dirty() {
+    for r in st().regions.iter_mut() {
+        r.dirty = true;
+    }
+}
+/// Collider rows 0..n were written: rebuild the broadphase and mark every nav grid for a rebuild.
 #[no_mangle]
 pub extern "C" fn sim_world_commit(n: u32) {
     let s = st();
@@ -1179,9 +1312,10 @@ pub extern "C" fn sim_bounds(cab_x: f64, hol_x: f64, hol_z: f64, hol_r: f64) {
     s.hol_z = hol_z;
     s.hol_r = hol_r;
 }
-/// Nav grid `i`: origin, size in cells, cell size; optional walkable circle (cr > 0).
+/// Nav grid `i` (one floor): origin, size in cells, cell size, optional walkable circle (cr > 0), nominal floor
+/// height fy (selects which colliders block it) and the height band [ylo, yhi) of agents standing on it.
 #[no_mangle]
-pub extern "C" fn sim_nav_region(i: u32, x0: f64, z0: f64, w: u32, h: u32, cs: f64, ccx: f64, ccz: f64, cr: f64) -> u32 {
+pub extern "C" fn sim_nav_region(i: u32, x0: f64, z0: f64, w: u32, h: u32, cs: f64, ccx: f64, ccz: f64, cr: f64, fy: f64, ylo: f64, yhi: f64) -> u32 {
     let i = i as usize;
     if i >= NR || (w as usize) * (h as usize) > NAVMAX || cs <= 0.0 {
         return 0;
@@ -1196,22 +1330,44 @@ pub extern "C" fn sim_nav_region(i: u32, x0: f64, z0: f64, w: u32, h: u32, cs: f
     r.ccx = ccx;
     r.ccz = ccz;
     r.cr = cr;
+    r.fy = fy;
+    r.ylo = ylo;
+    r.yhi = yhi;
     r.dirty = true;
+    for v in r.floor.iter_mut() {
+        *v = fy as f32;
+    }
     for s in 0..NS {
         r.has[s] = false;
-        r.sig_n[s] = usize::MAX;
     }
+    st().sig_n = [usize::MAX; NS];
     1
+}
+/// Portal `i` joins grids ra and rb over the rectangle x0..x1, z0..z1 (cells free on both floors link up).
+#[no_mangle]
+pub extern "C" fn sim_portal(i: u32, ra: u32, rb: u32, x0: f64, x1: f64, z0: f64, z1: f64) {
+    let s = st();
+    let i = i as usize;
+    if i >= MAXPORT {
+        return;
+    }
+    s.portals[i] = [ra as f64, rb as f64, x0, x1, z0, z1];
+    if i >= s.nport {
+        s.nport = i + 1;
+    }
+    for r in s.regions.iter_mut() {
+        r.dirty = true;
+    }
 }
 #[no_mangle]
 pub extern "C" fn sim_targets_clear() {
     st().ntgt = 0;
 }
 #[no_mangle]
-pub extern "C" fn sim_target_add(slot: u32, x: f32, z: f32) {
+pub extern "C" fn sim_target_add(slot: u32, x: f32, y: f32, z: f32) {
     let s = st();
     if s.ntgt < MAXT && (slot as usize) < NS {
-        s.tgt[s.ntgt] = [x, z, slot as f32];
+        s.tgt[s.ntgt] = [x, y, z, slot as f32];
         s.ntgt += 1;
     }
 }
@@ -1220,14 +1376,14 @@ pub extern "C" fn sim_players_clear() {
     st().nply = 0;
 }
 #[no_mangle]
-pub extern "C" fn sim_player_add(x: f32, z: f32) {
+pub extern "C" fn sim_player_add(x: f32, y: f32, z: f32) {
     let s = st();
     if s.nply < MAXP {
-        s.ply[s.nply] = [x, z];
+        s.ply[s.nply] = [x, y, z];
         s.nply += 1;
     }
 }
-/// Rebuilds dirty nav grids and every flow field whose seed cells changed. Returns how many fields were built.
+/// Rebuilds dirty nav grids and links and every flow field whose seed cells changed. Returns how many were built.
 #[no_mangle]
 pub extern "C" fn sim_fields_update() -> u32 {
     st().update_fields()
@@ -1237,30 +1393,32 @@ pub extern "C" fn sim_fields_update() -> u32 {
 pub extern "C" fn sim_step(n: u32, dt: f32) {
     st().step(n as usize, dt);
 }
-/// Single circle against the world; result in out[0], out[1].
+/// Single circle against the world on the level of a body standing at y; result in out[0], out[1].
 #[no_mangle]
-pub extern "C" fn sim_collide(x: f64, z: f64, r: f64) {
+pub extern "C" fn sim_collide(x: f64, z: f64, r: f64, y: f64) {
     let s = st();
-    let (a, b) = s.collide(x, z, r);
+    let (a, b) = s.collide(x, z, r, y);
     s.out[0] = a;
     s.out[1] = b;
 }
-/// Flow direction at a point for a slot; out[0..2] = dir, out[2] = path distance (or -1). Returns 1 if valid.
+/// Flow direction at a point (standing at y) for a slot; out[0..2] = dir, out[2] = path distance (or -1),
+/// out[3] = nav grid index (or -1). Returns 1 if a direction exists.
 #[no_mangle]
-pub extern "C" fn sim_flow_sample(slot: u32, x: f64, z: f64) -> u32 {
+pub extern "C" fn sim_flow_sample(slot: u32, x: f64, y: f64, z: f64) -> u32 {
     let s = st();
     let slot = slot as usize;
     s.out[2] = -1.0;
-    let Some(ri) = s.region_of(x, z) else { return 0 };
+    s.out[3] = -1.0;
+    let Some(ri) = s.region_of(x, y, z) else { return 0 };
+    s.out[3] = ri as f64;
     if slot >= NS {
         return 0;
     }
-    let r = &s.regions[ri];
-    let ci = floor64((x - r.x0) / r.cs) as usize;
-    let cj = floor64((z - r.z0) / r.cs) as usize;
-    let d = r.dist[slot][cj * r.w + ci];
-    if r.has[slot] && d < INF {
-        s.out[2] = d as f64;
+    if let Some(c) = s.cell_at(ri, x, z) {
+        let d = s.regions[ri].dist[slot][c];
+        if s.regions[ri].has[slot] && d < INF {
+            s.out[2] = d as f64;
+        }
     }
     match s.sample_flow(ri, slot, x, z) {
         Some((dx, dz)) => {
@@ -1271,19 +1429,22 @@ pub extern "C" fn sim_flow_sample(slot: u32, x: f64, z: f64) -> u32 {
         None => 0,
     }
 }
-/// 1 if the nav cell under a point is blocked, 0 if free, 2 if outside every nav grid.
+/// 1 if the nav cell under a point (standing at y) is blocked, 0 if free, 2 if outside every nav grid.
 #[no_mangle]
-pub extern "C" fn sim_nav_blocked(x: f64, z: f64) -> u32 {
+pub extern "C" fn sim_nav_blocked(x: f64, y: f64, z: f64) -> u32 {
     let s = st();
-    match s.region_of(x, z) {
+    match s.region_of(x, y, z) {
         None => 2,
-        Some(ri) => {
-            let r = &s.regions[ri];
-            let ci = floor64((x - r.x0) / r.cs) as usize;
-            let cj = floor64((z - r.z0) / r.cs) as usize;
-            r.blocked[cj * r.w + ci] as u32
-        }
+        Some(ri) => match s.cell_at(ri, x, z) {
+            Some(c) => s.regions[ri].blocked[c] as u32,
+            None => 2,
+        },
     }
+}
+/// Number of portal cell links (debug / tests).
+#[no_mangle]
+pub extern "C" fn sim_link_count() -> u32 {
+    st().nlinks as u32
 }
 
 // ---------------------------------------------------------------- native unit tests (cargo test)
@@ -1291,18 +1452,20 @@ pub extern "C" fn sim_nav_blocked(x: f64, z: f64) -> u32 {
 mod tests {
     use super::*;
 
-    fn put_col(i: usize, x0: f64, x1: f64, z0: f64, z1: f64) {
+    fn put_col(i: usize, x0: f64, x1: f64, z0: f64, z1: f64, y0: f64, y1: f64) {
         let s = st();
-        s.col[i * COLW..i * COLW + COLW].copy_from_slice(&[x0, x1, z0, z1, 1.0]);
+        s.col[i * COLW..i * COLW + COLW].copy_from_slice(&[x0, x1, z0, z1, 1.0, y0, y1]);
     }
-    fn agent(i: usize, x: f32, z: f32, tx: f32, tz: f32, moving: bool) {
+    fn agent(i: usize, x: f32, y: f32, z: f32, tx: f32, ty: f32, tz: f32, moving: bool) {
         let s = st();
         for f in 0..NF {
             s.agents[f * MAXA + i] = 0.0;
         }
         s.set(F_X, i, x);
+        s.set(F_Y, i, y);
         s.set(F_Z, i, z);
         s.set(F_TX, i, tx);
+        s.set(F_TY, i, ty);
         s.set(F_TZ, i, tz);
         s.set(F_SPD, i, 2.0);
         s.set(F_RAD, i, 0.33);
@@ -1311,37 +1474,50 @@ mod tests {
         s.set(F_FLAGS, i, (FL_ACTIVE | if moving { FL_MOVING } else { 0 }) as f32);
     }
 
-    // a 20x20 room split by a wall at z=10 with a 4 m gap at x in [14,18]
+    // ground: a 20x20 room split by a wall at z=10 with a 4 m gap at x in [14,18];
+    // basement (y -7): same footprint, linked to the ground by a stair over x 2..4, z 2..8; a basement-only wall
+    // at x 6..7 (z 0..15) leaves a way round its north end
     fn world() {
         sim_init(7);
-        put_col(0, 0.0, 14.0, 9.5, 10.5);
-        put_col(1, 18.0, 20.0, 9.5, 10.5);
-        put_col(2, -1.0, 0.0, 0.0, 20.0);
-        put_col(3, 20.0, 21.0, 0.0, 20.0);
-        put_col(4, 0.0, 20.0, -1.0, 0.0);
-        put_col(5, 0.0, 20.0, 20.0, 21.0);
-        sim_world_commit(6);
-        sim_nav_region(0, -2.0, -2.0, 24, 24, 1.0, 0.0, 0.0, 0.0);
+        put_col(0, 0.0, 14.0, 9.5, 10.5, -2.0, 4.0);
+        put_col(1, 18.0, 20.0, 9.5, 10.5, -2.0, 4.0);
+        put_col(2, -1.0, 0.0, 0.0, 20.0, -11.0, 4.0);
+        put_col(3, 20.0, 21.0, 0.0, 20.0, -11.0, 4.0);
+        put_col(4, 0.0, 20.0, -1.0, 0.0, -11.0, 4.0);
+        put_col(5, 0.0, 20.0, 20.0, 21.0, -11.0, 4.0);
+        put_col(6, 6.0, 7.0, 0.0, 15.0, -11.0, -3.0); // basement-only wall: must not block the ground floor
+        sim_world_commit(7);
+        sim_nav_region(0, -2.0, -2.0, 24, 24, 1.0, 0.0, 0.0, 0.0, 0.0, -3.0, 3.0);
+        sim_nav_region(2, -2.0, -2.0, 24, 24, 1.0, 0.0, 0.0, 0.0, -7.0, -20.0, -3.0);
+        sim_portal(0, 0, 2, 2.0, 4.0, 2.0, 8.0);
     }
 
     #[test]
     fn everything_in_one_test() {
-        // statics are shared, so the scenarios run in sequence
         world();
-        // collision matches the JS rule: pushed out of a wall to radius
-        sim_collide(5.0, 9.3, 0.33);
+        // collision matches the JS rule, and filters by height
+        sim_collide(5.0, 9.3, 0.33, 0.0);
         assert!((st().out[1] - (9.5 - 0.33)).abs() < 1e-9);
-        // flow goes through the gap
+        sim_collide(6.2, 5.0, 0.33, 0.0);
+        assert!((st().out[0] - 6.2).abs() < 1e-9, "basement wall blocked the ground floor");
+        sim_collide(6.2, 5.0, 0.33, -7.0);
+        assert!((st().out[0] - 6.2).abs() > 0.1, "basement wall did not block the basement");
+        // flow on the ground goes through the gap
         sim_targets_clear();
-        sim_target_add(0, 5.0, 15.0);
+        sim_target_add(0, 5.0, 0.0, 15.0);
         assert!(sim_fields_update() >= 1);
         assert_eq!(sim_fields_update(), 0, "unchanged seeds must not rebuild");
-        assert_eq!(sim_flow_sample(0, 5.0, 5.0), 1);
+        assert!(sim_link_count() > 0);
+        assert_eq!(sim_flow_sample(0, 5.0, 0.0, 5.0), 1);
         assert!(st().out[0] > 0.3, "should head east toward the gap, got {:?}", st().out);
-        assert_eq!(sim_nav_blocked(5.0, 10.0), 1);
+        assert_eq!(sim_nav_blocked(5.0, 0.0, 10.0), 1);
+        // a basement agent east of the basement wall goes round its north end towards the stair (the only way up)
+        assert_eq!(sim_flow_sample(0, 12.0, -7.0, 5.0), 1);
+        assert!(st().out[1] > 0.3, "basement flow should lead north round the wall, got {:?}", st().out);
+        assert!(st().out[2] > 0.0 && st().out[3] == 2.0);
         // agents reach the target through the gap and never cross the wall
         for i in 0..12 {
-            agent(i, 2.0 + (i % 6) as f32 * 1.5, 3.0 + (i / 6) as f32 * 1.5, 5.0, 15.0, true);
+            agent(i, 8.0 + (i % 6) as f32 * 1.5, 0.0, 3.0 + (i / 6) as f32 * 1.5, 5.0, 0.0, 15.0, true);
         }
         let mut crossed_wall = false;
         for _ in 0..1200 {
@@ -1363,7 +1539,6 @@ mod tests {
             }
         }
         assert!(near >= 10, "only {near} of 12 arrived");
-        // no stacking
         for i in 0..12 {
             for j in i + 1..12 {
                 let d = ((s.a(F_X, i) - s.a(F_X, j)).powi(2) + (s.a(F_Z, i) - s.a(F_Z, j)).powi(2)).sqrt();
@@ -1372,12 +1547,12 @@ mod tests {
         }
         // two targets: each half of the room flows to its own nearest target
         sim_targets_clear();
-        sim_target_add(0, 3.0, 3.0);
-        sim_target_add(0, 17.0, 17.0);
+        sim_target_add(0, 3.0, 0.0, 3.0);
+        sim_target_add(0, 17.0, 0.0, 17.0);
         sim_fields_update();
-        sim_flow_sample(0, 4.0, 5.0);
+        sim_flow_sample(0, 4.0, 0.0, 5.0);
         let d1 = st().out[2];
-        sim_flow_sample(0, 16.0, 15.0);
+        sim_flow_sample(0, 16.0, 0.0, 15.0);
         let d2 = st().out[2];
         assert!(d1 < 4.0 && d2 < 4.0, "{d1} {d2}");
     }

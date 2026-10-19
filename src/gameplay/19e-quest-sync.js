@@ -7,7 +7,7 @@ function questLayout(seed){ Q.seed=seed; const r=qrng(seed);
   do{ VAL.tgt=[0,1,2].map(()=>1+Math.floor(r()*5)); } while(VAL.tgt.every(v=>v===1)); VAL.set=[1,1,1]; VAL.solved=false; drawChalk();
   RAD.freqs=qShuffle([0,1,2,3,4,5,6,7],r).slice(0,3); RAD.dial=0; RAD.seq=0; RAD.dropped=0; RAD.done=false; RAD.drop=null; RAD.spawnT=6;
   const ga=qShuffle(QA.glyphs,r).slice(0,4); GLY.tally=[0,1,2,3].map(()=>1+Math.floor(r()*6)); GLY.order=qShuffle([0,1,2,3],r); GLY.dials=[1,1,1,1]; GLY.open=false; GLY.lid.rotation.x=0;
-  GLY.walls.forEach((w,j)=>{ const a=ga[j]; w.a=a; w.m.position.set(a.x+Math.sin(a.ry)*.02,2.1+qy(a),a.z+Math.cos(a.ry)*.02); w.m.rotation.y=a.ry; w.m.visible=true; drawGlyphWall(w,j,GLY.tally[j]); }); drawLockFace();
+  GLY.walls.forEach((w,j)=>{ const a=ga[j]; w.a=a; w.m.position.set(a.x+Math.sin(a.ry)*.02,2.1+qy(a),a.z+Math.cos(a.ry)*.02); w.m.rotation.y=a.ry; w.m.visible=true; qPar(qy(a)).add(w.m); drawGlyphWall(w,j,GLY.tally[j]); }); drawLockFace();
   SOUL.spots=qShuffle([0,1,2,3,4],r).slice(0,3); SOUL.k=0; SOUL.n=0; SOUL.g.visible=false;
   BRZ.notes=qShuffle([0,1,2,3],r); BRZ.order=qShuffle([0,1,2,3],r); BRZ.seq=0; BRZ.list.forEach((b,i)=>{ b.lit=false; b.fl.visible=false; const s=BRZ_SIZE[BRZ.notes[i]]; b.bowl.scale.setScalar(s); }); drawMusicStrip();
   const la=qShuffle(QA.lanterns,r).slice(0,3); GC.lan.forEach((l,i)=>{ l.a=la[i]; l.g.position.set(la[i].x,0,la[i].z); l.g.visible=false; l.lit=false; removeSolid(l.hit); });
@@ -15,7 +15,7 @@ function questLayout(seed){ Q.seed=seed; const r=qrng(seed);
 function questReset(){ QI.clear(); clearQPicks(); clearCharges(); P.drum=false; Q.tonicOpen=false; Q.seed=0; WAKE.k=0;
   GC.due=false; Object.assign(VSTATE,{hymnT:0,hymn:false,open:false,spT:0,hp:0,maxHp:1,rise:0,pulse:0,escT:0,half:false}); VT.door.position.y=0; VT.heart.position.y=-4; removeSolid(VT.hit); VT.seals.forEach(s=>{ s.p=0; s.done=false; });
   PWR.brk.forEach(b=>{ b.g.visible=false; b.col.on=false; removeSolid(b.hit); b.a=null; });
-  skipEnding();
+  skipEnding(); vaultDoorReset();
   if(NET.role==='client') return; // the host's seed arrives in the first snapshot
   const m=/[?&]seed=(\d+)/.exec(location.search); questLayout(m?+m[1]:(Math.random()*2147483647)|0); }
 // hooks called from combat and zombies (host)
@@ -31,13 +31,13 @@ function updateQuestX(dt){ updatePower(dt); updatePuzzles(dt); updateQPicks(dt);
 // journal: new stages get their own page; the power hunt is listed under whatever the ritual is doing
 function questJournal(j){ if(P.inCabin||mode==='hollow') return j; const s=Q.stage, rom=['I','II','III'];
   const pages={
-    valves:()=>({t:'Balance the pressure manifold on the generator yard\'s west wall. Set wheels A, B and C to the gauges chalked on the bunker board, then pull the red lever.',l:[[POWER.on,'Power on (the manifold needs pressure)'],...VAL.set.map((v,i)=>[false,`Wheel ${'ABC'[i]} reads ${v}`]),[false,'Wrong readings scald, and the dead come']]}),
-    radio:()=>({t:'Shriekers carry dog tags with frequencies scratched in them. Tune the bunker field radio to each tag in order (I, II, III) and transmit.',l:[0,1,2].map(i=>[RAD.seq>i,QI.has('tag'+(i+1))?`Tag ${rom[i]}: ${RADIO_DIAL[RAD.freqs[i]]} kc`:`Tag ${rom[i]}: not found`]).concat(RAD.done?[[!!(RAD.drop&&RAD.drop.open),'Open the supply drop']]:[])}),
+    valves:()=>({t:'Balance the pressure manifold in the pump room (the Underworks, down the shaft stair in the dig). Set wheels A, B and C to the gauges chalked on the bunker board, then pull the red lever.',l:[[POWER.on,'Power on (the manifold needs pressure)'],...VAL.set.map((v,i)=>[false,`Wheel ${'ABC'[i]} reads ${v}`]),[false,'Wrong readings scald, and the dead come']]}),
+    radio:()=>({t:'Shriekers carry dog tags with frequencies scratched in them. Tune the field radio in the Château radio room to each tag in order (I, II, III) and transmit.',l:[0,1,2].map(i=>[RAD.seq>i,QI.has('tag'+(i+1))?`Tag ${rom[i]}: ${RADIO_DIAL[RAD.freqs[i]]} kc`:`Tag ${rom[i]}: not found`]).concat(RAD.done?[[!!(RAD.drop&&RAD.drop.open),'Open the supply drop']]:[])}),
     gravecaller:()=>({t:GC.due?'Something is climbing out of the dig…':'Kill the Gravecaller. When it wards itself, shoot the three grave lanterns around the pit.',l:[[false,`Lanterns burning: ${GC.lan.filter(l=>l.lit).length}`]]}),
-    glyphs:()=>({t:'Four glyphs are scratched into the site\'s walls, each with tally marks. The strongbox in the dig has a dial under each glyph: shoot a dial to turn it until it matches its glyph\'s count, then try the lid.',l:GLY.dials.map((v,k)=>[false,`Dial ${k+1} (${['sun','moon','star','eye'][GLY.order[k]]}): ${v}`])}),
+    glyphs:()=>({t:'Four glyphs are scratched into the site\'s walls, each with tally marks. The officers\' strongbox upstairs in the Château has a dial under each glyph: shoot a dial to turn it until it matches its glyph\'s count, then try the lid.',l:GLY.dials.map((v,k)=>[false,`Dial ${k+1} (${['sun','moon','star','eye'][GLY.order[k]]}): ${v}`])}),
     souls:()=>({t:'Kill the dead inside the chalk ward to fill the soul canister. Three canisters; the ward moves after each.',l:[[SOUL.k>0,`Canisters ${SOUL.k}/3`],[false,`This canister: ${SOUL.n}/${SOUL.need}`]]}),
-    braziers:()=>({t:'Wind the music box on the chapel altar and listen. Light the four braziers round the pit in the order it plays (bigger bowls ring deeper).',l:[[BRZ.seq>0,`Braziers lit in order: ${BRZ.seq}/4`],[false,'A wrong flame puts them all out']]}),
-    vault:()=>({t:!VSTATE.hymn?'Play the Deep Hymn: set the three record shards on the gramophone by the vault door.':staffsPlaced()<4?'Set all four upgraded staffs in the vault door (solo: carry them in one at a time).':'Open the Deep Vault with the vault key and the soul lantern.',l:[[VSTATE.hymn,'The Deep Hymn'],[staffsPlaced()===4,`Staffs set: ${staffsPlaced()}/4`],[QI.has('vkey'),'Vault key'],[QI.has('lantern'),'Soul lantern']]}),
+    braziers:()=>({t:'Wind the music box on the ossuary altar (Underworks) and listen. Light the four ossuary braziers in the order it plays (bigger bowls ring deeper).',l:[[BRZ.seq>0,`Braziers lit in order: ${BRZ.seq}/4`],[false,'A wrong flame puts them all out']]}),
+    vault:()=>({t:!VSTATE.hymn?'Play the Deep Hymn: set the three record shards on the gramophone by the sealed vault door in the ossuary.':staffsPlaced()<4?'Set all four upgraded staffs in the vault door (solo: carry them in one at a time).':'Open the Deep Vault with the vault key and the soul lantern.',l:[[VSTATE.hymn,'The Deep Hymn'],[staffsPlaced()===4,`Staffs set: ${staffsPlaced()}/4`],[QI.has('vkey'),'Vault key'],[QI.has('lantern'),'Soul lantern']]}),
     seals:()=>({t:'Stand on each seal plate until it burns white. The dead pour in.',l:VT.seals.map((q,i)=>[q.done,`Seal ${i+1}: ${q.done?'burning':Math.floor(q.p/12*100)+'%'}`])}),
     furnace:()=>({t:'Destroy the Furnace Heart. Relic weapons bite deepest. Stay out of its pulse.',l:[[false,`Heart ${Math.ceil(VSTATE.hp/VSTATE.maxHp*100)}%`]]}),
     escape:()=>({t:'Get to the lift and ride it out!',l:[[false,`The dig is coming down: ${Math.ceil(VSTATE.escT)}s`]]}),

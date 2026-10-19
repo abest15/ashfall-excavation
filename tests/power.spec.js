@@ -4,8 +4,8 @@ import { test, expect } from '@playwright/test';
 import { openGame, toMainMenu, startSolo, advance, KEEP_ALIVE, hostAndJoin } from './helpers.js';
 
 const step = (page, fn, arg) => page.evaluate(fn, arg);
-const useAt = (page, x, z) => step(page, ([x, z]) => { const g = window.__G; g.P.pos.set(x, 0, z); g.P.vy = 0; g.updateInteract(); const c = g.curInter; if (!c || c.t[0] === '!') return c ? c.t : null; c.o.use(); return c.t; }, [x, z]);
-const brkOf = (page, type) => step(page, type => { const b = window.__G.QUEST.PWR.brk.find(q => q.type === type); return { i: b.i, x: b.a.x, z: b.a.z, ox: b.o.x, oz: b.o.z }; }, type);
+const useAt = (page, x, z, y = 0) => step(page, ([x, z, y]) => { const g = window.__G; g.P.pos.set(x, y, z); g.P.vy = 0; g.updateInteract(); const c = g.curInter; if (!c || c.t[0] === '!') return c ? c.t : null; c.o.use(); return c.t; }, [x, z, y]);
+const brkOf = (page, type) => step(page, type => { const b = window.__G.QUEST.PWR.brk.find(q => q.type === type); return { i: b.i, x: b.a.x, y: b.a.y || 0, z: b.a.z, ox: b.o.x, oz: b.o.z }; }, type);
 
 test('breakers: random placement, each requirement, generator crank', async ({ page }) => {
   test.setTimeout(300_000);
@@ -38,25 +38,25 @@ test('breakers: random placement, each requirement, generator crank', async ({ p
   // breakers are found by walking near them (journal and banner)
   const j0 = await step(page, () => window.__G.QUEST.journal().l.map(x => x[1]).join(' | '));
   expect(j0).toMatch(/breakers found 0\/3 · thrown 0\/3/);
-  for (const type of ['jammed', 'fuse', 'surge']) { const b = await brkOf(page, type); await step(page, b => window.__G.P.pos.set(b.ox, 0, b.oz), b); await advance(page, 0.2, KEEP_ALIVE); }
+  for (const type of ['jammed', 'fuse', 'surge']) { const b = await brkOf(page, type); await step(page, b => { window.__G.P.pos.set(b.ox, b.y, b.oz); window.__G.P.vy = 0; }, b); await advance(page, 0.2, KEEP_ALIVE); }
   expect(await step(page, () => window.__G.QUEST.PWR.brk.every(b => b.found))).toBe(true);
   expect(await step(page, () => window.__G.QUEST.journal().l.map(x => x[1]).join(' | '))).toMatch(/breakers found 3\/3/);
 
   // jammed: refuses to throw, knife blows too far apart reset, five quick blows loosen it
   const J = await brkOf(page, 'jammed');
-  expect(await useAt(page, J.ox, J.oz)).toMatch(/rusted solid/);
-  const whack = () => step(page, b => { const g = window.__G; g.P.pos.set(b.ox, 0, b.oz); g.P.yaw = Math.atan2(-(b.x - b.ox), -(b.z - b.oz)); g.melee(); }, J);
+  expect(await useAt(page, J.ox, J.oz, J.y)).toMatch(/rusted solid/);
+  const whack = () => step(page, b => { const g = window.__G; g.P.pos.set(b.ox, b.y, b.oz); g.P.vy = 0; g.P.yaw = Math.atan2(-(b.x - b.ox), -(b.z - b.oz)); g.melee(); }, J);
   await whack(); await advance(page, 0.7, KEEP_ALIVE); await whack();
   expect(await step(page, i => window.__G.QUEST.PWR.brk[i].whacks, J.i)).toBe(2);
   await advance(page, 3, KEEP_ALIVE); await whack();
   expect(await step(page, i => window.__G.QUEST.PWR.brk[i].whacks, J.i)).toBe(1); // seized up again
   for (let k = 0; k < 4; k++) { await advance(page, 0.7, KEEP_ALIVE); await whack(); }
   expect(await step(page, i => window.__G.QUEST.PWR.brk[i].whacks, J.i)).toBe(5);
-  expect(await useAt(page, J.ox, J.oz)).toMatch(/Throw the breaker/);
+  expect(await useAt(page, J.ox, J.oz, J.y)).toMatch(/Throw the breaker/);
 
   // fuse: no fuse, no throw; the fuse crate holds it (other crates do not); seat it, then throw
   const F = await brkOf(page, 'fuse');
-  expect(await useAt(page, F.ox, F.oz)).toMatch(/fuse holder is empty/);
+  expect(await useAt(page, F.ox, F.oz, F.y)).toMatch(/fuse holder is empty/);
   const crates = await step(page, () => { const Q = window.__G.QUEST; return { at: Q.PWR.fuseAt, list: Q.QA.fuse }; });
   const other = crates.list.find((c, i) => i !== crates.at);
   expect(await useAt(page, other.x, other.z)).toMatch(/Search the supply crate/);
@@ -67,13 +67,13 @@ test('breakers: random placement, each requirement, generator crank', async ({ p
   expect(fuse).toBeTruthy();
   expect(await useAt(page, fuse.x, fuse.z)).toMatch(/Take the breaker fuse/);
   expect(await step(page, () => window.__G.QUEST.QI.has('fuse'))).toBe(true);
-  expect(await useAt(page, F.ox, F.oz)).toMatch(/Seat the fuse/);
-  expect(await useAt(page, F.ox, F.oz)).toMatch(/Throw the breaker/);
+  expect(await useAt(page, F.ox, F.oz, F.y)).toMatch(/Seat the fuse/);
+  expect(await useAt(page, F.ox, F.oz, F.y)).toMatch(/Throw the breaker/);
 
   // surge: throwing it calls a horde
   const S = await brkOf(page, 'surge');
   await step(page, () => { const g = window.__G; for (const z of g.zombies) if (!z.dead) g.killZombie(z, 'self', true); g.R.inBreak = true; g.R.breakT = 1e9; });
-  expect(await useAt(page, S.ox, S.oz)).toMatch(/Throw the breaker/);
+  expect(await useAt(page, S.ox, S.oz, S.y)).toMatch(/Throw the breaker/);
   expect(await step(page, () => window.__G.QUEST.PWR.surge)).toBeGreaterThan(4);
   await advance(page, 2, KEEP_ALIVE);
   expect(await step(page, () => window.__G.zombies.filter(z => !z.dead).length)).toBeGreaterThan(2);
@@ -108,7 +108,7 @@ test('breakers in co-op: same layout on both machines, a client throws and crank
   await host.evaluate(() => { const Q = window.__G.QUEST; for (const b of Q.PWR.brk) { b.found = true; if (b.type === 'jammed') b.whacks = 5; if (b.type === 'fuse') b.fused = true; } window.__G.R.inBreak = true; window.__G.R.breakT = 1e9; });
   await pump();
   for (let i = 0; i < 3; i++) {
-    const t = await client.evaluate(i => { const g = window.__G, b = g.QUEST.PWR.brk[i]; g.P.pos.set(b.o.x, 0, b.o.z); g.updateInteract(); const c = g.curInter; if (c && c.t[0] !== '!') c.o.use(); return c && c.t; }, i);
+    const t = await client.evaluate(i => { const g = window.__G, b = g.QUEST.PWR.brk[i]; g.P.pos.set(b.o.x, b.o.y || 0, b.o.z); g.P.vy = 0; g.updateInteract(); const c = g.curInter; if (c && c.t[0] !== '!') c.o.use(); return c && c.t; }, i);
     expect(t).toMatch(/Throw the breaker/);
     await expect.poll(async () => { await pump(); return host.evaluate(i => window.__G.QUEST.PWR.brk[i].thrown, i); }, { timeout: 30_000 }).toBe(true);
   }

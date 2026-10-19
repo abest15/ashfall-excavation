@@ -11,10 +11,10 @@ const BEAMS=[]; const beamGeo=new THREE.BoxGeometry(.05,.05,1); beamGeo.translat
 for(let i=0;i<80;i++){ const m=new THREE.Mesh(beamGeo,M.add(0x8ae8ff,1)); m.visible=false; scene.add(m); BEAMS.push({m,life:0}); }
 let beamI=0;
 function explode(pos,r,dmg,o={}){ spawnParticles(pos,o.ptype||'ember',14); if(!o.ptype) spawnParticles(pos,'dirt',6); boomLight.color.set(o.light||0xff8a3a); boomLight.position.set(pos.x,2,pos.z); boomLight.intensity=4; sfx[o.snd||'boom']();
-  const dP=Math.hypot(P.pos.x-pos.x,P.pos.z-pos.z); P.shake=Math.max(P.shake,clamp(1-dP/22,0,1)*.35);
+  const dP=Math.hypot(P.pos.x-pos.x,P.pos.z-pos.z,Math.max(0,Math.abs(P.pos.y+.8-pos.y)-1.5)); P.shake=Math.max(P.shake,clamp(1-dP/22,0,1)*.35);
   if(o.player&&dP<r) hurtPlayer(o.player*(1-dP/r*.5),pos);
-  if(o.player&&NET.role==='host') for(const id in NET.remotes){ const st=NET.remotes[id].st; if(!st) continue; const d2=Math.hypot(st.x-pos.x,st.z-pos.z); if(d2<r) sendTo(id,{t:'hurt',d:o.player*(1-d2/r*.5),s:[pos.x,pos.z]}); }
-  for(const z of zombies){ if(z.dead||z.rise>0) continue; const d=Math.hypot(z.g.position.x-pos.x,z.g.position.z-pos.z); if(d<r) hitZombie(z,o.lure&&z.boss?3000:dmg*(1-d/r*.6),1,'gun'); } }
+  if(o.player&&NET.role==='host') for(const id in NET.remotes){ const st=NET.remotes[id].st; if(!st) continue; const d2=Math.hypot(st.x-pos.x,st.z-pos.z,Math.max(0,Math.abs((st.y||0)+.8-pos.y)-1.5)); if(d2<r) sendTo(id,{t:'hurt',d:o.player*(1-d2/r*.5),s:[pos.x,pos.z]}); }
+  for(const z of zombies){ if(z.dead||z.rise>0) continue; const d=Math.hypot(z.g.position.x-pos.x,z.g.position.z-pos.z,Math.max(0,Math.abs(z.g.position.y+.8-pos.y)-1.5)); if(d<r) hitZombie(z,o.lure&&z.boss?3000:dmg*(1-d/r*.6),1,'gun'); } }
 const BOLTS=[]; const boltGeo=new THREE.SphereGeometry(.09,8,6);
 function launchBolt(a,b,s,pz){ const m=new THREE.Mesh(boltGeo,M.add(s.pcol,1)); m.scale.set(1,1,3.2); m.position.copy(a); m.lookAt(b); scene.add(m); const halo=new THREE.Mesh(boltGeo,M.add(s.pcol,.35)); halo.scale.setScalar(2.6); m.add(halo);
   BOLTS.push({m,a:a.clone(),b:b.clone(),t:0,dur:Math.max(.04,a.distanceTo(b)/75),s,pz}); }

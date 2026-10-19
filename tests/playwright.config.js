@@ -25,7 +25,7 @@ export default defineConfig({
   fullyParallel: false,
   workers: 1,
   retries: process.env.CI ? 1 : 0,
-  reporter: process.env.CI ? [['list'], ['html', { open: 'never', outputFolder: '../test-results/html' }]] : 'list',
+  reporter: process.env.CI ? [['list'], ['github'], ['html', { open: 'never', outputFolder: '../test-results/html' }]] : 'list',
   outputDir: '../test-results/artifacts',
   use: {
     baseURL: `http://localhost:${PORT}`,

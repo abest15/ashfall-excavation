@@ -18,22 +18,22 @@ const QP=[]; let QP_ID=0;
 const QP_GEO={oct:new THREE.OctahedronGeometry(.2),box:new THREE.BoxGeometry(.3,.18,.3),disc:new THREE.CylinderGeometry(.24,.24,.03,16),tag:new THREE.BoxGeometry(.22,.04,.32),halo:new THREE.TorusGeometry(.42,.03,4,18)}, QP_MAT={};
 const qpMat=(c,add)=>{ const k=c+(add?'a':''); return QP_MAT[k]||(QP_MAT[k]=add?M.add(c,.6):B({color:c})); };
 function qPickVis(e){ const shape=e.key.startsWith('shard')?'disc':e.key.startsWith('tag')?'tag':e.key==='fuse'?'box':'oct';
-  const m=new THREE.Mesh(QP_GEO[shape],qpMat(e.col)); if(shape==='oct') m.scale.y=1.6; m.position.set(e.x,(e.y||0)+1,e.z); scene.add(m);
+  const m=new THREE.Mesh(QP_GEO[shape],qpMat(e.col)); if(shape==='oct') m.scale.y=1.6; m.position.set(e.x,(e.y||0)+1,e.z); qPar(e.y).add(m);
   const halo=new THREE.Mesh(QP_GEO.halo,qpMat(e.col,true)); halo.rotation.x=Math.PI/2; m.add(halo);
-  e.m=m; e.o=addInter({x:e.x,z:e.z,r:1.8,prompt:()=>e.label,use:()=>qAct('take',e.id)}); return e; }
-function qPickFree(e){ if(e.m) scene.remove(e.m); const i=inter.indexOf(e.o); if(i>=0) inter.splice(i,1); e.m=null; e.o=null; }
+  e.m=m; e.o=addInter({y:e.y||0,x:e.x,z:e.z,r:1.8,prompt:()=>e.label,use:()=>qAct('take',e.id)}); return e; }
+function qPickFree(e){ if(e.m&&e.m.parent) e.m.parent.remove(e.m); const i=inter.indexOf(e.o); if(i>=0) inter.splice(i,1); e.m=null; e.o=null; }
 function qDrop(key,x,z,label,col,y=0){ if(NET.role==='client') return null; const e=qPickVis({id:++QP_ID,key,x,z,y,label,col}); QP.push(e); return e; }
 QACT.take=(id,who)=>{ const i=QP.findIndex(e=>e.id===id); if(i<0) return; const e=QP[i]; QP.splice(i,1); qPickFree(e);
   const f=QTAKE[e.key]; if(f) f(e,who); else { QI.add(e.key); qSound('pup'); qEv('toast',{s:`${QI_NAMES[e.key]||e.key} recovered`}); } };
 function updateQPicks(dt){ for(const e of QP){ if(!e.m) continue; e.m.rotation.y+=dt*2; e.m.position.y=(e.y||0)+1+Math.sin(GT*3+e.id)*.15; } }
 function clearQPicks(){ for(const e of QP) qPickFree(e); QP.length=0; }
 // every live player position in the main map (host sees remote players through their state packets)
-function questPlayers(){ const out=[]; if(!(P.dead||P.inCabin)) out.push({x:P.pos.x,z:P.pos.z,id:'h',m:mode});
-  if(NET.role==='host') for(const id in NET.remotes){ const st=NET.remotes[id].st; if(st&&!st.dd&&!st.cab) out.push({x:st.x,z:st.z,id,m:st.m}); }
+function questPlayers(){ const out=[]; if(!(P.dead||P.inCabin)) out.push({x:P.pos.x,y:P.pos.y,z:P.pos.z,id:'h',m:mode});
+  if(NET.role==='host') for(const id in NET.remotes){ const st=NET.remotes[id].st; if(st&&!st.dd&&!st.cab) out.push({x:st.x,y:st.y||0,z:st.z,id,m:st.m}); }
   return out; }
 function nearestPlayerD(x,z){ let d=1e9; for(const p of questPlayers()) if(p.m===mode) d=Math.min(d,Math.hypot(p.x-x,p.z-z)); return d; }
 // spawn a zombie for a quest event, near a point when given (it still rises from the ground)
-function questSpawn(kind,x,z,spread=5){ const zz=spawnZombie(kind||'walker'); if(!zz) return null;
+function questSpawn(kind,x,z,spread=5,y=0){ const zz=spawnZombie(kind||'walker'); if(!zz) return null;
   if(x!==undefined){ for(let k=0;k<8;k++){ const a=Math.random()*6.283, r=spread*(.5+Math.random()*.5), px=x+Math.cos(a)*r, pz=z+Math.sin(a)*r;
-      if(zoneOf(px,pz)&&Math.hypot(px-P.pos.x,pz-P.pos.z)>3){ zz.g.position.x=px; zz.g.position.z=pz; zz.win=null; zz.wstate=null; zz.tx=px; zz.tz=pz; zz.lx=px; zz.lz=pz; break; } } }
+      if(zoneOf(px,pz,y)&&Math.hypot(px-P.pos.x,pz-P.pos.z)>3){ const fy=floorAt(px,y+.5,pz); zz.fy=fy>LV.VOID+1?fy:y; zz.g.position.set(px,zz.fy-2.2,pz); zz.win=null; zz.wstate=null; zz.tx=px; zz.tz=pz; zz.lx=px; zz.lz=pz; break; } } }
   return zz; }

@@ -1,7 +1,7 @@
 /* ---------- per-frame world updates ---------- */
 let groanT=1;
 function updateWorld(dt){
-  updateWindows(dt);
+  updateWindows(dt); levelVisUpdate();
   for(const f of FLAMES) f.scale.y=.75+Math.random()*.5; barrelLight.intensity=1+Math.random()*.4; CH.light.intensity=.8+Math.random()*.2;
   if(CH.swing>0){ CH.swing=Math.max(0,CH.swing-dt*.35); CH.bellG.rotation.z=Math.sin(GT*5)*CH.swing*.45; }
   if(CH.mural>0){ CH.mural-=dt; if(CH.mural<=0&&!CH.solved) muralLit(false); }
@@ -20,7 +20,7 @@ function updateWorld(dt){
     if(W.moving>0){ W.moving-=dt; const k=1-Math.max(0,W.moving)/2.4, e=k*k*(3-2*k); wp.lerpVectors(W.from,W.to,e); wp.y=2.6+Math.sin(k*Math.PI)*4; }
     else { wp.y=2.6+Math.sin(GT*2)*.25; if(Math.hypot(P.pos.x-wp.x,P.pos.z-wp.z)<2.6&&GT-W.touch>1){ W.touch=GT; hurtPlayer(20); toast('Its touch is grave-cold'); } }
     WR.g.rotation.y=Math.atan2(P.pos.x-wp.x,P.pos.z-wp.z); WR.halo.rotation.x+=dt*.6; WR.halo.rotation.z+=dt; if(Math.random()<.25) spawnParticles(wp,'relic',1); }
-  for(const d of DOORS){ if(d.anim>0){ d.anim-=dt; d.g.position.y=-(1-Math.max(0,d.anim))*4; if(d.anim<=0) d.g.visible=false; } }
+  for(const d of DOORS){ if(d.anim>0){ d.anim-=dt; d.g.position.y=(d.y||0)-(1-Math.max(0,d.anim))*4; if(d.anim<=0) d.g.visible=false; } }
   updateCrate(dt); updateQuestX(dt);
   if(FORGE.state==='working'){ FORGE.t-=dt; forgeLight.intensity=1.6+Math.random()*1.2; if(Math.random()<.3) spawnParticles(new V3(-24.6+rand(-.5,.5),1.2,-24.6),'ember',1);
     if(FORGE.t<=0){ FORGE.state='ready'; FORGE.t=18; const m=buildGun(FORGE.inst.id,true); m.position.set(-24.1,1.4,-24.1); m.rotation.y=Math.PI/4+Math.PI/2; m.scale.setScalar(1.5); scene.add(m); FORGE.model=m; toast('The Forge is done'); } }

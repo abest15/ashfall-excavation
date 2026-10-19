@@ -9,7 +9,8 @@ const ZONES={
   G:{name:"No man's land", c:{x:70,z:-12}, open:false},
   H:{name:'The Hollow', c:{x:HX,z:HZ}, open:true},
 };
-function zoneOf(x,z){
+function zoneOf(x,z,y){
+  const lz=levelZoneOf(x,y,z); if(lz!==undefined) return lz; // levels (05c-levels.js): underground, upper floor, the château
   if(x>150) return 'H';
   if(x>-10&&x<10&&z>30&&z<50) return 'A';
   if(x>-30&&x<30&&z>5&&z<30) return 'B';
@@ -63,7 +64,7 @@ function wall(x1,z1,x2,z2,ops=[],o={}){
       if(QUAL&&k!=='earth'){ const at=b-.12; for(const side of [-1,1]) batchAdd(REVPOSTS,horiz?at:fx+side*.66,H/2,horiz?fx+side*.66:at,rand(-.2,.2),[1,1,1],0x4a3420,rand(-.05,.05),rand(-.05,.05)); }
       a=b; } };
   let cur=a0; for(const c of ops.slice().sort((p,q)=>p-q)){ piece(cur,c-1.1,0,H); piece(c-1.1,c+1.1,0,.9); piece(c-1.1,c+1.1,2.5,H); cur=c+1.1; } piece(cur,a1,0,H);
-  const cx=(x1+x2)/2, cz=(z1+z2)/2, w=horiz?len+T:T, d=horiz?T:len+T; addCol(cx,cz,w,d);
+  const cx=(x1+x2)/2, cz=(z1+z2)/2, w=horiz?len+T:T, d=horiz?T:len+T; const wc=addCol(cx,cz,w,d); wc.y0=LV.GROUND_Y0; wc.y1=H+.7; // tops out below an upper floor
   if(o.stone){ wallPiece('cap',w+.3,.35,d+.3,cx,H+.17,cz);
     const L_=horiz?w:d; for(let a=-L_/2+.3;a<L_/2-.2;a+=rand(.5,.9)){ if(Math.random()<.3) continue; const hh=rand(.15,.7)*(Math.random()<.15?2:1), px=horiz?cx+a:cx+rand(-.2,.2), pz=horiz?cz+rand(-.2,.2):cz+a;
       batchAdd(STONES,px,H+.35+hh/2,pz,rand(-.2,.2),[rand(.45,.8),hh,rand(.7,1.2)],new THREE.Color().setHSL(.09,.06,rand(.42,.58)).getHex(),rand(-.08,.08),rand(-.08,.08)); }
@@ -81,7 +82,7 @@ wall(-10,30,-10,50,[40]); wall(10,30,10,50); wall(-10,50,10,50,[2]);
 wall(-30,30,-3,30); wall(3,30,30,30,[25]);
 wall(-30,5,-30,30,[22]); wall(30,5,30,13.5); wall(30,19.5,30,30);
 wall(-30,5,-15,5); wall(-9,5,17,5); wall(23,5,40,5);
-wall(-30,-30,-30,5,[-18]); wall(-30,-30,40,-30,[-14,16,36]); wall(40,-30,40,-13); wall(40,-7,40,5);
+wall(-30,-30,-30,-14.2,[-18]); wall(-30,-7.8,-30,5); wall(-30,-30,40,-30,[-14,16,36]); wall(40,-30,40,-13); wall(40,-7,40,5); // gap at z -13.6..-8.4: the barricade into the château (07b-levels-build.js)
 wall(10,-30,10,-12); wall(10,-6,10,5);
 // the chapel: stone walls, taller
 wall(30,30,60,30,[34,46],{stone:true,h:5}); wall(60,5,60,30,[],{stone:true,h:5}); wall(40,5,47,5,[],{stone:true,h:5}); wall(53,5,60,5,[],{stone:true,h:5});
@@ -94,25 +95,29 @@ flushWalls();
 for(let i=0;i<26;i++){ const a=i/26*Math.PI*2, r=rand(112,145); const h=rand(10,26); const m=new THREE.Mesh(new THREE.ConeGeometry(rand(16,30),h,6),M.hill); m.position.set(Math.cos(a)*r+30,h/2-2,Math.sin(a)*r+5); scene.add(m); }
 function deadTree(x,z,s){ const g=new THREE.Group(); g.position.set(x,0,z); g.scale.setScalar(s); scene.add(g);
   cyl(0.12,0.28,5,M.tree,0,2.5,0,6,g); for(let i=0;i<4;i++){ const b=cyl(0.04,0.09,rand(1.4,2.4),M.tree,0,rand(2.8,4.5),0,4,g); b.rotation.z=rand(.6,1.2)*(i%2?1:-1); b.rotation.y=rand(0,6); b.position.x=Math.sin(b.rotation.z)*-0.6; } }
-[[-45,20,1.3],[-50,-10,1.6],[-38,38,1.4],[22,42,1.2],[-20,62,1.5],[25,60,1.3],[-40,-45,1.7],[20,-48,1.4],[0,-50,1.2],[75,-45,1.5],[110,-10,1.4],[70,20,1.3],[52,42,1.2]].forEach(a=>deadTree(...a));
+[[-45,20,1.3],[-70,-6,1.6],[-38,38,1.4],[22,42,1.2],[-20,62,1.5],[25,60,1.3],[-40,-45,1.7],[20,-48,1.4],[0,-50,1.2],[75,-45,1.5],[110,-10,1.4],[70,20,1.3],[52,42,1.2]].forEach(a=>deadTree(...a));
 // ruined bell tower silhouette
 { const g=new THREE.Group(); g.position.set(-62,0,-38); scene.add(g); box(6,18,6,M.stone,0,9,0,{parent:g}); box(7,1,7,M.stone,0,18.5,0,{parent:g}); box(2,6,7,M.stone,-2,22,0,{parent:g}); box(1,3,4,M.dark,0,14,3.01,{parent:g}); }
 
 // ---- doors
 const DOORS=[];
 const plankGeo=new THREE.BoxGeometry(6.4,0.36,0.12), DOOR_MAT=L({map:plankTex,vertexColors:true});
-function makeDoor(x,z,alongX,cost,a,b,label,sign){
-  const g=new THREE.Group(); g.position.set(x,0,z); if(!alongX) g.rotation.y=Math.PI/2; scene.add(g);
+// o (levels): y floor height, w width, debris (rubble pile instead of planks), locked (cannot be bought; openDoor opens it)
+function makeDoor(x,z,alongX,cost,a,b,label,sign,o={}){ const Y=o.y||0, W_=o.w||6.4;
+  const g=new THREE.Group(); g.position.set(x,Y,z); if(!alongX) g.rotation.y=Math.PI/2; scene.add(g);
   { const b=GB(); for(let i=0;i<5;i++) b.add(plankGeo,0xffffff,{p:[0,0.45+i*0.62,(i%2)*0.1],r:[0,0,rand(-.07,.07)],grime:.15}); for(const s of [-1,1]) b.add(plankGeo,0xd8d0c0,{p:[0,1.7,0.18],r:[0,0,0.42*s],s:[1.05,1,1]});
     g.add(new THREE.Mesh(b.done(),DOOR_MAT)); const w=GB(); for(let i=-2;i<=2;i++) w.add(new THREE.TorusGeometry(0.35,0.025,4,12),0xffffff,{p:[i*1.2,3.35,0],r:[0,Math.PI/2,0]}); g.add(new THREE.Mesh(w.done(),M.wire)); }
   const sg=makeLabel(sign,{sx:2.6,size:52,color:'#e8d6a8'}); sg.position.set(0,2.2,0.6); g.add(sg);
-  const hit=new THREE.Mesh(new THREE.BoxGeometry(6.4,3.6,0.6),M.plank); hit.position.y=1.8; hit.visible=false; g.add(hit); addSolid(hit);
-  const col=alongX?{minX:x-3.2,maxX:x+3.2,minZ:z-0.5,maxZ:z+0.5,on:true}:{minX:x-0.5,maxX:x+0.5,minZ:z-3.2,maxZ:z+3.2,on:true};
+  if(W_!==6.4) g.children.forEach(m=>{ if(!m.isSprite) m.scale.x=W_/6.4; });
+  if(o.debris&&typeof debrisPile==='function') debrisPile(g,W_);
+  const hit=new THREE.Mesh(new THREE.BoxGeometry(W_,3.6,0.6),M.plank); hit.position.y=1.8; hit.visible=false; g.add(hit); addSolid(hit);
+  const col=alongX?{minX:x-W_/2,maxX:x+W_/2,minZ:z-0.5,maxZ:z+0.5,on:true}:{minX:x-0.5,maxX:x+0.5,minZ:z-W_/2,maxZ:z+W_/2,on:true}; if(o.y!==undefined){ col.y0=Y-1; col.y1=Y+3.8; }
   colliders.push(col);
-  const d={x,z,cost,a,b,label,open:false,g,col,hit,anim:0}; DOORS.push(d);
-  addInter({x,z,r:3.4,prompt:()=>d.open?null:`Clear the barricade to ${label} [${cost}]`,use:()=>{ if(d.open)return; if(!spend(cost))return; netDoor(d); }});
+  const d={x,z,y:Y,cost,a,b,label,open:false,g,col,hit,anim:0,locked:!!o.locked,id:o.id||null}; DOORS.push(d);
+  addInter({x,z,y:Y,r:3.4,prompt:()=>d.open?null:d.locked?(o.lockedText||'!Sealed. Something else must open this way'):`${o.verb||'Clear the barricade to'} ${label} [${cost}]`,use:()=>{ if(d.open||d.locked)return; if(!spend(cost))return; netDoor(d); }});
+  return d;
 }
-function openDoor(d){ d.open=true; d.anim=1; d.col.on=false; removeSolid(d.hit); ZONES[d.a].open=true; ZONES[d.b].open=true; sfx.door(); }
+function openDoor(d){ d.open=true; d.anim=1; d.col.on=false; removeSolid(d.hit); ZONES[d.a].open=true; ZONES[d.b].open=true; levelZonesSync(); sfx.door(); }
 makeDoor(0,30,true,750,'A','B','the trenches','TO THE TRENCHES');
 makeDoor(-12,5,true,1000,'B','C','the dig','TO THE DIG');
 makeDoor(20,5,true,1000,'B','D','the generator yard','GENERATOR YARD');

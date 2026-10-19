@@ -41,9 +41,13 @@ function updatePlayer(dt){
   // gravity, jump and landing
   const wasGround=P.grounded, vyBefore=P.vy;
   if(!P.grounded&&wasGround===false&&P.vy>6.5&&!P.jumpFx){ P.jumpFx=true; vmImpulse(0,-.25,0,.35,0,0); if(sliding) P.slideT=0; crouchTog=false; }
-  P.vy-=22*dt; P.pos.y+=P.vy*dt;
-  if(P.pos.y<=0){ P.pos.y=0; if(!wasGround||vyBefore<-1){ const f=clamp(-vyBefore/14,0,1); if(f>.15){ P.landDip=Math.min(.18,.05+f*.14); vmImpulse(0,-.4*f-.15,0,-.5*f,0,rand(-.3,.3)*f); sfx.land&&sfx.land(f); } } P.vy=0; P.grounded=true; P.jumpFx=false; }
-  else if(P.pos.y>0) P.grounded=false;
+  // levels (05c-levels.js): land on floorAt, stick to stairs going down, bump heads on ceilings, fall off ledges
+  const y0=P.pos.y; P.vy-=22*dt; P.pos.y+=P.vy*dt;
+  if(P.vy>0){ const ceil=ceilAt(P.pos.x,y0,P.pos.z); if(P.pos.y+1.8>ceil){ P.pos.y=Math.max(y0,ceil-1.8); P.vy=0; } }
+  const flY=floorAt(P.pos.x,Math.max(y0,P.pos.y),P.pos.z);
+  if(flY<=LV.VOID&&P.pos.y<-40){ P.pos.set(0,0,44); P.vy=0; }
+  if(P.pos.y<=flY||(wasGround&&P.vy<=0&&P.pos.y-flY<.6)){ P.pos.y=flY; if(!wasGround||vyBefore<-1){ const f=clamp(-vyBefore/14,0,1); if(f>.15){ P.landDip=Math.min(.18,.05+f*.14); vmImpulse(0,-.4*f-.15,0,-.5*f,0,rand(-.3,.3)*f); sfx.land&&sfx.land(f); } } P.vy=0; P.grounded=true; P.jumpFx=false; }
+  else P.grounded=false;
   // ADS
   const w=curW(), wantAds=((mouseRight||PAD.aim)&&!P.sprint&&w&&P.swapT<=0&&!(w&&w.reloadEnd)&&VM.melee<=0)?1:0;
   if(!!wantAds!==adsPrev){ adsPrev=!!wantAds; const f=wantAds?sfx.adsIn:sfx.adsOut; if(f) f(); }

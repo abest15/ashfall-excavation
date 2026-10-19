@@ -30,11 +30,11 @@ function specialInit(z,kind,net){ if(!SPECIAL_KINDS[kind]) return; const S_=spec
 const CHG=[], CHG_GEO=new THREE.CylinderGeometry(.09,.09,.22,8), CHG_POOL=[];
 function chgMesh(){ const m=CHG_POOL.pop()||new THREE.Mesh(CHG_GEO,B({color:0xff5a2a})); m.visible=true; scene.add(m); return m; }
 function chgFree(m){ scene.remove(m); CHG_POOL.push(m); }
-function throwCharge(z,tx,tz){ const p=z.g.position, m=chgMesh(); const q={a:new V3(p.x,1.6,p.z),b:new V3(tx+rand(-1.2,1.2),.1,tz+rand(-1.2,1.2)),t:0,dur:1.1,fuse:1.6,m,beep:0}; m.position.copy(q.a); CHG.push(q); qSound('toss',p.x,p.z,30); }
+function throwCharge(z,tx,tz,ty=0){ const p=z.g.position, m=chgMesh(); const q={a:new V3(p.x,p.y+1.6,p.z),b:new V3(tx+rand(-1.2,1.2),ty+.1,tz+rand(-1.2,1.2)),t:0,dur:1.1,fuse:1.6,m,beep:0}; m.position.copy(q.a); CHG.push(q); qSound('toss',p.x,p.z,30); }
 function updateCharges(dt){ for(let i=CHG.length-1;i>=0;i--){ const q=CHG[i];
   if(q.t<q.dur){ q.t+=dt; const k=Math.min(1,q.t/q.dur); q.m.position.lerpVectors(q.a,q.b,k); q.m.position.y+=Math.sin(k*Math.PI)*3.2; q.m.rotation.x+=dt*9; continue; }
   q.fuse-=dt; q.beep-=dt; if(q.beep<=0){ q.beep=q.fuse>.6?.3:.12; sfxAt('tick',q.b,25); } q.m.material.color.set(Math.sin(GT*30)>0?0xff5a2a:0x2a0a00);
-  if(q.fuse<=0){ explode(new V3(q.b.x,.6,q.b.z),3.6,380,{player:42}); chgFree(q.m); CHG.splice(i,1); } } }
+  if(q.fuse<=0){ explode(new V3(q.b.x,q.b.y+.5,q.b.z),3.6,380,{player:42}); chgFree(q.m); CHG.splice(i,1); } } }
 function clearCharges(){ CHG.forEach(q=>chgFree(q.m)); CHG.length=0; NCHG.forEach(m=>chgFree(m)); NCHG.length=0; }
 const NCHG=[];
 function applyCharges(arr){ while(NCHG.length<arr.length) NCHG.push(chgMesh()); while(NCHG.length>arr.length){ const m=NCHG.pop(); explodeFx(m.position.clone().setY(.6)); chgFree(m); }
@@ -44,16 +44,16 @@ function pickSpecial(){ if(R.hound||mode!=='main') return null; let sh=0, sa=0; 
   if(R.n>=10&&sa<2&&Math.random()<Math.min(.1,.04+.004*(R.n-10))) return 'sapper';
   if(R.n>=8&&sh<(NP()>1?2:1)&&Math.random()<Math.min(.12,.05+.004*(R.n-8))) return 'shrieker';
   return null; }
-function nearestTarget(p){ let best=null,bd=1e9; for(const q of questPlayers()){ if(q.m!==mode) continue; const d=Math.hypot(q.x-p.x,q.z-p.z); if(d<bd){ bd=d; best=q; } } return best?{x:best.x,z:best.z,d:bd}:null; }
+function nearestTarget(p){ let best=null,bd=1e9; for(const q of questPlayers()){ if(q.m!==mode) continue; const d=Math.hypot(q.x-p.x,q.z-p.z)+Math.max(0,Math.abs((q.y||0)-p.y)-1)*4; if(d<bd){ bd=d; best=q; } } return best?{x:best.x,y:best.y||0,z:best.z,d:bd}:null; }
 function updateSpecials(dt){
   if(NET.role==='client') return;
   updateCharges(dt);
   for(const z of zombies){ if(z.dead||z.rise>0||z.wstate||!SPECIAL_KINDS[z.kind]) continue; const p=z.g.position; const t=nearestTarget(p); if(!t) continue;
     if(z.kind==='shrieker'){ if(z.shriekT>0){ z.shriekT-=dt; z.speed=0; if(z.shriekT<=0) z.speed=z.baseSpd||3.2; continue; }
       z.shriekCd-=dt; if(z.shriekCd<=0&&t.d<20){ z.shriekT=1.4; z.baseSpd=z.speed; z.speed=0; z.shriekCd=rand(11,15); qSound('shriek',p.x,p.z,70); qEv('shriekfx',{p:[+p.x.toFixed(1),+p.z.toFixed(1)]});
-        const n=R.n>=15?3:2; for(let k=0;k<n;k++) if(aliveCount()<maxAlive()) questSpawn('walker',p.x,p.z,4); } }
-    else if(z.kind==='sapper'){ z.throwCd-=dt; if(z.throwCd<=0&&t.d>5&&t.d<18){ z.throwCd=rand(6,9); throwCharge(z,t.x,t.z); } }
+        const n=R.n>=15?3:2; for(let k=0;k<n;k++) if(aliveCount()<maxAlive()) questSpawn('walker',p.x,p.z,4,z.fy||0); } }
+    else if(z.kind==='sapper'){ z.throwCd-=dt; if(z.throwCd<=0&&t.d>5&&t.d<18){ z.throwCd=rand(6,9); throwCharge(z,t.x,t.z,t.y); } }
     else if(z.kind==='gravecaller'){ const f=z.hp/z.maxHp;
       if(!z.ph1&&f<.66){ z.ph1=true; z.hp=Math.max(z.hp,z.maxHp*.62); gcWard(z); } else if(!z.ph2&&f<.33){ z.ph2=true; z.hp=Math.max(z.hp,z.maxHp*.3); gcWard(z); }
-      z.sumCd-=dt; if(z.sumCd<=0){ z.sumCd=z.shield?6:9; qSound('shriek',p.x,p.z,90); for(let k=0;k<3;k++) if(aliveCount()<maxAlive()) questSpawn(R.n>=10&&k===0&&Math.random()<.4?'sapper':'walker',p.x,p.z,6); } } } }
+      z.sumCd-=dt; if(z.sumCd<=0){ z.sumCd=z.shield?6:9; qSound('shriek',p.x,p.z,90); for(let k=0;k<3;k++) if(aliveCount()<maxAlive()) questSpawn(R.n>=10&&k===0&&Math.random()<.4?'sapper':'walker',p.x,p.z,6,z.fy||0); } } } }
 QEV.shriekfx=m=>{ const d=Math.hypot(P.pos.x-m.p[0],P.pos.z-m.p[1]); if(d<14&&mode==='main'){ P.shake=Math.max(P.shake||0,.3*(1-d/14)); flashScreen('rgba(190,230,255,.22)'); } };

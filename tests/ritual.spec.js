@@ -12,8 +12,8 @@ const CALM = KEEP_ALIVE + 'for(const z of g.zombies){ if(!z.dead&&!z.boss&&!z.pr
 const stage = page => page.evaluate(() => window.__G.Q.stage);
 const step = (page, fn, arg) => page.evaluate(fn, arg);
 // stand at x,z and use whatever prompt is under the player
-const useAt = (page, x, z) => step(page, ([x, z]) => { const g = window.__G; g.P.pos.set(x, 0, z); g.P.vy = 0; g.updateInteract(); const c = g.curInter; if (!c || c.t[0] === '!') return c ? c.t : null; c.o.use(); return c.t; }, [x, z]);
-const takeAll = (page, key) => step(page, key => { const g = window.__G, Q = g.QUEST; let n = 0; for (const e of Q.QP.slice()) if (!key || e.key.startsWith(key)) { g.P.pos.set(e.x, 0, e.z); g.updateInteract(); e.o.use(); n++; } return n; }, key);
+const useAt = (page, x, z, y = 0) => step(page, ([x, z, y]) => { const g = window.__G; g.P.pos.set(x, y, z); g.P.vy = 0; g.updateInteract(); const c = g.curInter; if (!c || c.t[0] === '!') return c ? c.t : null; c.o.use(); return c.t; }, [x, z, y]);
+const takeAll = (page, key) => step(page, key => { const g = window.__G, Q = g.QUEST; let n = 0; for (const e of Q.QP.slice()) if (!key || e.key.startsWith(key)) { g.P.pos.set(e.x, e.y || 0, e.z); g.updateInteract(); e.o.use(); n++; } return n; }, key);
 
 test('full ritual reaches the victory screen', async ({ page }) => {
   test.setTimeout(600_000);
@@ -23,15 +23,15 @@ test('full ritual reaches the victory screen', async ({ page }) => {
   await advance(page, 4, KEEP_ALIVE); // round 1 begins
 
   // 0. power: find the three breakers, satisfy each one's requirement, throw them, crank the generator
-  const brk = await step(page, () => window.__G.QUEST.PWR.brk.map(b => ({ i: b.i, type: b.type, x: b.a.x, z: b.a.z, ox: b.o.x, oz: b.o.z })));
+  const brk = await step(page, () => window.__G.QUEST.PWR.brk.map(b => ({ i: b.i, type: b.type, x: b.a.x, y: b.a.y || 0, z: b.a.z, ox: b.o.x, oz: b.o.z })));
   expect(brk.map(b => b.type).sort()).toEqual(['fuse', 'jammed', 'surge']);
   for (const b of brk) {
-    await step(page, b => { const g = window.__G; g.P.pos.set(b.ox, 0, b.oz); }, b);
+    await step(page, b => { const g = window.__G; g.P.pos.set(b.ox, b.y, b.oz); g.P.vy = 0; }, b);
     await advance(page, 0.2, KEEP_ALIVE);
     expect(await step(page, i => window.__G.QUEST.PWR.brk[i].found, b.i)).toBe(true);
     if (b.type === 'jammed') { // five knife blows in quick succession
       for (let k = 0; k < 5; k++) {
-        await step(page, b => { const g = window.__G; g.P.pos.set(b.ox, 0, b.oz); g.P.yaw = Math.atan2(-(b.x - b.ox), -(b.z - b.oz)); g.melee(); }, b);
+        await step(page, b => { const g = window.__G; g.P.pos.set(b.ox, b.y, b.oz); g.P.vy = 0; g.P.yaw = Math.atan2(-(b.x - b.ox), -(b.z - b.oz)); g.melee(); }, b);
         await advance(page, 0.7, KEEP_ALIVE);
       }
       expect(await step(page, i => window.__G.QUEST.PWR.brk[i].whacks, b.i)).toBe(5);
@@ -40,9 +40,9 @@ test('full ritual reaches the victory screen', async ({ page }) => {
       const c = await step(page, () => { const Q = window.__G.QUEST; return Q.QA.fuse[Q.PWR.fuseAt]; });
       expect(await useAt(page, c.x, c.z)).toMatch(/Search the supply crate/);
       expect(await takeAll(page, 'fuse')).toBe(1);
-      expect(await useAt(page, b.ox, b.oz)).toMatch(/Seat the fuse/);
+      expect(await useAt(page, b.ox, b.oz, b.y)).toMatch(/Seat the fuse/);
     }
-    expect(await useAt(page, b.ox, b.oz)).toMatch(/Throw the breaker/);
+    expect(await useAt(page, b.ox, b.oz, b.y)).toMatch(/Throw the breaker/);
     expect(await step(page, i => window.__G.QUEST.PWR.brk[i].thrown, b.i)).toBe(true);
   }
   await step(page, () => { const g = window.__G, a = g.QUEST.QA.generator.use; g.P.pos.set(a.x, 0, a.z); g.updateInteract(); g.keys.KeyE = true; });
@@ -157,8 +157,8 @@ test('full ritual reaches the victory screen', async ({ page }) => {
 
   // 12. the glyph strongbox: shoot each dial to its glyph's tally count, then try the lid
   await step(page, () => { const g = window.__G, G = g.QUEST.GLY; for (let k = 0; k < 4; k++) { for (let n = 0; n < 6 && G.dials[k] !== G.tally[G.order[k]]; n++) { g.QUEST.questShoot('gd' + k, { id: 'pistol' }); g.tick(0.3); } } });
-  const lb = await step(page, () => { const Q = window.__G.QUEST, a = Q.QA.lockbox; return { x: a.x + Math.sin(a.ry) * 1.5, z: a.z + Math.cos(a.ry) * 1.5 }; });
-  expect(await useAt(page, lb.x, lb.z)).toMatch(/strongbox/);
+  const lb = await step(page, () => { const Q = window.__G.QUEST, a = Q.QA.lockbox; return { x: a.x + Math.sin(a.ry) * 1.5, z: a.z + Math.cos(a.ry) * 1.5, y: a.y || 0 }; });
+  expect(await useAt(page, lb.x, lb.z, lb.y)).toMatch(/strongbox/);
   expect(await stage(page)).toBe('souls');
   expect(await takeAll(page, 'vkey') + await takeAll(page, 'shard3')).toBe(2); // the vault key and the last record shard
 
@@ -197,26 +197,26 @@ test('full ritual reaches the victory screen', async ({ page }) => {
 
   // 16. the Deep Vault: play the Deep Hymn on the gramophone, unlock the door with the key and the lantern
   const V = await step(page, () => window.__G.QUEST.QA.vault);
-  expect(await useAt(page, V.gramophone.x, V.gramophone.z + 1.1)).toMatch(/record shards/);
+  expect(await useAt(page, V.gramophone.x, V.gramophone.z + 1.1, V.gramophone.y)).toMatch(/record shards/);
   await tickUntil(page, 'g.QUEST.VSTATE.hymn', 10, CALM);
   // set all four upgraded staffs in the door, one at a time (a solo player carries one)
   for (const k of ['cinder', 'brine', 'grave', 'gale']) {
     await staffClaim(page, k);
-    expect(await useAt(page, V.door.x, V.door.z + 3.4)).toMatch(/Set the .* Staff in the vault door/);
+    expect(await useAt(page, V.door.use.x, V.door.use.z, V.door.y)).toMatch(/Set the .* Staff in the vault door/);
   }
   expect(await step(page, () => window.__G.QUEST.STAFF_IDS.every(k => window.__G.QUEST.STF[k].placed))).toBe(true);
-  expect(await useAt(page, V.door.x, V.door.z + 3.4)).toMatch(/Unlock the Deep Vault/);
+  expect(await useAt(page, V.door.use.x, V.door.use.z, V.door.y)).toMatch(/Unlock the Deep Vault/);
   expect(await stage(page)).toBe('seals');
 
   // 17. hold the three seal plates
-  for (const s of V.seals) await advance(page, 12.3, CALM + `g.P.pos.set(${s.x},0,${s.z});`);
+  for (const s of V.seals) await advance(page, 12.3, CALM + `g.P.pos.set(${s.x},${s.y || 0},${s.z}); g.P.vy=0;`);
   expect(await stage(page)).toBe('furnace');
 
   // 18. break the Furnace Heart, then ride the lift out
   await advance(page, 3.2, CALM);
   await step(page, () => { const g = window.__G, Q = g.QUEST; for (let i = 0; i < 200 && g.Q.stage === 'furnace'; i++) { Q.heartShot({ id: 'rod', up: true }); g.P.hp = g.P.maxHp; g.tick(0.05); } });
   expect(await stage(page)).toBe('escape');
-  expect(await useAt(page, V.exit.x, V.exit.z)).toMatch(/Ride the lift/);
+  expect(await useAt(page, V.exit.x, V.exit.z, V.exit.y)).toMatch(/Ride the lift/);
 
   await expect.poll(() => step(page, () => window.__G.state)).toBe('end');
   await expect(page.locator('#ending')).toBeVisible();

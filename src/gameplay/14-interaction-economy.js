@@ -39,11 +39,11 @@ function throwLure(){ if(state!=='play'||P.lures<=0||P.downed||P.dead||P.inCabin
   const p=camera.position.clone().addScaledVector(fwd,.6), v=fwd.multiplyScalar(13); v.y+=4; sfx.toss(); if(NET.role==='client') toHost({t:'lure',p:[p.x,p.y,p.z],v:[v.x,v.y,v.z]}); else spawnLure(p,v); }
 function spawnLure(p,v){ const g=buildLure(); g.position.copy(p); scene.add(g); const q={g,p:g.position,v:v.clone(),active:false,life:8,tick:0,id:++LURE_ID}; LURES.push(q); return q; }
 let LURE_ID=0;
-function lureFor(p){ for(const q of LURES){ if(!q.active||Math.hypot(q.p.x-p.x,q.p.z-p.z)>=28) continue; const a=zoneOf(p.x,p.z), b=zoneOf(q.p.x,q.p.z); if(a&&b&&a!==b&&!route(a,b)) continue; return q; } return null; }
+function lureFor(p){ for(const q of LURES){ if(!q.active||Math.hypot(q.p.x-p.x,q.p.z-p.z)+Math.abs(q.p.y-p.y)>=28) continue; const a=zoneOf(p.x,p.z,p.y), b=zoneOf(q.p.x,q.p.z,q.p.y); if(a&&b&&a!==b&&!route(a,b)) continue; return q; } return null; }
 function updateLures(dt){ for(let i=LURES.length-1;i>=0;i--){ const q=LURES[i], p=q.p;
-  if(!q.active){ q.v.y-=18*dt; p.addScaledVector(q.v,dt); collide(p,.15); q.g.rotation.x+=dt*8; if(p.y<=.02){ p.y=.02; q.v.y*=-.3; q.v.x*=.55; q.v.z*=.55; if(q.v.length()<1.2){ q.active=true; q.v.set(0,0,0); q.g.rotation.set(0,Math.random()*6,0); } } continue; }
+  if(!q.active){ q.v.y-=18*dt; p.addScaledVector(q.v,dt); collide(p,.15); q.g.rotation.x+=dt*8; const lf=floorAt(p.x,p.y-q.v.y*dt,p.z)+.02; if(p.y<=lf){ p.y=lf; q.fy=lf; q.v.y*=-.3; q.v.x*=.55; q.v.z*=.55; if(q.v.length()<1.2){ q.active=true; q.v.set(0,0,0); q.g.rotation.set(0,Math.random()*6,0); } } continue; }
   q.life-=dt; q.tick-=dt; const u=q.g.userData; u.key.rotation.z+=dt*6;
-  if(q.tick<=0){ q.tick=.22; sfxAt('drum',p,40); if(Math.random()<.35) sfxAt('chime',p,40); u.sticks.forEach((a,k)=>a.rotation.x=(k?1:-1)*.7); spawnParticles(new V3(p.x,.5,p.z),'spark',1); } else u.sticks.forEach(a=>a.rotation.x*=.8);
-  q.g.position.y=.02+Math.abs(Math.sin(q.life*14))*.03;
-  if(q.life<=0){ if(NET.role!=='client') explode(new V3(p.x,.6,p.z),6,1e6,{lure:true}); else explodeFx(new V3(p.x,.6,p.z)); scene.remove(q.g); LURES.splice(i,1); } } }
+  if(q.tick<=0){ q.tick=.22; sfxAt('drum',p,40); if(Math.random()<.35) sfxAt('chime',p,40); u.sticks.forEach((a,k)=>a.rotation.x=(k?1:-1)*.7); spawnParticles(new V3(p.x,p.y+.5,p.z),'spark',1); } else u.sticks.forEach(a=>a.rotation.x*=.8);
+  q.g.position.y=(q.fy===undefined?.02:q.fy)+Math.abs(Math.sin(q.life*14))*.03;
+  if(q.life<=0){ if(NET.role!=='client') explode(new V3(p.x,p.y+.6,p.z),6,1e6,{lure:true}); else explodeFx(new V3(p.x,p.y+.6,p.z)); scene.remove(q.g); LURES.splice(i,1); } } }
 function explodeFx(pos){ spawnParticles(pos,'ember',14); spawnParticles(pos,'dirt',6); boomLight.color.set(0xff8a3a); boomLight.position.set(pos.x,2,pos.z); boomLight.intensity=4; sfx.boom(); }
