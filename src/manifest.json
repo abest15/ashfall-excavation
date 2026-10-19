@@ -13,6 +13,7 @@
   "world/06-map.js",
   "world/07-expanded-world-dressing-chapel-no-man-s-.js",
   "world/07b-levels-build.js",
+  "world/07c-levels-art.js",
   "world/08-lights-fixed-count-intensity-changes-onl.js",
   "gameplay/09-systems.js",
   "gameplay/10-weapons.js",
