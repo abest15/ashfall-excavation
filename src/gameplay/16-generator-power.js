@@ -30,7 +30,7 @@ for(let i=0;i<3;i++){ const g=new THREE.Group(); g.visible=false; scene.add(g);
   for(let k=0;k<5;k++){ const a=-.25-k*.8; b.add(new THREE.BoxGeometry(.05,.05,.82),0x1e1a16,{p:[(k%2?.12:-.05),.03,a],r:[0,(k%2?.16:-.16),0]}); }
   b.add(new THREE.CylinderGeometry(.025,.025,1.1,4),0x1e1a16,{p:[0,.6,-.2],r:[0,0,0]});
   const body=new THREE.Mesh(b.done(),BRK_MAT); g.add(body);
-  const lever=new THREE.Group(); lever.position.set(.18,1.35,.2); g.add(lever); box(.05,.36,.05,M.metal,0,.16,0,{parent:lever}); box(.1,.1,.1,M.rust,0,.34,0,{parent:lever}); lever.rotation.x=-.7;
+  const lb=GB(); lb.add(new THREE.BoxGeometry(.05,.36,.05),0x4b4e51,{p:[0,.16,0]}); lb.add(new THREE.BoxGeometry(.1,.1,.1),0x6a3a24,{p:[0,.34,0]}); const lever=new THREE.Mesh(lb.done(),BRK_MAT); lever.position.set(.18,1.35,.2); g.add(lever); lever.rotation.x=-.7;
   const bulb=new THREE.Mesh(new THREE.SphereGeometry(.07,8,6),B({color:0xf2cb78})); bulb.position.set(0,2.02,.05); g.add(bulb);
   const glow=new THREE.Mesh(new THREE.SphereGeometry(.22,8,6),M.add(0xffb050,.25)); bulb.add(glow);
   const hit=new THREE.Mesh(new THREE.BoxGeometry(.7,1,.5),M.metal); hit.position.y=1.35; hit.visible=false; g.add(hit);
@@ -86,9 +86,9 @@ function updatePower(dt){
   const host=NET.role!=='client';
   for(const br of PWR.brk){ if(!br.a) continue; const ax=br.a.x, az=br.a.z;
     if(host&&!br.found&&!POWER.on){ for(const p of questPlayers()) if(p.m==='main'&&Math.hypot(p.x-ax,p.z-az)<7&&qdy(p,br.a)<2.5){ br.found=true; const n=brkFound(); banner(`A breaker switch (${n}/3 found)`,`This one is ${BRK_TYPES[br.type]}`); qSound('relic'); break; } }
-    if(POWER.on||br.thrown){ br.bulb.material.color.set(POWER.on?0xffe0a0:0x9ad06a); br.glow.material.opacity=.25; continue; }
+    if(POWER.on||br.thrown){ br.bulb.material.color.set(POWER.on?0xffe0a0:0x9ad06a); br.glow.visible=false; continue; }
     const d=Math.hypot(P.pos.x-ax,P.pos.z-az)+qdy(P.pos,br.a)*3;
-    br.flick-=dt; if(br.flick<=0){ br.flick=rand(.05,.35); const on=Math.random()<.6; br.bulb.material.color.set(on?0xf2cb78:0x3a3326); br.glow.material.opacity=on?.3:.02; }
+    br.flick-=dt; if(br.flick<=0){ br.flick=rand(.05,.35); const on=Math.random()<.6; br.bulb.material.color.set(on?0xf2cb78:0x3a3326); br.glow.material.opacity=.3; br.glow.visible=on&&d<14; }
     if(d<30&&mode==='main'&&Math.random()<dt*2.5){ const k=rand(.6,4), a=br.g.rotation.y; spawnParticles(new V3(ax-Math.sin(a)*k,qy(br.a)+.12,az-Math.cos(a)*k),'spark',2); }
     br.humT-=dt; if(br.humT<=0){ br.humT=2.4; if(d<26&&mode==='main'&&!P.inCabin) sfxAt('hum',{x:ax,z:az},26); } }
   for(let i=0;i<3;i++) GEN.lamps[i].material.color.set(POWER.on?0xffe0a0:i<brkThrown()?0x9ad06a:0x3a2a1a);

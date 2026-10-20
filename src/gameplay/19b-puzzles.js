@@ -91,7 +91,7 @@ const LOCKF=canvasTex(512,128);
   for(let k=0;k<4;k++){ const h=new THREE.Mesh(new THREE.BoxGeometry(.44,.44,.2),M.metal); h.position.set(-.71+k*.475,.78,.55); h.visible=false; h.userData.qhit='gd'+k; g.add(h); addSolid(h); }
   qCol(a.x,a.z,Math.abs(Math.sin(a.ry))>.7?1:2.2,Math.abs(Math.sin(a.ry))>.7?2.2:1,qy(a));
   const p=aw(a,0,1.5); addInter({y:qy(a),x:p.x,z:p.z,r:1.7,prompt:lockPrompt,use:()=>qAct('lockOpen')});
-  const sg=makeLabel('STRONGBOX',{sx:1.6,size:44,color:'#c9a35a'}); sg.position.set(0,1.8,0); g.add(sg); }
+  }
 function drawLockFace(){ const g=LOCKF.g; g.fillStyle='#1e1a16'; g.fillRect(0,0,512,128);
   for(let k=0;k<4;k++){ const x=k*128; g.save(); g.translate(x+10,8); drawSym(g,64,GLY.order[k],'#2a2018'); g.restore();
     g.fillStyle='#e8dcc0'; g.fillRect(x+80,24,40,64); g.fillStyle='#1a1410'; g.font='52px "Special Elite", monospace'; g.textAlign='center'; g.textBaseline='middle'; g.fillText(String(GLY.dials[k]),x+100,58);

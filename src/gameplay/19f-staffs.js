@@ -149,7 +149,7 @@ function updateStaffs(dt){ const host=NET.role!=='client', me=NET.myId||'h';
     if(S.bind>0&&Math.random()<dt*12) spawnParticles(new V3(pd.a.x+rand(-.3,.3),1.6,pd.a.z+rand(-.3,.3)),pd.k==='cinder'?'ember':pd.k==='grave'?'relic':'spark',1); });
   for(const k of STAFF_IDS) STQ[k].forEach((t,i)=>{ t.m.visible=!STF[k].parts[1]; t.m.rotation.y+=dt; let c=t.lit?0xffffff:STAFF_COL[k];
     if(k==='gale'&&!t.lit){ const ord=STF.gale.seqOrder, ph=(GT%6)/6; const at=ord.indexOf(i); if(ph>at*.15+.1&&ph<at*.15+.22) c=0xffffff; } t.m.material.color.set(c); });
-  VANE.vane.rotation.y+=dt*(STF.gale.trial>0?4:.6); VANE.ring.material.opacity=STF.gale.built&&!STF.gale.up?.25+Math.sin(GT*3)*.1:.08;
+  VANE.vane.rotation.y+=dt*(STF.gale.trial>0?4:.6); VANE.ring.visible=STF.gale.built&&!STF.gale.up; VANE.ring.material.opacity=.25+Math.sin(GT*3)*.1;
   // effects in the world (host: damage; everyone: visuals)
   for(let i=SFX_LIVE.length-1;i>=0;i--){ const e=SFX_LIVE[i]; e.life-=dt; e.t+=dt; const m=e.m.mesh, ey=e.y||0; m.position.x=e.x; m.position.z=e.z; m.position.y=ey+(e.kind==='slag'?.06:1.5);
     if(e.kind==='slag'){ m.scale.setScalar(e.r); m.material.opacity=.45+Math.sin(GT*7+i)*.1; if(Math.random()<dt*6) spawnParticles(new V3(e.x+rand(-e.r,e.r)*.6,ey+.2,e.z+rand(-e.r,e.r)*.6),'ember',1); }
@@ -203,4 +203,5 @@ function qCullList(){ const L_=[], add=(o,cond)=>o&&L_.push({o,cond});
 const _qcv=new V3();
 function updateQCull(){ if(!QCULL) QCULL=qCullList(); const px=P.pos.x, py=P.pos.y, pz=P.pos.z, under=py<-2;
   for(const e of QCULL){ const o=e.o; o.getWorldPosition(_qcv); const d=Math.hypot(_qcv.x-px,_qcv.z-pz)+Math.max(0,Math.abs(_qcv.y-py)-1.5)*3;
-    o.visible=(!e.cond||e.cond())&&mode==='main'&&d<((under||_qcv.y<-2)?16:28); } }
+    const indoor=under||_qcv.y<-2||_qcv.y>2||py>2||_qcv.x<-30.4||px<-30.4; // underground, upstairs and inside the Château: walls hide the rest
+    o.visible=(!e.cond||e.cond())&&mode==='main'&&d<(indoor?16:28); } }
