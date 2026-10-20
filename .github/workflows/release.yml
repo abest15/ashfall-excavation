@@ -72,7 +72,7 @@ jobs:
           cd dist && zip -qr "../release/Ashfall-Excavation-${TAG#v}-web.zip" . && cd ..
           cp dist-single/index.html "release/Ashfall-Excavation-${TAG#v}-single-file.html"
 
-      - uses: actions/upload-artifact@v4.6.2
+      - uses: actions/upload-artifact@v7.0.2
         with:
           name: installers-${{ matrix.os }}
           if-no-files-found: error
