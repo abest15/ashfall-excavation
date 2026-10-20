@@ -37,6 +37,13 @@ const IRDEF={
   chapel:{len:4.2,rt:3.4, pre:.024,er:12,erSpan:.1, damp:4800,width:.95,wet:.36},  // long stone hall
   cabin: {len:.7, rt:.42, pre:.002,er:14,erSpan:.016,damp:7500,width:.55,wet:.3,ring:[540,1260,1910,2870]}, // tight riveted iron box
   hollow:{len:6.8,rt:5.6, pre:.06, er:9, erSpan:.22,damp:2400,width:1,  wet:.46},  // huge crystal cavern
+  chateau:{len:3.1,rt:2.3,pre:.018,er:12,erSpan:.07,damp:4200,width:.9, wet:.32},  // Château ground floor: stone hall
+  upper: {len:1.3,rt:.85, pre:.006,er:10,erSpan:.035,damp:2500,width:.8,wet:.22,ring:[190,330]}, // timber upper floor: warm, short
+  tunnel:{len:1.9,rt:1.4, pre:.003,er:18,erSpan:.04,damp:3600,width:.5, wet:.3},   // brick rail tunnels and cellar: tight flutter
+  pump:  {len:2.3,rt:1.7, pre:.008,er:12,erSpan:.05,damp:3800,width:.75,wet:.3,ring:[310,870,1540]}, // pump room: brick and pipework
+  ossuary:{len:3.3,rt:2.6,pre:.012,er:14,erSpan:.06,damp:2000,width:.85,wet:.38},  // ossuary: dark, dense bone vault
+  gallery:{len:5.2,rt:4.3,pre:.035,er:10,erSpan:.14,damp:3000,width:1, wet:.44},   // flooded gallery: cavernous over water
+  vault: {len:4.6,rt:3.6, pre:.03, er:10,erSpan:.12,damp:1600,width:.95,wet:.42},  // deep vault: huge, very dark
 };
 function makeIR(name){ const a=AU.ctx, D=IRDEF[name], sr=a.sampleRate, len=Math.floor(Math.min(D.len,QUAL===0?2.6:D.len)*sr), b=a.createBuffer(2,len,sr);
   for(let ch=0;ch<2;ch++){ const d=b.getChannelData(ch); let y=0, k=.5, alt=0;
@@ -49,28 +56,43 @@ function irFor(name){ return AU.ir[name]||(AU.ir[name]=makeIR(name)); }
 function setArea(name){ if(!AU.cv||AU.area===name) return; const a=AU.ctx, t=a.currentTime, cur=AU.cv[AU.cvA], nxt=AU.cv[1-AU.cvA];
   if(nxt.area!==name){ if(t-(AU.cvT||-9)<1.6) return; nxt.c.buffer=irFor(name); nxt.area=name; } AU.area=name; AU.cvT=t;
   cur.g.gain.setTargetAtTime(0,t,.25); nxt.g.gain.setTargetAtTime(1,t,.25); AU.cvA=1-AU.cvA; AU.wet.gain.setTargetAtTime(IRDEF[name].wet,t,.3); }
-function areaNow(){ if(mode==='hollow') return 'hollow'; if(P.inCabin) return 'cabin'; if(state==='menu') return 'open'; const z=zoneOf(P.pos.x,P.pos.z); return z==='E'?'chapel':z==='A'?'bunker':'open'; }
+const AU_ZAREA={E:'chapel',A:'bunker',K:'chateau',L:'upper',U1:'pump',U2:'tunnel',U3:'ossuary',U4:'gallery',U5:'vault'};
+// how much of the outdoor wind and rain reaches each area
+const AU_OUTK={open:1,bunker:.55,chapel:.45,chateau:.4,upper:.6};
+function areaNow(){ if(mode==='hollow') return 'hollow'; if(P.inCabin) return 'cabin'; if(state==='menu') return 'open'; const y=P.pos.y||0, z=auZone(P.pos.x,P.pos.z,y); return AU_ZAREA[z]||(y<-2.5?'tunnel':'open'); }
+// ---- floors: source height (given, or inferred from the floors at x,z), level occlusion through slabs, open stairs/hatches let sound through
+const AU_FLOORS=[[-10.6,-8.8],[-7.8,-4.5],[-1.2,1.2],[3.4,5.2]];
+const auLv=y=>typeof levelOf==='function'?levelOf(y):0;
+function auZone(x,z,y){ try{ return zoneOf(x,z,y); }catch(e){ return null; } }
+function auSrcY(pos){ if(pos.y!=null&&isFinite(pos.y)) return pos.y; if(typeof levelFloorIn!=='function'||mode!=='main') return 0;
+  const ly=P.pos.y||0, f=levelFloorIn(pos.x,pos.z,ly-1.6,ly+1.6); if(f>-1e8) return f;
+  let best=0, bd=1e9; for(const [lo,hi] of AU_FLOORS){ const h=levelFloorIn(pos.x,pos.z,lo,hi); if(h>-1e8&&Math.abs(h-ly)<bd){ bd=Math.abs(h-ly); best=h; } } return best; }
+function auPortalNear(x,z,l1,l2){ if(typeof PORTALS==='undefined') return false;
+  for(const p of PORTALS){ if(!p.open) continue; const a=auLv(p.ay), b=auLv(p.by); if(!((a===l1&&b===l2)||(a===l2&&b===l1))) continue; if(Math.hypot(p.x-x,p.z-z)<10||Math.hypot(p.x-P.pos.x,p.z-P.pos.z)<10) return true; } return false; }
 
 // ---- 3D emitters: a fixed pool of panner chains (bounded node count); sounds are routed into one for their lifetime
 function mkEmitter(bus,hrtf){ const a=AU.ctx, inp=a.createGain(), lp=a.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=18000; lp.Q.value=.5;
   const pn=a.createPanner(); pn.panningModel=hrtf?'HRTF':'equalpower'; pn.distanceModel='linear'; pn.refDistance=1; pn.maxDistance=1e4; pn.rolloffFactor=0;
   const wet=a.createGain(); wet.gain.value=0; inp.connect(lp); lp.connect(pn); pn.connect(bus); lp.connect(wet); wet.connect(AU.verbIn); return {inp,lp,pn,wet,until:0,follow:null,srcs:null}; }
 function auPos(pn,x,y,z){ if(pn.positionX){ pn.positionX.value=x; pn.positionY.value=y; pn.positionZ.value=z; } else pn.setPosition(x,y,z); }
-function occlusion(x,z){ if(mode==='hollow') return 0; if(P.inCabin) return .75; const a=zoneOf(P.pos.x,P.pos.z), b=zoneOf(x,z); if(a===b) return 0;
+// returns 0..1; AU.occLP is set to a low-pass ceiling when the source is on another floor (0 = none)
+function occlusion(x,z,y){ AU.occLP=0; if(mode==='hollow') return 0; if(P.inCabin) return .75; const ly=P.pos.y||0, sy=y==null?ly:y, l1=auLv(ly), l2=auLv(sy);
+  if(l1!==l2){ const open=auPortalNear(x,z,l1,l2); AU.occLP=open?1600:480; return open?.55:.85; }
+  const a=auZone(P.pos.x,P.pos.z,ly), b=auZone(x,z,sy); if(a===b) return 0;
   if(a&&b){ let open=false; try{ open=typeof route==='function'&&!!route(a,b); }catch(e){} return open?.35:.7; } return (a==='A'||a==='E'||b==='A'||b==='E')?.5:.15; }
 // claim an emitter at world position pos; d = distance, maxD = audible range (0 = no extra attenuation). Returns the emitter or null.
 function emitAt(pos,d,maxD,pool,dur,steal){ const a=AU.ctx; if(!a||!AU.emFx.length) return null; const list=pool==='voice'?AU.emVo:AU.emFx, t=a.currentTime;
   let em=null; for(const e of list) if(e.until<=t){ em=e; break; }
   let stolen=false; if(!em){ if(!steal) return null; em=list.reduce((p,q)=>q.until<p.until?q:p); stolen=true; if(em.srcs) for(const s of em.srcs){ try{ s.stop(t+.017); }catch(e){} } }
-  em.t0=stolen?t+.017:t; em.until=t+dur; em.follow=null; em.srcs=null; em.proj=null; auPos(em.pn,pos.x,(pos.y||0)+1.2,pos.z);
-  const r=maxD?clamp(d/maxD,0,1):clamp(d/90,0,1), occ=occlusion(pos.x,pos.z);
-  em.lp.frequency.setValueAtTime(Math.max(320,17000*Math.pow(.1,r*1.15)*(1-occ*.82)),t);
-  em.wet.gain.setValueAtTime(.12+r*.9+occ*.4,t); const ig=em.inp.gain, g=1-occ*.4; ig.cancelScheduledValues(t);
+  const sy=auSrcY(pos); em.t0=stolen?t+.017:t; em.until=t+dur; em.follow=null; em.srcs=null; em.proj=null; auPos(em.pn,pos.x,sy+1.2,pos.z);
+  const r=maxD?clamp(d/maxD,0,1):clamp(d/90,0,1), occ=occlusion(pos.x,pos.z,sy); let fc=Math.max(320,17000*Math.pow(.1,r*1.15)*(1-occ*.82)); if(AU.occLP) fc=Math.min(fc,AU.occLP);
+  em.lp.frequency.setValueAtTime(fc,t);
+  em.wet.gain.setValueAtTime(AU.occLP?.18+r*.3:.12+r*.9+occ*.4,t); const ig=em.inp.gain, g=AU.occLP?(AU.occLP>1000?.62:.45):1-occ*.4; ig.cancelScheduledValues(t);
   if(stolen){ ig.setValueAtTime(ig.value,t); ig.linearRampToValueAtTime(0,t+.015); ig.linearRampToValueAtTime(g,t+.03); } else ig.setValueAtTime(g,t); return em; }
 
 // positional one-shot: plays sfx[name](arg) at pos with distance attenuation, panning, distance low-pass and occlusion
-function sfxAt(name,pos,maxD,arg){ if(!AU.ctx||!AU.fx||!sfx[name]) return; const d=Math.hypot(pos.x-P.pos.x,pos.z-P.pos.z); if(d>maxD) return;
-  const k=Math.pow(1-d/maxD,1.4); if(k<.01) return; const em=emitAt(pos,d,maxD,'fx',2.5,true), pk=VOLK, pe=AU.em; VOLK=k; AU.em=em?em.inp:null;
+function sfxAt(name,pos,maxD,arg){ if(!AU.ctx||!AU.fx||!sfx[name]||!pos) return; const sy=auSrcY(pos), d=Math.hypot(pos.x-P.pos.x,pos.z-P.pos.z,sy-(P.pos.y||0)); if(d>maxD) return;
+  const k=Math.pow(1-d/maxD,1.4); if(k<.01) return; const em=emitAt({x:pos.x,y:sy,z:pos.z},d,maxD,'fx',2.5,true), pk=VOLK, pe=AU.em; VOLK=k; AU.em=em?em.inp:null;
   try{ sfx[name](arg); }finally{ VOLK=pk; AU.em=pe; } }
 
 function initAudio(){ if(AU.ctx){ if(AU.ctx.state==='suspended') AU.ctx.resume(); return; }
@@ -102,9 +124,9 @@ function initAudio(){ if(AU.ctx){ if(AU.ctx.state==='suspended') AU.ctx.resume()
   const hrtf=QUAL>=1; for(let i=0;i<(QUAL?14:10);i++) AU.emFx.push(mkEmitter(AU.fx,hrtf)); for(let i=0;i<6;i++) AU.emVo.push(mkEmitter(AU.voice,hrtf));
   // ambience beds
   const src=a.createBufferSource(); src.buffer=AU.noise; src.loop=true;
-  const wf=a.createBiquadFilter(); wf.type='lowpass'; wf.frequency.value=420; AU.wind=a.createGain(); AU.wind.gain.value=.07; src.connect(wf); wf.connect(AU.wind); AU.wind.connect(AU.amb);
+  const wf=a.createBiquadFilter(); wf.type='lowpass'; wf.frequency.value=420; AU.wind=a.createGain(); AU.wind.gain.value=.07; src.connect(wf); wf.connect(AU.wind); AU.outG=a.createGain(); AU.outG.connect(AU.amb); AU.outK=1; AU.wind.connect(AU.outG);
   const wl=a.createOscillator(); wl.frequency.value=.07; const wlg=a.createGain(); wlg.gain.value=160; wl.connect(wlg); wlg.connect(wf.frequency); wl.start();
-  const rf=a.createBiquadFilter(); rf.type='highpass'; rf.frequency.value=1800; const rl=a.createBiquadFilter(); rl.type='lowpass'; rl.frequency.value=5500; rl.Q.value=.5; const rl2=a.createBiquadFilter(); rl2.type='lowpass'; rl2.frequency.value=6500; rl2.Q.value=.5; AU.rain=a.createGain(); AU.rain.gain.value=.045; src.connect(rf); rf.connect(rl); rl.connect(rl2); rl2.connect(AU.rain); AU.rain.connect(AU.amb);
+  const rf=a.createBiquadFilter(); rf.type='highpass'; rf.frequency.value=1800; const rl=a.createBiquadFilter(); rl.type='lowpass'; rl.frequency.value=5500; rl.Q.value=.5; const rl2=a.createBiquadFilter(); rl2.type='lowpass'; rl2.frequency.value=6500; rl2.Q.value=.5; AU.rain=a.createGain(); AU.rain.gain.value=.045; src.connect(rf); rf.connect(rl); rl.connect(rl2); rl2.connect(AU.rain); AU.rain.connect(AU.outG);
   AU.drone=a.createGain(); AU.drone.gain.value=0; AU.drone.connect(AU.amb);
   for(const f of [55,55.6,82.4]){ const o=a.createOscillator(); o.type='sine'; o.frequency.value=f; o.connect(AU.drone); o.start(); }
   const ff=a.createBiquadFilter(); ff.type='bandpass'; ff.frequency.value=160; ff.Q.value=.8; AU.furnace=a.createGain(); AU.furnace.gain.value=0; src.connect(ff); ff.connect(AU.furnace); AU.furnace.connect(AU.amb);
@@ -125,7 +147,8 @@ function audioFrame(dt){ const a=AU.ctx; if(!a||!AU.fx) return; const t=a.curren
     else { L.setPosition(c.x,c.y,c.z); L.setOrientation(_auF.x,_auF.y,_auF.z,_auU.x,_auU.y,_auU.z); }
     for(const e of AU.emFx.concat(AU.emVo)){ if(e.proj&&(typeof projs==='undefined'||projs.indexOf(e.proj)<0)){ e.inp.gain.cancelScheduledValues(t); e.inp.gain.setTargetAtTime(0,t,.012); if(e.srcs) for(const s of e.srcs){ try{ s.stop(t+.08); }catch(er){} } e.proj=null; e.follow=null; e.srcs=null; e.until=Math.min(e.until,t+.1); }
       if(e.follow&&e.until>t){ const p=e.follow, pn=e.pn; if(pn.positionX){ pn.positionX.setTargetAtTime(p.x,t,.03); pn.positionY.setTargetAtTime((p.y||0)+1.4,t,.03); pn.positionZ.setTargetAtTime(p.z,t,.03); } else auPos(pn,p.x,(p.y||0)+1.4,p.z); } }
-    setArea(areaNow());
+    setArea(areaNow()); { const ok=AU_OUTK[AU.area]; const k=ok==null?(AU.area==='hollow'||AU.area==='cabin'?1:0):ok; if(k!==AU.outK){ AU.outK=k; AU.outG.gain.setTargetAtTime(k,t,.6); } }
+    if(typeof spaceBeds==='function') spaceBeds(state==='menu'?null:AU.area);
     if(state==='play'){ if(typeof zSteps==='function') zSteps(dt); auWorld(dt); }
     if(typeof gunPrefetch==='function') gunPrefetch(dt);
     if(typeof MX!=='undefined') MX.update(dt,auPrevState);
@@ -133,7 +156,7 @@ function audioFrame(dt){ const a=AU.ctx; if(!a||!AU.fx) return; const t=a.curren
   }catch(e){ AU.errs++; AU.lastErr=String(e&&e.stack||e); } }
 // world one-shots: boss projectile whooshes, crystal drips in the Hollow, creaks in the chapel
 function auWorld(dt){ const a=AU.ctx, t=a.currentTime;
-  if(typeof projs!=='undefined') for(const q of projs){ if(q._au) { if(q._au.until>t) q._au.follow=q.m.position; continue; } const p=q.m.position, d=Math.hypot(p.x-P.pos.x,p.z-P.pos.z); if(d>40) continue;
+  if(typeof projs!=='undefined') for(const q of projs){ if(q._au) { if(q._au.until>t) q._au.follow=q.m.position; continue; } const p=q.m.position, d=Math.hypot(p.x-P.pos.x,p.z-P.pos.z,p.y-(P.pos.y||0)-1); if(d>40) continue;
     const em=emitAt(p,d,40,'fx',Math.min(5,q.life),false); if(!em) continue; q._au=em; em.follow=p; em.proj=q; const k=Math.pow(1-d/40,1.1), dur=Math.min(4,q.life);
     const s=lN(a,em.inp,t,dur,700,2,.22*k+.05,'bandpass',300,.15), o=lT(a,em.inp,t,62,dur,'sawtooth',.06*k+.02,48,.2); auTrack(s); auTrack(o); em.srcs=[s,o]; }
   auAmbT-=dt; if(auAmbT>0) return; const area=AU.area;
@@ -141,4 +164,4 @@ function auWorld(dt){ const a=AU.ctx, t=a.currentTime;
     const f=rand(1400,3200); auTrack(lT(a,em.inp,t,f,1.2,'sine',.06,null,.002)); auTrack(lT(a,em.inp,t,f*2.71,.5,'sine',.025,null,.002)); }
   else if(area==='chapel'){ auAmbT=rand(5,11); const pos={x:45+rand(-12,12),y:4,z:17+rand(-10,10)}, em=emitAt(pos,10,30,'fx',2,false); if(!em||auBusy()) return; auTrack(lN(a,em.inp,t,.9,rand(300,520),9,.05,'bandpass',rand(260,600),.2)); }
   else if(area==='cabin'){ auAmbT=rand(.7,1.6); if(auBusy()) return; const prev=AU.out; AU.out=AU.amb; tn(rand(900,1500),.05,'square',.015); nz(.08,2500,6,.03,'bandpass'); AU.out=prev; }
-  else auAmbT=rand(3,6); }
+  else { const n=typeof spaceTick==='function'?spaceTick(area,a,t):0; auAmbT=n||rand(3,6); } }

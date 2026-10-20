@@ -54,6 +54,7 @@
   "audio/33c-voices.js",
   "audio/33d-music.js",
   "audio/33e-quest-sfx.js",
+  "audio/33f-spaces.js",
   "ui/34-gamepad.js",
   "ui/35-input.js",
   "ui/36-menu.js",
