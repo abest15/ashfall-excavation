@@ -57,15 +57,16 @@ const wickerTex=makeTex(QUAL?256:128,(g,s)=>{ g.fillStyle='#1a140d'; g.fillRect(
   for(let r=0;r<n;r++) for(let x=0;x<s;x+=s/8){ const up=((x/(s/8))+r)%2; const c=rand(80,115)|0; g.fillStyle=`rgb(${c},${c*.78|0},${c*.5|0})`; g.beginPath(); g.ellipse(x+s/16,r*h+h/2+(up?-1:1),s/16+1,h*.42,0,0,7); g.fill(); g.fillStyle='rgba(0,0,0,.25)'; g.fillRect(x,r*h+h*.7,s/8,h*.25); }
   for(let x=0;x<s;x+=s/8){ g.fillStyle='#2a1e12'; g.fillRect(x-2,0,4,s); }
   speckle(g,s,500,['#3a2a1a','#8a7050'],1,2); });
-// château walls: limewash plaster over stone, cracked and stained, with patches fallen away to the brick underneath
-const plasterTex=makeTex(QUAL?512:256,(g,s)=>{ const k=s/256; g.fillStyle='#b9b0a0'; g.fillRect(0,0,s,s);
-  for(let i=0;i<60;i++){ g.fillStyle=`rgba(${rand(70,110)|0},${rand(60,95)|0},${rand(45,75)|0},${rand(.05,.16)})`; g.beginPath(); g.ellipse(rand(0,s),rand(0,s),rand(10,70)*k,rand(8,50)*k,rand(0,3),0,7); g.fill(); }
-  for(let i=0;i<4;i++){ const x=rand(0,s); const gr=g.createLinearGradient(0,0,0,s); gr.addColorStop(0,'rgba(60,50,38,0)'); gr.addColorStop(1,'rgba(60,50,38,.18)'); g.fillStyle=gr; g.fillRect(x,rand(0,s*.5),rand(4,14)*k,s); }
-  for(let p=0;p<2;p++){ const cx=rand(s*.15,s*.85), cy=rand(s*.15,s*.85), rx=rand(22,48)*k, ry=rand(14,30)*k; g.save(); g.beginPath(); for(let i=0;i<=14;i++){ const a=i/14*6.28, r=.7+Math.random()*.4; g.lineTo(cx+Math.cos(a)*rx*r,cy+Math.sin(a)*ry*r); } g.closePath(); g.clip();
-    g.fillStyle='#2e241c'; g.fillRect(cx-rx*1.3,cy-ry*1.3,rx*2.6,ry*2.6); for(let r=-6;r<6;r++) for(let c=-6;c<6;c++){ const bw=22*k, bh=10*k, x=cx+c*bw+(r%2)*bw/2, y=cy+r*bh; const v=rand(70,98)|0; g.fillStyle=`rgb(${v},${v*.62|0},${v*.48|0})`; g.fillRect(x+1,y+1,bw-2,bh-2); }
-    g.restore(); g.strokeStyle='rgba(50,40,30,.7)'; g.lineWidth=2*k; g.beginPath(); for(let i=0;i<=14;i++){ const a=i/14*6.28; g.lineTo(cx+Math.cos(a)*rx*1.02,cy+Math.sin(a)*ry*1.02); } g.stroke(); }
-  g.strokeStyle='rgba(40,34,26,.6)'; for(let i=0;i<14;i++){ g.lineWidth=rand(.6,1.6)*k; g.beginPath(); let x=rand(0,s),y=rand(0,s); g.moveTo(x,y); for(let j=0;j<7;j++){ x+=rand(-18,18)*k; y+=rand(4,20)*k; g.lineTo(x,y); } g.stroke(); }
-  speckle(g,s,s*6,['#8a8274','#d0c8b8','#6a6254'],1,2*k); });
+// château walls: limewash plaster over stone, mottled, stained and hairline-cracked (no brick here: the exposed-brick damage is
+// geometry placed along corners, openings and the floor line, see 07c). Large tile, used at 5.2 m so it never visibly repeats.
+const plasterTex=makeTex(QUAL?512:256,(g,s)=>{ const k=s/256; g.fillStyle='#b8af9f'; g.fillRect(0,0,s,s);
+  for(let o=0;o<3;o++) for(let i=0;i<[30,70,160][o];i++){ const r=[60,24,8][o]*k*rand(.6,1.4), x=rand(0,s), y=rand(0,s), v=rand(-1,1); const c=v>0?`rgba(220,214,200,${.06+.06*v})`:`rgba(90,76,58,${.05-.07*v})`;
+    const gr=g.createRadialGradient(x,y,0,x,y,r); gr.addColorStop(0,c); gr.addColorStop(1,'rgba(0,0,0,0)'); g.fillStyle=gr; for(const dx of [-s,0,s]) for(const dy of [-s,0,s]) g.fillRect(x-r+dx,y-r+dy,r*2,r*2); }
+  for(let i=0;i<6;i++){ const x=rand(0,s), w=rand(6,22)*k, y0=rand(0,s*.4); const gr=g.createLinearGradient(0,y0,0,y0+s*.7); gr.addColorStop(0,'rgba(70,58,44,.0)'); gr.addColorStop(.3,'rgba(70,58,44,.12)'); gr.addColorStop(1,'rgba(70,58,44,0)'); g.fillStyle=gr; g.fillRect(x,y0,w,s*.7); }
+  for(let i=0;i<5;i++){ g.fillStyle=`rgba(${pick(['90,96,70','110,90,60','70,64,56'])},${rand(.05,.12)})`; g.beginPath(); g.ellipse(rand(0,s),rand(0,s),rand(30,90)*k,rand(20,60)*k,rand(0,3),0,7); g.fill(); }
+  g.strokeStyle='rgba(50,42,32,.55)'; for(let i=0;i<10;i++){ g.lineWidth=rand(.5,1.3)*k; g.beginPath(); let x=rand(0,s),y=rand(0,s); g.moveTo(x,y); for(let j=0;j<8;j++){ x+=rand(-14,14)*k; y+=rand(3,16)*k; g.lineTo(x,y); if(Math.random()<.25){ g.moveTo(x,y); } } g.stroke(); }
+  for(let i=0;i<40;i++){ g.fillStyle='rgba(60,50,40,.25)'; g.fillRect(rand(0,s),rand(0,s),rand(1,3)*k,rand(1,3)*k); }
+  speckle(g,s,s*8,['#8a8274','#d0c8b8','#a49a88','#6a6254'],1,2*k); });
 // rough-hewn rock for the Underworks: blocky chisel faces, seams, damp streaks and mineral stains
 const rockTex=makeTex(QUAL?512:256,(g,s)=>{ const k=s/256; g.fillStyle='#5a544a'; g.fillRect(0,0,s,s);
   for(let i=0;i<70;i++){ const x=rand(0,s), y=rand(0,s), w=rand(18,60)*k, h=rand(12,40)*k, v=rand(70,110)|0; g.fillStyle=`rgba(${v},${v*.94|0},${v*.84|0},.55)`; g.beginPath(); g.moveTo(x,y); g.lineTo(x+w,y+rand(-6,6)*k); g.lineTo(x+w+rand(-8,8)*k,y+h); g.lineTo(x+rand(-8,8)*k,y+h+rand(-6,6)*k); g.closePath(); g.fill();
