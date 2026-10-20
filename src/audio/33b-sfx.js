@@ -22,7 +22,7 @@ const GUNP={
   gauntlet: {len:.6, lv:.62,fn:'zap',fg:1200},
 };
 const GUN_OF_SND={pistol:'pistol',rifle:'carbine',smg:'smg',shotgun:'shotgun',lmg:'lmg',rod:'rod',cannon:'cannon',ion:'ion',dynamo:'dynamo',zap:'gauntlet'};
-const GUNBUF={};
+const GUNBUF={}, GUN_FN={}; // GUN_FN: extra energy-weapon recipes (T,N,u) registered by later files (the staffs in 33e)
 function gunLayers(c,dst,t,id,u,k){ const p=GUNP[id], j=x=>x*(1+(Math.random()*2-1)*.045); k=k||(x=>x);
   if(p.fn) gunEnergy(c,dst,t,p.fn,u,k);
   else { let sat=dst; if(c!==AU.ctx||!auBusy()){ sat=c.createWaveShaper(); sat.curve=AU.dist; sat.connect(dst); }
@@ -40,6 +40,7 @@ function gunEnergy(c,dst,t,fn,u,k){ const T=(f,d,w,v,e,dl=0,at)=>k(lT(c,dst,t+dl
   if(fn==='rod'){ N(.32,400,3,.35,'bandpass',0,3200); T(u?60:90,.28,'sine',.45,32); [1318.5,1975.5,2637].forEach((f,i)=>T(f*(u?.75:1)*(1+rand(-.004,.004)),.5-i*.1,'sine',.09,null,.02+i*.015)); T(u?440:880,.6,'triangle',.06,u?1320:1760,.05); }
   else if(fn==='ion'){ T(u?520:780,.18,'square',.1,u?160:240); N(.18,3000,2,.3,'bandpass',0,800); T(u?90:130,.2,'sine',.3,60); T(rand(2400,2600),.08,'sawtooth',.03,900); }
   else if(fn==='dynamo'){ N(.6,6000,1.5,.6,'bandpass',0,900); T(55,.6,'sawtooth',.25,40); T(2400,.3,'square',.06,400); N(1.2,200,1,.3,'lowpass',.1,60); N(.05,8000,1,.3,'highpass'); }
+  else if(GUN_FN[fn]) GUN_FN[fn](T,N,u);
   else { N(.22,5200,2,.4,'bandpass',0,1400); T(1800,.12,'sawtooth',.08,300); T(90,.25,'square',.1,50); for(let i=0;i<3;i++) N(.03,rand(3000,7000),4,.15,'bandpass',rand(.01,.12)); } }
 // render all variations of one weapon into one mono buffer (round-robin by offset); first shot before it is ready synthesizes live
 function gunWarm(id,u){ const key=id+(u?'+':''); if(GUNBUF[key]||!GUNP[id]||!AU.ctx) return; const OAC=window.OfflineAudioContext||window.webkitOfflineAudioContext; GUNBUF[key]={buf:null,n:0,len:0,last:-1}; if(!OAC) return;
@@ -173,14 +174,17 @@ const sfx={
 const SFX_BUS={hit:'ui',hitmarker:'ui',buy:'ui',deny:'ui',lowAmmo:'ui',pup:'ui',dry:'ui',adsIn:'ui',adsOut:'ui'};
 const SFX_CAP={kill:3,hit:3,hitmarker:3,stomp:2,boom:3,step:2};
 const SFXRAW={}, SFXRL={};
-for(const k of Object.keys(sfx)){ const fn=sfx[k], bus=SFX_BUS[k]||'fx'; SFXRAW[k]=fn;
-  sfx[k]=function(arg,arg2){ const a=AU.ctx; if(!a||!AU.fx) return; const t=a.currentTime, r=SFXRL[k]||(SFXRL[k]={t:-1,n:0}); if(t-r.t>.05){ r.t=t; r.n=0; } if(++r.n>(SFX_CAP[k]||4)) return;
+// wraps every sfx entry not wrapped yet; later files that add sounds call sfxWrapAll() again
+function sfxWrapAll(){ for(const k of Object.keys(sfx)) if(!sfx[k]._w) sfxWrapOne(k); }
+function sfxWrapOne(k){ const fn=sfx[k], bus=SFX_BUS[k]||'fx'; SFXRAW[k]=fn;
+  const w=sfx[k]=function(arg,arg2){ const a=AU.ctx; if(!a||!AU.fx) return; const t=a.currentTime, r=SFXRL[k]||(SFXRL[k]={t:-1,n:0}); if(t-r.t>.05){ r.t=t; r.n=0; } if(++r.n>(SFX_CAP[k]||4)) return;
     const po=AU.out, pe=AU.em, pk=VOLK; AU.out=AU[bus];
-    try{ if(!AU.em&&AU.hint&&bus==='fx'){ const h=AU.hint, d=Math.hypot(h.pos.x-P.pos.x,h.pos.z-P.pos.z); const em=emitAt(h.pos,d,h.maxD,'fx',3,true); if(em) AU.em=em.inp; if(h.maxD) VOLK*=Math.max(.15,Math.pow(clamp(1-d/h.maxD,0,1),1.1)); }
-      return fn(arg,arg2); }catch(e){ AU.errs++; AU.lastErr=k+': '+(e&&e.message); }finally{ AU.out=po; AU.em=pe; VOLK=pk; } }; }
+    try{ if(!AU.em&&AU.hint&&bus==='fx'){ const h=AU.hint, hy=auSrcY(h.pos), d=Math.hypot(h.pos.x-P.pos.x,h.pos.z-P.pos.z,hy-(P.pos.y||0)); const em=emitAt({x:h.pos.x,y:hy,z:h.pos.z},d,h.maxD,'fx',3,true); if(em) AU.em=em.inp; if(h.maxD) VOLK*=Math.max(.15,Math.pow(clamp(1-d/h.maxD,0,1),1.1)); }
+      return fn(arg,arg2); }catch(e){ AU.errs++; AU.lastErr=k+': '+(e&&e.message); }finally{ AU.out=po; AU.em=pe; VOLK=pk; } }; w._w=true; }
+sfxWrapAll();
 // positional hints for sounds whose callers don't pass a position (behaviour-preserving wrappers)
 function auHinted(fn,posOf,maxD){ return function(){ const ph=AU.hint; let pos=null; try{ pos=posOf.apply(null,arguments); }catch(e){} AU.hint=pos&&pos.x!=null?{pos,maxD}:ph; try{ return fn.apply(this,arguments); }finally{ AU.hint=ph; } }; }
 if(typeof colStomp==='function') colStomp=auHinted(colStomp,f=>f&&f.plant,0);
 if(typeof explode==='function') explode=auHinted(explode,p=>p,140);
 if(typeof explodeFx==='function') explodeFx=auHinted(explodeFx,p=>p,140);
-if(typeof rite==='function'){ const _rite=rite; rite=function(){ const r=_rite.apply(this,arguments); try{ if(AU.ctx&&state==='play') MX.sting('rite'); }catch(e){} return r; }; }
+// rite stingers: MX.update watches Q.rites (works on co-op clients too, whose count arrives in the snapshot)

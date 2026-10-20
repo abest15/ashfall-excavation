@@ -6,7 +6,7 @@
 const ZV_VOWELS=[[730,1090,2440],[520,1190,2390],[300,870,2240],[570,840,2410],[660,1720,2410],[530,1840,2480],[440,1020,2240]];
 function zvTract(z){ if(z._vx) return z._vx; const a=ZV_VOWELS[Math.floor(Math.random()*ZV_VOWELS.length)], b=ZV_VOWELS[Math.floor(Math.random()*ZV_VOWELS.length)];
   return z._vx={a,b,s:rand(.86,1.14),p:rand(.8,1.25),gurgle:Math.random()<.4,rasp:rand(.5,1)}; }
-function zvoice(z,kind){ const a=AU.ctx; if(!a||!AU.voice||!z||!z.g||auBusy()) return; const p=z.g.position, dx=p.x-P.pos.x, dz=p.z-P.pos.z, d=Math.hypot(dx,dz), maxD=kind==='death'?28:kind==='scream'?40:z.boss?44:34; if(d>maxD) return;
+function zvoice(z,kind){ const a=AU.ctx; if(!a||!AU.voice||!z||!z.g||auBusy()) return; const p=z.g.position, dx=p.x-P.pos.x, dz=p.z-P.pos.z, d=Math.hypot(dx,dz,(p.y||0)-(P.pos.y||0)), maxD=kind==='death'?28:kind==='scream'?40:z.boss?44:34; if(d>maxD) return;
   const vol=Math.pow(1-d/maxD,1.35)*(z.boss?1.4:1)*(P.inCabin?.5:1); if(vol<.02) return;
   const pri=kind==='death'||kind==='attack'||z.boss; const em=emitAt(p,d,maxD,'voice',.1,pri); if(!em) return; em.follow=p;
   try{ zvBuild(a,em,z,kind,vol); }catch(e){ AU.errs++; AU.lastErr='zvoice: '+e; } }
@@ -54,7 +54,7 @@ let zsTok=3;
 function zSteps(dt){ zsTok=Math.min(3,zsTok+dt*9); const a=AU.ctx; if(typeof zombies==='undefined') return;
   for(const z of zombies){ if(!z||z.dead||!z.g) continue; const p=z.g.position; if(z._fx===undefined||z.rise>0){ z._fx=p.x; z._fz=p.z; z._fd=0; continue; }
     const m=Math.hypot(p.x-z._fx,p.z-z._fz); z._fx=p.x; z._fz=p.z; if(m>3) continue; z._fd+=m; const stride=z.boss?1.5:z.kind==='hound'?.75:.82; if(z._fd<stride) continue; z._fd-=stride;
-    const maxD=z.boss?30:17, d=Math.hypot(p.x-P.pos.x,p.z-P.pos.z); if(d>maxD||zsTok<1||auBusy()) continue; zsTok--;
+    const maxD=z.boss?30:17, d=Math.hypot(p.x-P.pos.x,p.z-P.pos.z,(p.y||0)-(P.pos.y||0)); if(d>maxD||zsTok<1||auBusy()) continue; zsTok--;
     const em=emitAt(p,d,maxD,'fx',.35,false); if(!em) continue; const k=Math.pow(1-d/maxD,1.6)*(z.boss?1:.6), t=a.currentTime;
     const sf=typeof surfaceAt==='function'?surfaceAt(p.x,p.z):(mode==='hollow'?'crystal':'mud');
     if(z.boss){ auTrack(lN(a,em.inp,t,.3,300,1,.3*k,'lowpass',70)); auTrack(lT(a,em.inp,t,60,.25,'sine',.35*k,35)); auTrack(lT(a,em.inp,t+.01,rand(380,460),.2,'triangle',.05*k)); }
