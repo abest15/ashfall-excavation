@@ -98,7 +98,7 @@ jobs:
 
       - run: ls -la out
 
-      - uses: softprops/action-gh-release@v2.2.2
+      - uses: softprops/action-gh-release@v3.0.3
         with:
           tag_name: ${{ env.TAG }}
           name: Ashfall Excavation ${{ env.TAG }}
