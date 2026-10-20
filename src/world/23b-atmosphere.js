@@ -121,7 +121,7 @@ function initSurfaceGroup(){ if(UG.surf) return; const S_=new THREE.Group(); S_.
 const UNDER_ENV=(()=>{ const f=()=>{ const c=document.createElement('canvas'); c.width=c.height=32; const g=c.getContext('2d'); g.fillStyle='#0a0806'; g.fillRect(0,0,32,32); for(let i=0;i<3;i++){ const x=rand(4,28), y=rand(4,20), gr=g.createRadialGradient(x,y,0,x,y,6); gr.addColorStop(0,'rgba(255,170,90,.8)'); gr.addColorStop(1,'rgba(0,0,0,0)'); g.fillStyle=gr; g.fillRect(0,0,32,32); } return c; };
   const t=new THREE.CubeTexture([f(),f(),f(),f(),f(),f()]); t.needsUpdate=true; return t; })();
 if(QUAL&&typeof LVL!=='undefined'&&LVL.water){ LVL.water.material=new THREE.MeshPhongMaterial({color:0x061214,specular:0x5a6a70,shininess:90,envMap:UNDER_ENV,reflectivity:.5,combine:THREE.MixOperation,transparent:true,opacity:.9,depthWrite:false}); }
-function updateUnder(dt){ if(!UG.surf) return; const c=camera.position, onStair=(c.x>-7&&c.x<9&&c.z>-25&&c.z<-19.4)||(c.x>-57.5&&c.x<-43.5&&c.z>-13.6&&c.z<-8.6);
+function updateUnder(dt){ if(!UG.surf) return; const c=camera.position, onStair=(c.x>-7&&c.x<9&&c.z>-25&&c.z<-19.4)||(c.x>-57.5&&c.x<-43.5&&c.z>-13.6&&c.z<-8.6)||(c.x>-7&&c.x<16&&Math.abs(c.z+22.2)<4&&-Math.sin(camera.rotation.y)<-.3); // on a stair, or looking up the shaft from its foot
   const under=mode==='main'&&!P.inCabin&&c.y<-1.6; UG.surf.visible=!(under&&!onStair);
   if(typeof UART!=='undefined') UART.visible=mode==='main'&&(c.y<-1.2||onStair);
   if(under){ hemi.color.set(0x6a5a48); hemi.groundColor.set(0x1a120c); hemi.intensity=.32; sun.intensity=0; scene.fog.color.set(0x0b0907); scene.fog.density=.045; scene.background.set(0x050403); sky.visible=onStair; }

@@ -16,9 +16,13 @@ concurrency:
 
 jobs:
   test:
-    name: Build and browser tests
+    name: Build and browser tests (${{ matrix.sim }} sim)
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        sim: [wasm, js]
     steps:
       - uses: actions/checkout@v4.2.2
 
@@ -46,16 +50,18 @@ jobs:
         run: npx playwright install --with-deps chromium
 
       - name: Run tests on the WASM simulation (smoke, full ritual, co-op, knife, perf budget, wasm-sim)
+        if: matrix.sim == 'wasm'
         run: npm test
 
       - name: Run tests on the JavaScript fallback (?sim=js)
+        if: matrix.sim == 'js'
         run: npm run test:js
 
       - name: Upload test report
         if: failure()
         uses: actions/upload-artifact@v4.6.2
         with:
-          name: playwright-report
+          name: playwright-report-${{ matrix.sim }}
           path: test-results/
           retention-days: 7
 
@@ -64,7 +70,7 @@ jobs:
     runs-on: ubuntu-latest
     # long stress run: reports results but never blocks the Pages deploy
     continue-on-error: true
-    timeout-minutes: 30
+    timeout-minutes: 45
     # reported but not blocking (Pages deploys anyway) while known leaks are open; remove once they pass
     steps:
       - uses: actions/checkout@v4.2.2

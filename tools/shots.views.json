@@ -169,6 +169,16 @@
   "pitch": 0.1,
   "label": "Underworks: deep vault"
  },
+ "shaftBottom": {
+  "pos": [
+   9.5,
+   -7,
+   -22.2
+  ],
+  "yaw": 1.5708,
+  "pitch": 0.32,
+  "label": "Underworks: looking up the shaft"
+ },
  "questManifold": {
   "pos": [
    12,

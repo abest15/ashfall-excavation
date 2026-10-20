@@ -103,7 +103,7 @@ const CHATEAU=levelGroup('chateau');
   const BELL=new THREE.Mesh(new THREE.CylinderGeometry(.3,.6,.9,10,1,true),L({color:0x8a6a30,side:THREE.DoubleSide})); BELL.position.set(-35,UF0+2.5,-19); CHATEAU.add(BELL); LVL.bell=BELL;
   const lights=[[-36,2.9,-7,12,1.0,0xffb060],[-36,2.9,-20,12,.9,0xffb060],[-50,2.9,-20,12,.9,0xffa850],[-50,2.9,-5,11,.9,0xffa850],[-36,7.2,-7,12,.8,0xffc080],[-50,7.2,-19,12,.8,0xffc080],[-50,7.2,-5,10,.7,0xffc080]];
   const sun={dir:[.4,.8,.35],k:.28};
-  lvAdd(B.done(lights,.36,2.6,sun),lvMat(plasterTex,0xffffff),CHATEAU,true); LVL.chLights=lights; LVL.chSun=sun;
+  lvAdd(B.done(lights,.36,5.2,sun),lvMat(plasterTex,0xffffff),CHATEAU,true); LVL.chLights=lights; LVL.chSun=sun;
   lvAdd(F.done(lights,.34,1.6,sun),lvMat(plankTex,0xffffff),CHATEAU,true);
   lvGlows(lights.map(l=>[l[0],l[1],l[2]]),CHATEAU);
   // zombie windows: radio room (west), kitchen (north), map room (south)
@@ -185,9 +185,10 @@ function lvRoom(B,x0,x1,z0,z1,fy,cy,gaps,col,o={}){ const t=.6, wy0=-11, wy1=o.w
     [-62,-4,-27,10,.9,0xffa850],[-61,-4.5,-11,10,1,0xffb070],
     [-24,-3.5,-44,8,.7,0xd8e8c0],[-30,-4.5,-50,10,.9,0xd8e8c0],[-18,-4.5,-56,10,.9,0xd8e8c0],[-24,-3.5,-53,9,.8,0xe8f0d0],
     [-24,-4,-63,8,.7,0xc06050],[-28,-3,-75,20,1.2,0xc04838],[-20,-6,-80,10,.8,0x60c0d0],[-36,-6,-70,10,.8,0x60c0d0],
-    [29,-4,-16,10,.9,0x80b0d0],[40,-4,-28,11,.9,0x80b0d0],[34,-4,-22,10,.8,0x90c0d8]];
-  LVL.uLights=lights.map(l=>[l[0],l[1],l[2],l[3]*1.25,l[4]*1.35,l[5]]); lvAdd(B.done(LVL.uLights,.24,2.2,null,-2.2),lvMat(rockTex,0xffffff),UNDER,true);
-  lvGlows(lights.map(l=>[l[0],l[1],l[2]]),UNDER);
+    [29,-4,-16,11,1.3,0x80b0d0],[40,-4,-28,12,1.3,0x80b0d0],[34,-4,-22,11,1.2,0x90c0d8],[26,-4,-28,9,1.0,0xffb070,1],[44,-4,-16,9,1.0,0xffb070,1],[45,-5.5,-22,7,1.1,0xffa860,1],
+    [-30.6,-8.6,-77.6,8,1.4,0xff7a30,1],[-25.4,-8.6,-77.6,8,1.4,0xff7a30,1],[-30.6,-8.6,-72.4,8,1.4,0xff7a30,1],[-25.4,-8.6,-72.4,8,1.4,0xff7a30,1],[-28,-6.4,-82.4,10,1.7,0xff5020,1],[-28,-9.2,-75,7,1.0,0xd03020,1]];
+  LVL.uLights=lights.map(l=>[l[0],l[1],l[2],l[3]*1.25,l[4]*1.35,l[5],l[6]]); lvAdd(B.done(LVL.uLights,.24,2.2,null,-2.2),lvMat(rockTex,0xffffff),UNDER,true);
+  lvGlows(lights.filter(l=>!l[6]).map(l=>[l[0],l[1],l[2]]),UNDER); // accent lights (7th field) have their own fixtures
   addMarker('under.pump.valve',{x:12,y:U,z:-14.6,kind:'switch',zone:'U1',note:'pipe valve on the north wall'});
   addMarker('under.pump.perk',{x:23.4,y:U,z:-16,ry:-Math.PI/2,kind:'perk',zone:'U1',note:'east wall, north end'});
   addMarker('under.pump.wallbuy',{x:8.6,y:U,z:-27,ry:Math.PI/2,kind:'wallbuy',zone:'U1',note:'west wall, south of the stair'});
