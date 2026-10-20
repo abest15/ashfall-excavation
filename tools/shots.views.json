@@ -1,20 +1,242 @@
 {
-  "chateauOutside": {"pos": [-20, 0, -5], "yaw": 1.97, "pitch": 0.05, "label": "Château from the dig"},
-  "chateauHall": {"pos": [-32, 0, -9], "yaw": 1.87, "pitch": 0, "label": "Château hall and main stair"},
-  "chateauStair": {"pos": [-31.5, 0, -6], "yaw": 2.47, "pitch": 0.15, "label": "Château stair to the upper floor"},
-  "chateauMapRoom": {"pos": [-32, 0, -15], "yaw": 0.8, "pitch": -0.1, "label": "Château map room"},
-  "chateauRadio": {"pos": [-44, 0, -16], "yaw": 1.3, "pitch": -0.05, "label": "Château radio room"},
-  "chateauKitchen": {"pos": [-43, 0, -6], "yaw": 0.9, "pitch": -0.3, "label": "Château kitchen and cellar stair"},
-  "chateauUpper": {"pos": [-38, 4.2, -8], "yaw": 1.57, "pitch": 0, "label": "Château upper hall"},
-  "chateauBellRoom": {"pos": [-40, 4.2, -15], "yaw": -0.9, "pitch": 0.15, "label": "Château bell room"},
-  "chateauBalcony": {"pos": [-28.5, 4.2, -20], "yaw": -1.77, "pitch": -0.1, "label": "Château balcony over the dig"},
-  "shaftTop": {"pos": [-12, 0, -22], "yaw": -1.57, "pitch": -0.3, "label": "Collapsed shaft (dig)"},
-  "shaftDown": {"pos": [-4, -1, -22.2], "yaw": -1.57, "pitch": -0.25, "label": "Down the shaft stair"},
-  "pumpRoom": {"pos": [10, -7, -18], "yaw": -1.0, "pitch": 0, "label": "Underworks: pump room"},
-  "railTunnel": {"pos": [-10, -7, -40], "yaw": 1.57, "pitch": 0, "label": "Underworks: rail tunnel"},
-  "wineCellar": {"pos": [-58, -7, -12], "yaw": 1.2, "pitch": 0, "label": "Underworks: wine cellar"},
-  "ossuary": {"pos": [-24, -7, -47.5], "yaw": 0, "pitch": -0.05, "label": "Underworks: ossuary"},
-  "floodedGallery": {"pos": [26, -7, -22], "yaw": -1.57, "pitch": 0, "label": "Underworks: flooded gallery"},
-  "deepVault": {"pos": [-24, -10, -67], "yaw": 0, "pitch": 0.1, "label": "Underworks: deep vault"},
-  "shaftBottom": {"pos": [9.5, -7, -22.2], "yaw": 1.5708, "pitch": 0.32, "label": "Underworks: looking up the shaft"}
+ "chateauOutside": {
+  "pos": [
+   -20,
+   0,
+   -5
+  ],
+  "yaw": 1.97,
+  "pitch": 0.05,
+  "label": "Château from the dig"
+ },
+ "chateauHall": {
+  "pos": [
+   -32,
+   0,
+   -9
+  ],
+  "yaw": 1.87,
+  "pitch": 0,
+  "label": "Château hall and main stair"
+ },
+ "chateauStair": {
+  "pos": [
+   -31.5,
+   0,
+   -6
+  ],
+  "yaw": 2.47,
+  "pitch": 0.15,
+  "label": "Château stair to the upper floor"
+ },
+ "chateauMapRoom": {
+  "pos": [
+   -32,
+   0,
+   -15
+  ],
+  "yaw": 0.8,
+  "pitch": -0.1,
+  "label": "Château map room"
+ },
+ "chateauRadio": {
+  "pos": [
+   -44,
+   0,
+   -16
+  ],
+  "yaw": 1.3,
+  "pitch": -0.05,
+  "label": "Château radio room"
+ },
+ "chateauKitchen": {
+  "pos": [
+   -43,
+   0,
+   -6
+  ],
+  "yaw": 0.9,
+  "pitch": -0.3,
+  "label": "Château kitchen and cellar stair"
+ },
+ "chateauUpper": {
+  "pos": [
+   -38,
+   4.2,
+   -8
+  ],
+  "yaw": 1.57,
+  "pitch": 0,
+  "label": "Château upper hall"
+ },
+ "chateauBellRoom": {
+  "pos": [
+   -40,
+   4.2,
+   -15
+  ],
+  "yaw": -0.9,
+  "pitch": 0.15,
+  "label": "Château bell room"
+ },
+ "chateauBalcony": {
+  "pos": [
+   -28.5,
+   4.2,
+   -20
+  ],
+  "yaw": -1.77,
+  "pitch": -0.1,
+  "label": "Château balcony over the dig"
+ },
+ "shaftTop": {
+  "pos": [
+   -12,
+   0,
+   -22
+  ],
+  "yaw": -1.57,
+  "pitch": -0.3,
+  "label": "Collapsed shaft (dig)"
+ },
+ "shaftDown": {
+  "pos": [
+   -4,
+   -1,
+   -22.2
+  ],
+  "yaw": -1.57,
+  "pitch": -0.25,
+  "label": "Down the shaft stair"
+ },
+ "pumpRoom": {
+  "pos": [
+   10,
+   -7,
+   -18
+  ],
+  "yaw": -1.0,
+  "pitch": 0,
+  "label": "Underworks: pump room"
+ },
+ "railTunnel": {
+  "pos": [
+   -10,
+   -7,
+   -40
+  ],
+  "yaw": 1.57,
+  "pitch": 0,
+  "label": "Underworks: rail tunnel"
+ },
+ "wineCellar": {
+  "pos": [
+   -58,
+   -7,
+   -12
+  ],
+  "yaw": 1.2,
+  "pitch": 0,
+  "label": "Underworks: wine cellar"
+ },
+ "ossuary": {
+  "pos": [
+   -24,
+   -7,
+   -47.5
+  ],
+  "yaw": 0,
+  "pitch": -0.05,
+  "label": "Underworks: ossuary"
+ },
+ "floodedGallery": {
+  "pos": [
+   26,
+   -7,
+   -22
+  ],
+  "yaw": -1.57,
+  "pitch": 0,
+  "label": "Underworks: flooded gallery"
+ },
+ "deepVault": {
+  "pos": [
+   -24,
+   -10,
+   -67
+  ],
+  "yaw": 0,
+  "pitch": 0.1,
+  "label": "Underworks: deep vault"
+ },
+ "shaftBottom": {
+  "pos": [
+   9.5,
+   -7,
+   -22.2
+  ],
+  "yaw": 1.5708,
+  "pitch": 0.32,
+  "label": "Underworks: looking up the shaft"
+ },
+ "questManifold": {
+  "pos": [
+   12,
+   -7,
+   -19
+  ],
+  "yaw": 3.14,
+  "pitch": 0.05,
+  "label": "Quest: pressure manifold (pump room)"
+ },
+ "questRadio": {
+  "pos": [
+   -52.5,
+   0,
+   -21.5
+  ],
+  "yaw": 1.57,
+  "pitch": -0.2,
+  "label": "Quest: field radio (Château)"
+ },
+ "questStrongbox": {
+  "pos": [
+   -52.5,
+   4.2,
+   -0.5
+  ],
+  "yaw": 1.57,
+  "pitch": -0.25,
+  "label": "Quest: glyph strongbox (Château upstairs)"
+ },
+ "questOssuary": {
+  "pos": [
+   -24,
+   -7,
+   -47
+  ],
+  "yaw": 0,
+  "pitch": -0.1,
+  "label": "Quest: music box and braziers (ossuary)"
+ },
+ "questPedestals": {
+  "pos": [
+   43,
+   0,
+   17.5
+  ],
+  "yaw": -1.57,
+  "pitch": -0.15,
+  "label": "Quest: the four staff pedestals (chapel)"
+ },
+ "questGenerator": {
+  "pos": [
+   31,
+   0,
+   -11
+  ],
+  "yaw": -0.98,
+  "pitch": -0.15,
+  "label": "Quest: generator and breaker lamps"
+ }
 }

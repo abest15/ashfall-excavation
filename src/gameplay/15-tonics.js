@@ -9,8 +9,8 @@ const TONICS={
   steady:{name:'Steadyhand Draught',cost:2500,hex:0x3a8ab8,color:'#4aa0d0',letter:'D',desc:'deadlier headshots and steadier aim'},
 };
 const tonicPanels=[];
-function tonicMachine(key,x,z,ry){
-  const T=TONICS[key]; const g=new THREE.Group(); g.position.set(x,0,z); g.rotation.y=ry; scene.add(g);
+function tonicMachine(key,x,z,ry,y=0){ // y: floor height (levels); underground machines go in the UNDER group
+  const T=TONICS[key]; const g=new THREE.Group(); g.position.set(x,y,z); g.rotation.y=ry; (typeof qPar==='function'?qPar(y):scene).add(g);
   const cab=box(1.2,2.3,.9,M.dark,0,1.15,0,{parent:g}); addSolid(cab);
   box(1.3,.1,1,M.brass,0,2.32,0,{parent:g}); box(1.3,.12,1,M.brass,0,.06,0,{parent:g});
   const pm=L({color:0x1a1814,emissive:T.hex,emissiveIntensity:T.noPower?.9:.12}); const panel=box(.86,1.15,.04,pm,0,1.45,.46,{parent:g});
@@ -19,9 +19,10 @@ function tonicMachine(key,x,z,ry){
   const bm=B({color:T.hex}); cyl(.13,.15,.42,bm,0,2.6,0,10,g); cyl(.05,.06,.18,bm,0,2.9,0,8,g); cyl(.06,.06,.04,M.brass,0,3.0,0,8,g);
   const lab=makeLabel(T.name,{sx:2.4,size:46,color:T.color}); lab.position.set(0,3.45,0); g.add(lab); if(typeof dressTonic==='function') dressTonic(g,T);
   const fx=Math.sin(ry),fz=Math.cos(ry);
-  const W=Math.abs(Math.sin(ry))>.7?.9:1.2, D=Math.abs(Math.sin(ry))>.7?1.2:.9; addCol(x,z,W,D);
-  addInter({x:x+fx*1.2,z:z+fz*1.2,r:1.9,prompt:()=>{ if(P.perks.has(key)) return null; if(!T.noPower&&!POWER.on) return '!Requires power'; if(key==='wind'&&P.swBuys>=3) return '!The bottle is dry'; return `Drink ${T.name}, ${T.desc} [${T.cost}]`; },
-    use:()=>{ if(P.perks.has(key)||(!T.noPower&&!POWER.on)||(key==='wind'&&P.swBuys>=3)) return; if(!spend(T.cost)) return; P.perks.add(key); if(key==='wind') P.swBuys++; if(key==='iron'){P.maxHp=175;P.hp=175;} sfx.tonic(); toast(T.name); }});
+  const W=Math.abs(Math.sin(ry))>.7?.9:1.2, D=Math.abs(Math.sin(ry))>.7?1.2:.9; if(y) addColY(x-W/2,x+W/2,z-D/2,z+D/2,y-.5,y+3); else addCol(x,z,W,D);
+  addInter({y,x:x+fx*1.2,z:z+fz*1.2,r:1.9,prompt:()=>{ if(P.perks.has(key)) return null; if(T.quest&&!Q.tonicOpen) return '!Sealed with black wax. Something in the dig holds the key'; if(!T.noPower&&!POWER.on) return '!Requires power'; if(key==='wind'&&P.swBuys>=3) return '!The bottle is dry'; return `Drink ${T.name}, ${T.desc} [${T.cost}]`; },
+    use:()=>{ if(P.perks.has(key)||(T.quest&&!Q.tonicOpen)||(!T.noPower&&!POWER.on)||(key==='wind'&&P.swBuys>=3)) return; if(!spend(T.cost)) return; P.perks.add(key); if(key==='wind') P.swBuys++; if(key==='iron'){P.maxHp=175;P.hp=175;} sfx.tonic(); toast(T.name); }});
+  return g;
 }
 tonicMachine('wind',-8.6,45,Math.PI/2);
 tonicMachine('iron',28.6,21,-Math.PI/2);

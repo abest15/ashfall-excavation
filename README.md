@@ -2,7 +2,7 @@
 
 A round-based co-op zombie survival shooter set at Dig Site 7 on the northern front, 1918. The dig crew struck something black and humming under the mud, and now the dead climb out of the trenches every night.
 
-Hold out round after round with up to three friends. Board the windows, open the site, restore the power, and forge your guns into something worse. Finish the old rite the diggers started: ride the Colossus that stalks No Man's Land, read the chapel's glass, build a storm in your fist, bring the giant down, and find the way out from under the dig.
+Hold out round after round with up to three friends. Board the windows, open the site, hunt down the three breakers to restore the power, and forge your guns into something worse. Finish the old rite the diggers started: ride the Colossus that stalks No Man's Land, read the chapel's glass, build a storm in your fist, bring the giant down, break the Gravecaller, and open the Deep Vault under the dig.
 
 By **Furnace Lantern Games**. Built with Three.js (r186, WebGPU with an automatic WebGL 2 fallback) and plain JavaScript; runs in a browser or as a desktop app for Windows, macOS and Linux.
 
@@ -107,7 +107,9 @@ Zombie movement runs in a small WebAssembly core built from `sim/` (Rust). Build
 | Test | Covers |
 |---|---|
 | `tests/smoke.spec.js` | page loads, splash and menu, Solo starts, a round begins, a zombie spawns and is shot dead, Esc pauses and Resume continues, the F3 overlay, the dev error box |
-| `tests/ritual.spec.js` | the entire main quest from the Rod fragments to stepping through the gate in the Hollow (victory screen, 12/12 rites) |
+| `tests/ritual.spec.js` | the entire main quest (23 rites, all four staffs): the three breakers and the generator, every puzzle, the Gravecaller, the Hollow, the Deep Vault and the lift out (ending, 22/22 rites) |
+| `tests/staffs.spec.js` | the four elemental staffs: one built through its real part tasks, claimed, fired, alt-fired and upgraded; all four distinct; a co-op claim |
+| `tests/power.spec.js` | the breaker switches: seeded random placement, each breaker's requirement, cranking the generator, co-op sync |
 | `tests/coop.spec.js` | two pages host and join through the co-op menu over the local transport (`?net=local`), zombies replicate to the client, a kill by the client is credited to the client |
 | `tests/wasm-sim.spec.js` | the zombie simulation: paths through open doors, stops at closed ones, never passes through walls, no stacking (WASM), co-op zombies chase the nearest player |
 | `tests/levels.spec.js` | floors: walking down the shaft into the Underworks and up the Château stair, the drop hole, ceilings, zombies chasing across floors (both sim paths), co-op heights |
@@ -168,7 +170,7 @@ desktop/
   build/              generated icons used by electron-builder and as the favicon
 tests/                Playwright tests and config
 .github/              CI, Pages and release workflows
-docs/                 ARCHITECTURE.md (how the code fits together), LANES.md (who owns what)
+docs/                 ARCHITECTURE.md (how the code fits together), LANES.md (who owns what), QUEST.md (power, quest steps, puzzle solutions, anchor tables; spoilers)
 ```
 
 The code is split by area and assembled in order into one scope. Read `docs/ARCHITECTURE.md` before adding files.

@@ -16,5 +16,5 @@ function newGame(){
   mode='main'; setAtmosphere('main'); ambienceMode('main');
   Object.assign(P,{vy:0,yaw:0,pitch:0,hp:100,maxHp:100,lastHit:-99,points:500,weapons:[mkInst('pistol')],cur:0,swBuys:0,ads:0,sprint:false,meleeT:0,swapT:0,kick:0,kills:0,heads:0,invuln:0,revive:0,zone:'A',earned:0,shield:0,lungeT:0,shake:0,meleePending:false});
   P.perks=new Set(); P.bless=new Set(); P.pos.set(0,0,44); PU.double=0; PU.insta=0; PU.freeze=0; PU.sale=0; PU.gatling=0; PU.gat=null; VM.melee=0; R.hound=false; R.houndPos=null; boomLight.intensity=0; updateKnifeLook(); P.items=new Set(); P.aegis=false; spawnAegisParts(); P.lures=0; P.lureOwned=false; LURES.forEach(q=>scene.remove(q.g)); LURES.length=0; BOLTS.forEach(q=>scene.remove(q.m)); BOLTS.length=0;
-  R.n=0; R.inBreak=true; R.breakT=3; R.bossDue=false; GT=0; playTime=0; buildVM(); setRoundHud('',false); $('reviving').hidden=true; netResetLocal();
+  R.n=0; R.inBreak=true; R.breakT=3; R.bossDue=false; GT=0; playTime=0; buildVM(); setRoundHud('',false); $('reviving').hidden=true; netResetLocal(); questReset();
 }

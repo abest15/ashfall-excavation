@@ -42,13 +42,14 @@ Round-based co-op zombie survival game. Three.js r186 from npm (`three/webgpu`: 
 | `src/engine` | bootstrap, settings, renderer and post-processing, textures, materials |
 | `src/world` | map, walls and windows, props, chapel, No Man's Land, lights, atmosphere, sky, the Hollow |
 | `src/entities` | gun models and viewmodel, knife, the Colossus, zombies and hounds, boss projectiles |
-| `src/gameplay` | game systems, weapon data, economy, tonics, power, forge, relic crate, quest, particles, power-ups, combat, rounds, reset, per-frame updates, player movement, collision |
+| `src/gameplay` | game systems, weapon data, economy, tonics, power (three breakers), forge, relic crate, quest and puzzles (16a-16b, 19-19e; see docs/QUEST.md), special dead, particles, power-ups, combat, rounds, reset, per-frame updates, player movement, collision |
 | `src/audio` | Web Audio engine, procedural sound effects, zombie voices |
 | `src/ui` | HUD, interaction prompts, gamepad, input, menus and title screen |
 | `src/net` | peer-to-peer co-op (host-authoritative) |
 | `src/core` | the performance overlay, then the main loop (`41-loop.js` must stay last) |
 
 ## Global conventions
+- Quest placement: every quest prop (breakers, puzzles, the vault) is placed from the anchor table `QA` in `src/gameplay/16a-quest-anchors.js`; quest actions go through `qAct` (host-routed) and quest state is replicated in the snapshot's `qx` field. Details in docs/QUEST.md.
 - Key shared state: `P` (local player), `R` (rounds), `Q` (quest), `PU` (power-ups), `zombies`, `scene`, `camera`, `renderer`, `SETTINGS`, `QUAL` (0 low / 1 medium / 2 high), `NET` (`role`: solo / host / client), `mode` (main / hollow), `state` (menu / play / paused / over / end), `GT` (game time).
 - Materials: `L(o)` lit material (Phong on Medium/High, Lambert on Low), `B(o)` unlit, `M.add(color,opacity)` additive glow.
 - Sound: call `sfx.name(arg)`; positional one-shots `sfxAt(name, pos, maxDist, arg)`. When calling a sound another lane is adding, guard it: `sfx.reloadIn&&sfx.reloadIn()`.

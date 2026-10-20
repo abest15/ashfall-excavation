@@ -64,6 +64,7 @@ function spawnZombie(kind){
   else if(kind==='hollow'){ z.hp=Math.max(zHP(n),900)*1.2; z.speed=rand(4.1,4.6); z.reach=1.3; z.dmg=55; }
   else { z.hp=zHP(n); const r=Math.random(); const run=clamp((n-3)*.16,0,.85), jog=clamp((n-1)*.22,0,.7);
     z.speed=kind==='marked'?2.8:r<run?rand(3.7,4.3):r<run+jog?rand(2.2,2.8):rand(1.15,1.7); z.reach=1.3; z.dmg=50; }
+  if(typeof specialInit==='function') specialInit(z,kind); // quest specials: Shrieker, Sapper, Gravecaller (19c-specials.js)
   z.hp*=DF().hp*(1+.3*(NP()-1)); z.speed*=DF().spd; z.maxHp=z.hp; z.rise=kind==='hound'?.45:1.2; z.swing=0; z.cd=0; z.phase=rand(0,6); z.tx=sp.x; z.tz=sp.z; z.stuckT=0; z.lx=sp.x; z.lz=sp.z; z.nudge=0; z.dead=false;
   z.id=++NET.zid; zombies.push(z); zparts=zparts.concat(z.parts); spawnParticles(new V3(sp.x,.2,sp.z),'dirt',8); if(kind==='hound'){ spawnParticles(new V3(sp.x,.6,sp.z),'ember',8); sfx.houndSpawn(); }
   if(z.boss){ sfx.boss(); banner(z.prime?'The Warden Prime':'An Iron Warden approaches',z.prime?'The keeper of the Hollow':'Aim for the visor'); }
@@ -76,8 +77,8 @@ function route(a,b){ const prev={}; prev[a]=null; const q=[a];
 function hitZombie(z,dmg,mult,how){
   if(z.dead) return;
   if(NET.role==='client'){ if(z.id) toHost({t:'hit',id:z.id,dmg,mult,how}); z.flash=.07; if(typeof fxZombieHit==='function') fxZombieHit(z,how); return; }
-  if(z.shield){ if(GT-(HL.shMsg||-9)>3){ HL.shMsg=GT; toast('Warded! Shatter the glowing crystals'); } spawnParticles(z.g.position.clone().setY(2.6),'relic',2); return; }
-  let d=dmg*mult; if(PU.insta>0&&!z.boss) d=z.hp+1;
+  if(z.shield){ if(GT-(HL.shMsg||-9)>3){ HL.shMsg=GT; toast(z.wardMsg||'Warded! Shatter the glowing crystals'); } spawnParticles(z.g.position.clone().setY(2.6),'relic',2); return; }
+  let d=dmg*mult*(z.armor&&mult<=1.01&&how!=='melee'?.45:1); if(PU.insta>0&&!z.boss) d=z.hp+1;
   z.hp-=d; z.flash=.07; if(typeof fxZombieHit==='function') fxZombieHit(z,how); if(!z.boss||Math.random()<.5) addPts(10);
   if(z.prime){ const f=z.hp/z.maxHp;
     if(!z.ph1&&f<.66){ z.ph1=true; z.hp=z.maxHp*.65; shieldUp(z,pickN([0,1,2,3,4],3)); return; }
@@ -96,7 +97,7 @@ function killZombie(z,how,silent){
   if(!silent) zvoice(z,'death');
   if(!silent&&how!=='self'){ creditKill(how);
     if(how==='head'&&z.head&&!z.boss) zHeadOff(z); addPts(z.boss?490:how==='melee'?120:how==='head'?90:50); sfx.kill(); hitMarker(true);
-    const p=z.g.position;
+    const p=z.g.position; if(typeof questKill==='function') questKill(z,how,p);
     for(const st of Q.stones){ if(!st.fed&&Math.hypot(p.x-st.x,p.z-st.z)<7.5){ st.kills++; st.rm.color.setHSL(.1,.6,.15+st.kills/STONE_KILLS*.35); spawnParticles(new V3(st.x,2.3,st.z),'relic',4);
       if(st.kills>=STONE_KILLS){ st.fed=true; st.rm.color.set(0xf2cb78); sfx.ignite(); toast(`The ${st.name} is fed. Strike it with the Rod.`); } } }
     if(z.kind==='marked'&&!Q.frag.marked) spawnFrag('marked',p.x,p.z);

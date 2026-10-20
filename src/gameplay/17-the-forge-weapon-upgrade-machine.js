@@ -9,11 +9,11 @@ const FORGE={state:'idle',inst:null,t:0,mouth:null,model:null};
   addCol(-25.5,-25.5,3.4,3.4);
   addInter({x:-23.6,z:-23.6,r:2.4,prompt:()=>{ if(!POWER.on) return '!The Forge is cold. Requires power';
       if(FORGE.state==='working') return '!The Forge is working…'; if(FORGE.state==='ready') return `Take ${statsOf(FORGE.inst).name}`;
-      const w=curW(); if(!w) return '!Hold a weapon to forge it'; if(w.id==='rod'||w.id==='gauntlet') return '!The Forge refuses the relic'; if(w.id==='gatling') return '!The Forge will not take a borrowed gun';
+      const w=curW(); if(!w) return '!Hold a weapon to forge it'; if(w.id==='rod'||w.id==='gauntlet'||WD[w.id].staff) return '!The Forge refuses the relic'; if(w.id==='gatling') return '!The Forge will not take a borrowed gun';
       if(w.up) return `Re-forge ${WD[w.id].up} for ammo [2500]`; return `Forge ${WD[w.id].name} [5000]`; },
     use:()=>{ if(!POWER.on) return;
       if(FORGE.state==='ready'){ const inst=FORGE.inst; FORGE.state='idle'; FORGE.inst=null; if(FORGE.model){scene.remove(FORGE.model);FORGE.model=null;} giveWeapon(inst); return; }
-      if(FORGE.state!=='idle') return; const w=curW(); if(!w||w.id==='rod'||w.id==='gatling'||w.id==='gauntlet') return;
+      if(FORGE.state!=='idle') return; const w=curW(); if(!w||w.id==='rod'||w.id==='gatling'||w.id==='gauntlet'||WD[w.id].staff) return;
       if(w.up){ const s=statsOf(w); if(!spend(2500)) return; w.res=s.res; w.mag=s.mag; sfx.forge(); return; }
       if(!spend(5000)) return; P.weapons.splice(P.cur,1); P.cur=0; buildVM();
       FORGE.state='working'; FORGE.t=3.6; FORGE.inst=mkInst(w.id,true); sfx.forge(); }});

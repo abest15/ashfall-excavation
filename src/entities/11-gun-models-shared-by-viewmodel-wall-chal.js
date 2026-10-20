@@ -241,6 +241,7 @@ function buildGun(id,up,override){
     gb(g,.13,.14,.3,me,0,.02,.06); gb(g,.135,.03,.28,dk,0,.08,.06); gb(g,.05,.16,.07,wo,0,-.12,.12,.2); gb(g,.16,.12,.18,ac,-.12,0,.08); gb(g,.012,.07,.012,st,0,.13,-.02); gb(g,.012,.012,.18,st,0,.165,.05);
     for(let i=0;i<5;i++) round_(g,br,br,-.05+i*.012,.07,.0,.05,.007);
     ud.spin=sp; ud.style='none'; mz=-.66; }
+  if(WD[id].staff&&typeof dressStaff==='function') dressStaff(g,id,up,override); // elemental staffs (19f-staffs.js)
   const muzzle=new THREE.Object3D(); muzzle.position.set(0,my,mz); g.add(muzzle); ud.muzzle=muzzle;
   if(override) mergeOneMaterial(g,override);
   return g;

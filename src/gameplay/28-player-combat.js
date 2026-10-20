@@ -5,6 +5,7 @@ function fire(){
   if(w.reloadEnd){ if(w.rlShell&&w.mag>0&&trigFresh&&w.rlPh!=='out'){ w.rlPh='out'; w.rlPump=false; w.rlA=GT; w.rlB=w.reloadEnd=GT+.22; } return; }
   const s=statsOf(w); if(GT<w.next) return;
   if(w.mag<=0){ if(trigFresh){ sfx.dry(); trigFresh=false; } if(w.res>0) reload(); return; }
+  if(s.staff&&P.ads>.6&&trigFresh&&typeof staffAlt==='function'){ trigFresh=false; staffAlt(w); return; } // staff alt-fire (19f-staffs.js)
   if(!s.auto&&!trigFresh) return; trigFresh=false;
   NET.shots++; w.mag--; if(w.id==='gatling') w.mag=999; w.next=GT+s.rate*(P.perks.has('rapid')?.75:1); P.sprint=false; P.slideT=0;
   camera.updateMatrixWorld(); const origin=camera.position.clone(); const fwd=new V3(0,0,-1).applyQuaternion(camera.quaternion);
@@ -21,14 +22,15 @@ function fire(){
         const hd=!!o.userData.head; HMH.head=hd; hitZombie(z,s.dmg*fall,hd?(z.boss?3:s.head)*(P.perks.has('steady')?1.5:1):1,'gun'); HMH.head=false; spawnParticles(h.point,z.kind==='hollow'||z.prime?'relic':z.boss?'spark':'blood',3); hitMarker(false,hd);
         if(--pierce<=0){ end=h.point; break; } }
       else { const u=o.userData;
-        if(NET.role==='client'){ const k=u.reson!==undefined?['reson',u.reson]:u.wraith?['wraith']:u.hcrystal!==undefined?['crystal',u.hcrystal]:u.bell?['bell']:u.cvalve!==undefined?['valve',u.cvalve]:null; if(k) toHost({t:'shoot',k:k[0],i:k[1],w:w.id,up:w.up}); }
-        else { if(u.reson!==undefined) hitReson(u.reson); if(u.wraith) hitWraith(w); if(u.hcrystal!==undefined) hitCrystal(u.hcrystal); if(u.bell) ringBell(); if(u.cvalve!==undefined) hitValve(u.cvalve,w); }
+        if(NET.role==='client'){ const k=u.reson!==undefined?['reson',u.reson]:u.wraith?['wraith']:u.hcrystal!==undefined?['crystal',u.hcrystal]:u.bell?['bell']:u.cvalve!==undefined?['valve',u.cvalve]:u.qhit!==undefined?['q',u.qhit]:null; if(k) toHost({t:'shoot',k:k[0],i:k[1],w:w.id,up:w.up}); }
+        else { if(u.reson!==undefined) hitReson(u.reson); if(u.wraith) hitWraith(w); if(u.hcrystal!==undefined) hitCrystal(u.hcrystal); if(u.bell) ringBell(); if(u.cvalve!==undefined) hitValve(u.cvalve,w); if(u.qhit!==undefined) questShoot(u.qhit,w); }
         if(w.id==='rod'){ if(o.userData.waystone!==undefined) strikeStone(o.userData.waystone); if(o.userData.lodestone) strikeLodestone(w); }
         if(w.id!=='rod'&&typeof spawnImpact==='function') spawnImpact(h.point,h.face&&h.face.normal,o); spawnParticles(h.point,w.id==='rod'?'relic':'dirt',w.id==='rod'?5:2); end=h.point; break; } }
     if(s.proj){ launchBolt(muzzleW,end||origin.clone().addScaledVector(dir,80),s,pz); continue; }
     if(s.jump){ const e=end||origin.clone().addScaledVector(dir,50); arc(muzzleW,e,1.6,w.up?0xff8a6a:0xcfe8ff); if(pz) chainJump(pz.z,s,w.up); else spawnParticles(e,'spark',6); continue; }
     if(s.splash){ const e=end||origin.clone().addScaledVector(dir,40); explode(e,s.splash,s.dmg*.85); }
     if(s.beam){ const e=end||origin.clone().addScaledVector(dir,60); (s.arc?arc:beam)(muzzleW,e,w.up?2.2:1.3,s.bcol); if(w.id==='rod'){ beam(muzzleW,e,w.up?7:5,w.up?0x2a6a80:0x1a4a5a); spawnParticles(e,'relic',w.up?10:6); }
+      if(s.staff&&typeof staffImpact==='function') staffImpact(w,s,e,seen);
       if(s.chain){ let n=0; for(const z of zombies){ if(n>=(s.chainN||3)) break; if(z.dead||seen.has(z)||z.rise>0) continue; const zp=z.g.position; if(Math.hypot(zp.x-e.x,zp.z-e.z)<6.5){ n++; (s.arc?arc:beam)(e,new V3(zp.x,1.3,zp.z),.8,s.bcol); hitZombie(z,s.dmg*(s.chainMul||.5),1,'gun'); } } } }
   }
   if(typeof muzzleLight==='function'&&!s.beam&&!s.jump) muzzleLight(muzzleW);
@@ -64,7 +66,7 @@ function updateWeapon(dt){ const w=curW(); if(P.swapT>0) P.swapT-=dt; if(P.melee
 function switchTo(i){ if(PU.gatling>0||i===P.cur||!P.weapons[i]) return; const w=curW(); if(w) w.reloadEnd=0; P.cur=i; P.swapT=.5; VM.inspect=0; if(VM.gun){ VM.hol=.15; VM.equip=0; } else buildVM(); sfx.swap(); }
 function inspectWeapon(){ const w=curW(); if(!w||w.reloadEnd||P.swapT>0||P.ads>.1||VM.inspect>0||state!=='play') return; VM.inspect=INSPECT_T; }
 function cycleWeapon(dir){ const n=P.weapons.length; if(n<2) return; switchTo((P.cur+dir+n)%n); }
-function melee(){ if(P.meleeT>0||P.revive>0||state!=='play'||P.downed||P.dead) return; const res=P.bless.has('knife'); P.meleeT=res?.5:.62; VM.melee=KN.T; P.meleePending=true; updateKnifeLook(); KN.root.visible=true; sfx.swing(); if(res) sfx.ring();
+function melee(){ if(P.meleeT>0||P.revive>0||state!=='play'||P.downed||P.dead) return; const res=P.bless.has('knife'); P.meleeT=res?.5:.62; VM.melee=KN.T; P.meleePending=true; updateKnifeLook(); KN.root.visible=true; sfx.swing(); if(res) sfx.ring(); if(typeof questMelee==='function') questMelee();
   const t=meleeTarget(3.6); if(t&&t.d>1.5){ P.lungeT=.16; P.lungeZ=t.z; P.lx=(t.z.g.position.x-P.pos.x)/t.d; P.lz=(t.z.g.position.z-P.pos.z)/t.d; } }
 function meleeTarget(range){ const fx=-Math.sin(P.yaw), fz=-Math.cos(P.yaw); let best=null,bd=range;
   for(const z of zombies){ if(z.dead||z.rise>0||Math.abs(z.g.position.y-P.pos.y)>1.6) continue; const dx=z.g.position.x-P.pos.x, dz=z.g.position.z-P.pos.z, d=Math.hypot(dx,dz); if(d<bd&&d>1e-3&&(dx*fx+dz*fz)/d>.45){ best=z; bd=d; } }

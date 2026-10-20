@@ -20,6 +20,7 @@ const WD={
 const BOX_POOL=['lmg','revolver','autorifle','marksman','shotgun','smg','carbine','cannon','ion','dynamo'];
 function statsOf(w){ const d=WD[w.id]; const s=Object.assign({},d); s.pellets=d.pellets||1; s.pierce=d.pierce||1;
   if(w.up){ if(d.upStats) Object.assign(s,d.upStats); else { s.dmg=d.dmg*(d.upMul||2.4); s.mag=Math.round(d.mag*1.5); s.res=d.res*2; s.pierce=s.pierce+1; } s.name=d.up; }
+  if(P.drum&&!d.staff&&!['rod','gauntlet','gatling'].includes(w.id)){ s.mag=Math.round(s.mag*1.5); s.res=Math.round(s.res*1.5); } // Quartermaster's Drum Magazine (quest reward)
   return s; }
 function mkInst(id,up=false){ const s=statsOf({id,up}); return {id,up,mag:s.mag,res:s.res,next:0,reloadEnd:0}; }
 const curW=()=>PU.gatling>0&&PU.gat?PU.gat:(P.weapons[P.cur]||null);
