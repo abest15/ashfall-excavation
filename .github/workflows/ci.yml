@@ -24,7 +24,7 @@ jobs:
       matrix:
         sim: [wasm, js]
     steps:
-      - uses: actions/checkout@v4.2.2
+      - uses: actions/checkout@v7.0.1
 
       - uses: actions/setup-node@v4.4.0
         with:
@@ -73,7 +73,7 @@ jobs:
     timeout-minutes: 45
     # reported but not blocking (Pages deploys anyway) while known leaks are open; remove once they pass
     steps:
-      - uses: actions/checkout@v4.2.2
+      - uses: actions/checkout@v7.0.1
 
       - uses: actions/setup-node@v4.4.0
         with:
@@ -102,7 +102,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4.2.2
+      - uses: actions/checkout@v7.0.1
 
       - uses: actions/setup-node@v4.4.0
         with:
