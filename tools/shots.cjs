@@ -1,11 +1,28 @@
 // Screenshot tour of the game for update reviews.
 // usage: node tools/shots.cjs [outDir] [quality low|med|high] [views,comma,separated]
 // Builds a test copy (ASHFALL_TEST) into .shots/, opens the single-file build headless, captures the menu
-// plus a set of fixed camera spots, and writes a contact sheet (sheet.png) next to the individual shots.
+// plus a set of fixed camera spots, and writes a contact sheet (sheet.jpg, composed with sharp) next to the shots.
 const { chromium } = require('playwright');
 const { execSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
+
+// Lays the shots out three per row with a caption under each, using sharp (no browser page involved).
+async function contactSheet(shots, file) {
+  const sharp = require('sharp');
+  const COLS = 3, W = 528, H = Math.round(W * 720 / 1280), CAP = 26, GAP = 6;
+  const rows = Math.ceil(shots.length / COLS);
+  const esc = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const layers = [];
+  for (let i = 0; i < shots.length; i++) {
+    const x = GAP + (i % COLS) * (W + GAP), y = GAP + Math.floor(i / COLS) * (H + CAP + GAP);
+    layers.push({ input: await sharp(shots[i].f).resize(W, H, { fit: 'cover' }).toBuffer(), left: x, top: y });
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${CAP}"><text x="3" y="18" font-family="DejaVu Sans, Arial, sans-serif" font-size="15" font-weight="600" fill="#dddddd">${esc(shots[i].label)}</text></svg>`;
+    layers.push({ input: Buffer.from(svg), left: x, top: y + H });
+  }
+  await sharp({ create: { width: GAP + COLS * (W + GAP), height: GAP + rows * (H + CAP + GAP), channels: 3, background: '#111111' } })
+    .composite(layers).jpeg({ quality: 85 }).toFile(file);
+}
 
 const ROOT = path.join(__dirname, '..');
 const OUT = path.resolve(process.argv[2] || path.join(ROOT, 'test-results', 'shots'));
@@ -65,12 +82,9 @@ try { Object.assign(VIEWS, JSON.parse(fs.readFileSync(path.join(__dirname, 'shot
     await snap(name, v.label || name);
     if (v.zombies) await page.evaluate(() => { for (const z of __G.zombies.slice()) __G.killZombie(z, 'self', true); __G.tick(3); });
   }
-  // contact sheet
-  const cells = shots.map(s => `<figure><img src="data:image/jpeg;base64,${fs.readFileSync(s.f).toString('base64')}"><figcaption>${s.label}</figcaption></figure>`).join('');
-  const sheet = await ctx.newPage();
-  await sheet.setViewportSize({ width: 1600, height: 900 });
-  await sheet.setContent(`<style>body{margin:0;background:#111;font:600 15px system-ui;color:#ddd;display:grid;grid-template-columns:repeat(3,1fr);gap:6px;padding:6px}figure{margin:0}img{width:100%;display:block}figcaption{padding:4px 2px}</style>${cells}`);
-  await sheet.screenshot({ path: path.join(OUT, 'sheet.jpg'), type: 'jpeg', quality: 85, fullPage: true });
   console.log(JSON.stringify({ out: OUT, shots: shots.length, errors: errs }));
+  // contact sheet: close the game first (at High it keeps the software renderer busy), then compose with sharp
+  await page.close().catch(() => {});
   await browser.close();
+  await contactSheet(shots, path.join(OUT, 'sheet.jpg'));
 })().catch(e => { console.error(e); process.exit(1); });
