@@ -15,5 +15,6 @@
   "wineCellar": {"pos": [-58, -7, -12], "yaw": 1.2, "pitch": 0, "label": "Underworks: wine cellar"},
   "ossuary": {"pos": [-24, -7, -47.5], "yaw": 0, "pitch": -0.05, "label": "Underworks: ossuary"},
   "floodedGallery": {"pos": [26, -7, -22], "yaw": -1.57, "pitch": 0, "label": "Underworks: flooded gallery"},
-  "deepVault": {"pos": [-24, -10, -67], "yaw": 0, "pitch": 0.1, "label": "Underworks: deep vault"}
+  "deepVault": {"pos": [-24, -10, -67], "yaw": 0, "pitch": 0.1, "label": "Underworks: deep vault"},
+  "shaftBottom": {"pos": [9.5, -7, -22.2], "yaw": 1.5708, "pitch": 0.32, "label": "Underworks: looking up the shaft"}
 }
