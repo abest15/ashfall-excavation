@@ -157,7 +157,7 @@ function lvRoom(B,x0,x1,z0,z1,fy,cy,gaps,col,o={}){ const t=.6, wy0=-11, wy1=o.w
   // ossuary (U3) through a short passage; bone niches along the walls
   lvRoom(B,-26,-22,-46,-42,U,-3,{n:[[-26,-22]],s:[[-26,-22]]},rock);
   lvRoom(B,-34,-14,-60,-46,U,-2.2,{n:[[-26,-22]],s:[[-26,-22]]},bone);
-  for(let i=0;i<9;i++){ const z=-58+i*1.5; B.box(-33.95,-33.4,U+.6,U+1.4,z,z+1,0x3a342c); B.box(-14.6,-14.05,U+.6,U+1.4,z,z+1,0x3a342c); }
+  // bone niches: framed and filled by the level art (07c); the marker below still names the 9 slots
   B.box(-26,-22,U,U+1.1,-55,-53,0x8a8070); addColY(-26,-22,-55,-53,-11,U+1.2);                               // altar
   addLevelZone('U3',-26,-22,-46,-42,-12,-2.5); addLevelZone('U3',-34,-14,-60,-46,-12,-2.5);
   // the deep vault (U5): ramp down from the ossuary to y -10, tall chamber for the finale
@@ -185,7 +185,7 @@ function lvRoom(B,x0,x1,z0,z1,fy,cy,gaps,col,o={}){ const t=.6, wy0=-11, wy1=o.w
     [-62,-4,-27,10,.9,0xffa850],[-61,-4.5,-11,10,1,0xffb070],
     [-24,-3.5,-44,8,.7,0xd8e8c0],[-30,-4.5,-50,10,.9,0xd8e8c0],[-18,-4.5,-56,10,.9,0xd8e8c0],[-24,-3.5,-53,9,.8,0xe8f0d0],
     [-24,-4,-63,8,.7,0xc06050],[-28,-3,-75,20,1.2,0xc04838],[-20,-6,-80,10,.8,0x60c0d0],[-36,-6,-70,10,.8,0x60c0d0],
-    [29,-4,-16,11,1.3,0x80b0d0],[40,-4,-28,12,1.3,0x80b0d0],[34,-4,-22,11,1.2,0x90c0d8],[26,-4,-28,9,1.0,0xffb070,1],[44,-4,-16,9,1.0,0xffb070,1],[45,-5.5,-22,7,1.1,0xffa860,1],
+    [29,-3.6,-16,13,1.6,0x9ac0d8],[40,-3.6,-28,13,1.6,0x9ac0d8],[34,-3.6,-22,13,1.5,0xa8c8e0],[26,-3.6,-17,10,1.3,0xffb878],[44,-3.6,-27,10,1.3,0xffb878],[34,-3.6,-30,10,1.2,0xffb070],[34,-3.6,-14,10,1.2,0xffb070],[26,-4,-28,9,1.0,0xffb070,1],[44,-4,-16,9,1.0,0xffb070,1],[45,-5.5,-22,7,1.1,0xffa860,1],
     [-30.6,-8.6,-77.6,8,1.4,0xff7a30,1],[-25.4,-8.6,-77.6,8,1.4,0xff7a30,1],[-30.6,-8.6,-72.4,8,1.4,0xff7a30,1],[-25.4,-8.6,-72.4,8,1.4,0xff7a30,1],[-28,-6.4,-82.4,10,1.7,0xff5020,1],[-28,-9.2,-75,7,1.0,0xd03020,1]];
   LVL.uLights=lights.map(l=>[l[0],l[1],l[2],l[3]*1.25,l[4]*1.35,l[5],l[6]]); lvAdd(B.done(LVL.uLights,.24,2.2,null,-2.2),lvMat(rockTex,0xffffff),UNDER,true);
   lvGlows(lights.filter(l=>!l[6]).map(l=>[l[0],l[1],l[2]]),UNDER); // accent lights (7th field) have their own fixtures

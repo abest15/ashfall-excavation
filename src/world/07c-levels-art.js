@@ -145,9 +145,36 @@ const UART=new THREE.Group(); UART.name='underArt'; UART.visible=false; scene.ad
     MT.add(new THREE.CylinderGeometry(.1,.17,.1,8),0x2a2826,{p:[l[0],l[1]+.17,l[2]]}); LART.ulamps.push(l); }
   for(let i=0;i<lampsU.length-1;i++){ const a=lampsU[i], b=lampsU[i+1]; if(a[6]||b[6]) continue; if(Math.hypot(a[0]-b[0],a[2]-b[2])<14) cable([a[0],a[1]+.6,a[2]],[b[0],b[1]+.6,b[2]]); }
   // ossuary: skull walls and bone stacks (atlas), skulls and bones in the niches, the altar cloth and candles
-  atlasWall(PA,4,-33.98,-4.6,-53,13.6,4.6,Math.PI/2,1.1,0xffffff); atlasWall(PA,4,-14.02,-4.6,-53,13.6,4.6,-Math.PI/2,1.1,0xffffff);
-  for(const cx of [-30,-18]){ atlasWall(PA,5,cx,-4.6,-59.98,8,4.6,0,1.1,0xffffff); atlasWall(PA,5,cx,-4.6,-46.02,8,4.6,Math.PI,1.1,0xffffff); }
-  for(let i=0;i<9;i++){ const z=-57.5+i*1.5; for(const [x,sx] of [[-33.6,1],[-14.4,-1]]){ ST.add(new THREE.SphereGeometry(1,D?7:5,D?5:3),bone,{p:[x,U+.82,z],s:[.11,.12,.13]}); if(D) for(let k=0;k<3;k++) ST.add(new THREE.CylinderGeometry(.025,.025,.42,4),bone,{p:[x+sx*.05,U+.66+k*.05,z+rand(-.2,.2)],r:[0,0,Math.PI/2]}); } }
+  atlasWall(PA,4,-33.98,-4.6,-53,13.6,4.6,Math.PI/2,1.1,0x5a5246); atlasWall(PA,4,-14.02,-4.6,-53,13.6,4.6,-Math.PI/2,1.1,0x5a5246); // dark backing behind the 3D bones
+  for(const cx of [-30,-18]){ atlasWall(PA,5,cx,-4.6,-59.98,8,4.6,0,1.1,0x6a6050); atlasWall(PA,5,cx,-4.6,-46.02,8,4.6,Math.PI,1.1,0x6a6050); }
+  // ---- ossuary relief: 3D skulls in rows (instanced), bone-end bands on protruding ledges, framed niches with skull piles,
+  // and a bone chandelier over the nave. Skull light is baked per instance from the Underworks lamps.
+  const SK=[], skull=(x,y,z,ry,sc=1)=>SK.push([x,y,z,ry+rand(-.15,.15),sc*rand(.9,1.08)]);
+  const wallsLong=[[-33.98,1],[-14.02,-1]], rowsY=D?[U+.34,U+1.62,U+2.12,U+2.62,U+3.12,U+3.62]:[U+.34,U+1.9];
+  for(const [x,n] of wallsLong){ const ry=n>0?Math.PI/2:-Math.PI/2;
+    for(const y of rowsY) for(let z=-59.45;z<-46.5;z+=D?.27:.36) skull(x+n*.13,y,z,ry);
+    for(const y of D?[U+.1,U+1.42,U+1.87,U+2.37,U+2.87,U+3.37,U+3.87]:[U+.1,U+1.42,U+2.4,U+3.4]){ ST.box(x,x+n*.16,y,y+.16,-59.6,-46.4,0x3a342c,4); atlasWall(PA,5,x+n*.165,y+.08,-53,13.2,.16,ry,.5,0xd8ccb0); }
+    for(let i=0;i<9;i++){ const z=-58+i*1.5; // framed niche: jambs, lintel and sill, a dark recess, a pile of skulls on long bones
+      ST.box(x,x+n*.3,U+.52,U+.6,z-.12,z+1.12,0x8a7e6c,2); ST.box(x,x+n*.3,U+1.4,U+1.5,z-.12,z+1.12,0x8a7e6c,2); for(const zz of [z-.12,z+1.02]) ST.box(x,x+n*.3,U+.52,U+1.5,zz,zz+.1,0x8a7e6c,2);
+      ST.box(x,x+n*.03,U+.6,U+1.4,z,z+1,0x0e0c0a,1);
+      for(let k=0;k<(D?4:2);k++) ST.add(new THREE.CylinderGeometry(.022,.022,.85,4),bone,{p:[x+n*(.1+k*.04),U+.64+(k%2)*.04,z+.5],r:[Math.PI/2,0,0]});
+      skull(x+n*.16,U+.8,z+.28,n>0?Math.PI/2:-Math.PI/2,.9); skull(x+n*.16,U+.8,z+.72,n>0?Math.PI/2:-Math.PI/2,.9); if(D) skull(x+n*.12,U+1.03,z+.5,n>0?Math.PI/2:-Math.PI/2,.9); } }
+  if(D) for(const [z,ry] of [[-59.85,0],[-46.15,Math.PI]]) for(const cx of [-30,-18]) for(const y of [U+.6,U+1.6,U+2.6,U+3.6]) for(let x=cx-3.9;x<cx+4;x+=.3) skull(x,y,z,ry);
+  // bone chandelier over the nave: iron hoop, skulls facing out, long-bone spokes, candles
+  { const cx=-24, cy=-3.3, cz=-50.5; MT.add(new THREE.TorusGeometry(.75,.03,4,D?20:10),0x2a2624,{p:[cx,cy,cz],r:[Math.PI/2,0,0]}); MT.add(new THREE.TorusGeometry(.4,.025,4,D?14:8),0x2a2624,{p:[cx,cy-.35,cz],r:[Math.PI/2,0,0]});
+    for(let i=0;i<4;i++){ const a=i/4*Math.PI*2; MT.add(new THREE.CylinderGeometry(.012,.012,1.1,4),0x1a1816,{p:[cx+Math.cos(a)*.38,cy+.5,cz+Math.sin(a)*.38],r:[Math.sin(a)*.6,0,-Math.cos(a)*.6]}); } MT.add(new THREE.CylinderGeometry(.015,.015,.6,4),0x1a1816,{p:[cx,-2.5,cz]});
+    for(let i=0;i<(D?10:6);i++){ const a=i/(D?10:6)*Math.PI*2; skull(cx+Math.cos(a)*.75,cy-.12,cz+Math.sin(a)*.75,Math.atan2(Math.cos(a),Math.sin(a)),.9);
+      ST.add(new THREE.CylinderGeometry(.02,.02,.7,4),bone,{p:[cx+Math.cos(a)*.4,cy,cz+Math.sin(a)*.4],r:[0,-a,Math.PI/2]});
+      if(i%2===0){ ST.add(new THREE.CylinderGeometry(.03,.035,.16,6),0xe8e0c8,{p:[cx+Math.cos(a+.3)*.75,cy+.1,cz+Math.sin(a+.3)*.75]}); GW.add(new THREE.ConeGeometry(.025,.07,5),0xffc060,{p:[cx+Math.cos(a+.3)*.75,cy+.22,cz+Math.sin(a+.3)*.75]}); } }
+    skull(cx,cy-.55,cz,0,1.1); LART.chand=[cx,cy,cz]; }
+  { const g=GB(); g.add(new THREE.SphereGeometry(1,D?8:5,D?6:3),0xffffff,{p:[0,.02,-.01],s:[.1,.11,.12]}); g.add(new THREE.BoxGeometry(.11,.05,.08),0xf0f0f0,{p:[0,-.085,.035]});
+    if(D) for(const sx of [-1,1]) g.add(new THREE.BoxGeometry(.035,.035,.02),0x1a1410,{p:[sx*.036,0,.108]}); if(D) g.add(new THREE.BoxGeometry(.02,.03,.02),0x2a2018,{p:[0,-.04,.115]});
+    const geo=g.done(), im=new THREE.InstancedMesh(geo,new THREE.MeshBasicMaterial({vertexColors:true}),SK.length), mtx=new THREE.Matrix4(), q=new THREE.Quaternion(), e=new THREE.Euler(), sv=new V3(), pv=new V3(), col=new THREE.Color(), bc=new THREE.Color(bone);
+    const lc=UL.map(l=>new THREE.Color(l[5]));
+    SK.forEach((k,i)=>{ e.set(rand(-.1,.1),k[3],rand(-.12,.12)); q.setFromEuler(e); sv.setScalar(k[4]); pv.set(k[0],k[1],k[2]); mtx.compose(pv,q,sv); im.setMatrixAt(i,mtx);
+      const nx=Math.sin(k[3]), nz=Math.cos(k[3]); let r=.26, gg=.26, bb=.28; UL.forEach((l,j)=>{ const dx=l[0]-k[0], dy=l[1]-k[1], dz=l[2]-k[2], d=Math.hypot(dx,dy,dz); if(d>=l[3]) return; const lam=Math.max(0,(nx*dx+nz*dz)/(d||1))*.75+.25, f=Math.pow(1-d/l[3],1.6)*l[4]*lam; r+=lc[j].r*f; gg+=lc[j].g*f; bb+=lc[j].b*f; });
+      col.copy(bc).multiply(new THREE.Color(Math.min(1.5,r),Math.min(1.5,gg),Math.min(1.5,bb))).multiplyScalar(rand(.8,1.05)); im.setColorAt(i,col); });
+    im.geometry.boundingSphere=new THREE.Sphere(new V3(-24,-5,-53),14); UART.add(im); LART.skulls=im; }
   atlasQuad(PA,3,4.2,2.2,0x8a3020,{p:[-24,U+1.12,-54],r:[-Math.PI/2,0,0]});
   for(const [x,z] of [[-25.6,-53.3],[-22.4,-53.3],[-25.6,-54.7],[-22.4,-54.7],[-24,-53.2]]){ ST.add(new THREE.CylinderGeometry(.04,.05,.25,6),0xe8e0c8,{p:[x,U+1.25,z]}); GW.add(new THREE.ConeGeometry(.03,.08,5),0xffc060,{p:[x,U+1.42,z]}); }
   for(let i=0;i<(D?14:6);i++) ST.add(new THREE.SphereGeometry(1,D?7:5,D?5:3),bone,{p:[-24+rand(-1.6,1.6),U+1.2,-55.4+rand(-.15,.15)],s:[.1,.11,.12],r:[0,rand(-1,1),0]});
@@ -199,11 +226,19 @@ const UART=new THREE.Group(); UART.name='underArt'; UART.visible=false; scene.ad
   F(18.5,-6.98,-18.2,3,2.4,0x7a3010); F(-24,-5.85,-54,4.5,2.8,0x4a3010);
   const m=new THREE.Mesh(b.done(),new THREE.MeshBasicMaterial({map:gt,vertexColors:true,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide})); m.renderOrder=3; UART.add(m); LART.pools=m; }
 // ---- Château plaster damage: irregular patches where the plaster has fallen to the brick, hugging corners, openings and the floor
-{ const b=GB(), D=QUAL, CL=LVL.chLights||[];
-  const shape=(w,h,flat)=>{ const n=16, pts=[]; for(let i=0;i<n;i++){ const a=i/n*Math.PI*2, r=rand(.55,1)*(i%3===0?rand(.6,1):1); pts.push(new THREE.Vector2(Math.cos(a)*w/2*r,(flat?Math.max(-h*.15,Math.sin(a)*h/2*r):Math.sin(a)*h/2*r))); } return new THREE.Shape(pts); };
-  const patch=(ax,f,n,a,y,w,h,flat)=>{ if(ax==='x'&&Math.abs(f+42)<.5&&y>4&&a>-1.6) return; const sh=shape(w,h,flat), ry=ax==='z'?(n>0?0:Math.PI):(n>0?Math.PI/2:-Math.PI/2);
-    const P_=(scale,off,col)=>{ const g=new THREE.ShapeGeometry(sh); g.scale(scale,scale,1); const pos=ax==='z'?[a,y,f+n*off]:[f+n*off,y,a]; b.add(g,col,{p:pos,r:[0,ry,0]}); };
-    P_(1.1,.008,0x4e463e); P_(1,.014,0x7c726a); };
+{ const b=GB(), lip=GB(), D=QUAL, CL=LVL.chLights||[];
+  // patch outline: a ragged ellipse (flat-bottomed along the floor line); the plaster around it is a raised, bevelled lip
+  // (the broken plaster edge), the brick sits just behind it with a dark mortar/shadow band inside the edge
+  const RW=new Map(); const radii=(w,n)=>{ const k=w.toFixed(3)+n; if(RW.has(k)) return RW.get(k); let r=[]; for(let i=0;i<n;i++) r.push(rand(.45,1)); r=r.map((v,i)=>(r[(i+n-1)%n]+v*2+r[(i+1)%n])/4); for(let j=0;j<2;j++){ const i=(Math.random()*n)|0; r[i]*=rand(.55,.75); } RW.set(k,r); return r; };
+  const pts=(w,h,flat,sc)=>{ const n=D?18:11, out=[], rr_=radii(w*h,n); for(let i=0;i<n;i++){ const a=i/n*Math.PI*2, r=rr_[i];
+      out.push(new THREE.Vector2(Math.cos(a)*w/2*r*sc,(flat?Math.max(-h*.2,Math.sin(a)*h/2*r):Math.sin(a)*h/2*r)*sc)); } return out; };
+  const patch=(ax,f,n,a,y,w,h,flat)=>{ if(ax==='x'&&Math.abs(f+42)<.5&&y>4&&a>-1.6) return; const ry=ax==='z'?(n>0?0:Math.PI):(n>0?Math.PI/2:-Math.PI/2);
+    const at=off=>ax==='z'?[a,y,f+n*off]:[f+n*off,y,a];
+    const inner=new THREE.Shape(pts(w,h,flat,1));
+    b.add(new THREE.ShapeGeometry(new THREE.Shape(pts(w,h,flat,1.06))),0x2a241e,{p:at(.004),r:[0,ry,0]});   // mortar / shadow band under the lip
+    b.add(new THREE.ShapeGeometry(new THREE.Shape(pts(w,h,flat,.97))),0x7c726a,{p:at(.007),r:[0,ry,0]});    // brick
+    const ring=new THREE.Shape(pts(w,h,flat,1.13)); ring.holes.push(new THREE.Path(pts(w,h,flat,1).slice().reverse()));
+    if(D) lip.add(new THREE.ExtrudeGeometry(ring,{depth:D?.03:.02,bevelEnabled:!!D,bevelThickness:.012,bevelSize:.014,bevelSegments:1,curveSegments:1}),0xc0b6a6,{p:at(0),r:[0,ry,0]}); };
   const faces=[['x',-57.6,1,-25.6,1.6],['z',1.6,-1,-57.6,-30.6],['z',-25.6,1,-57.6,-30.6],['x',-42.3,-1,-25.6,1.6],['x',-41.7,1,-25.6,1.6],['z',-13.3,-1,-57.6,-30.6],['z',-12.7,1,-57.6,-30.6]];
   const holes=[['x',-57.6,-20.1,-17.9,.9,2.5],['x',-57.6,-9,-7,5.2,6.9],['x',-57.6,-21,-19,5.2,6.9],['z',1.6,-51.1,-48.9,.9,2.5],['z',1.6,-38,-36,5.2,6.9],['z',1.6,-52,-50,5.2,6.9],['z',-25.6,-37.1,-34.9,.9,2.5],['z',-25.6,-50,-48,5.2,6.9],
     ['x',-42,-21,-18.5,0,2.6],['x',-42,-9,-6.5,0,2.6],['z',-13,-51,-48.5,0,2.6],['z',-13,-38,-35.5,0,2.6],['x',-42,-9,-6.5,4.2,6.8],['z',-13,-51,-48.5,4.2,6.8],['z',-13,-38,-35.5,4.2,6.8]];
@@ -214,7 +249,8 @@ const UART=new THREE.Group(); UART.name='underArt'; UART.visible=false; scene.ad
     if(Math.random()<.6) patch(ax,ff,n,(a0+a1)/2+rand(-.3,.3),y1+.35,rand(.6,1.2),rand(.35,.5)); }
   for(const [ax,f,n,a0,a1] of faces){ const cnt=Math.round((a1-a0)/(D?4:7)); for(let i=0;i<cnt;i++){ const a=rand(a0+.6,a1-.6), fl=Math.random()<.5?0:4.2; if(holes.some(h=>h[0]===ax&&Math.abs(h[1]-f)<.5&&a>h[2]-.6&&a<h[3]+.6&&fl<h[5]&&fl+1>h[4])) continue; patch(ax,f,n,a,fl+rand(.12,.3),rand(.9,2.2),rand(.45,.8),true); }
     for(const a of [a0+.3,a1-.3]) for(const fl of [0,4.2]) if(Math.random()<(D?.7:.35)) patch(ax,f,n,a+(a<a0+1?.15:-.15),fl+rand(.3,2.8),rand(.4,.7),rand(.9,1.8)); }
-  const g=b.done(); lvBake(g,CL,.34,LVL.chSun); CHATEAU.add(new THREE.Mesh(g,new THREE.MeshBasicMaterial({map:(()=>{ const t=brickTex.clone(); t.needsUpdate=true; t.wrapS=t.wrapT=THREE.RepeatWrapping; t.repeat.set(1.4,1.4); return t; })(),vertexColors:true}))); }
+  const g=b.done(); lvBake(g,CL,.34,LVL.chSun); CHATEAU.add(new THREE.Mesh(g,new THREE.MeshBasicMaterial({map:(()=>{ const t=brickTex.clone(); t.needsUpdate=true; t.wrapS=t.wrapT=THREE.RepeatWrapping; t.repeat.set(1.4,1.4); return t; })(),vertexColors:true})));
+  if(D){ const lg=lip.done(); lvBake(lg,CL,.34,LVL.chSun); CHATEAU.add(new THREE.Mesh(lg,new THREE.MeshBasicMaterial({map:(()=>{ const t=plasterTex.clone(); t.needsUpdate=true; t.wrapS=t.wrapT=THREE.RepeatWrapping; t.repeat.set(1/5.2,1/5.2); return t; })(),vertexColors:true}))); } }
 function updateLevelArt(dt){ const D_=LART.drips; if(D_&&UART.visible){ for(let i=0;i<D_.d.length;i++){ const q=D_.d[i]; if(q.t>0){ q.t-=dt; q.y=-2.9; q.v=0; } else { q.v+=9.8*dt; q.y-=q.v*dt; const fy=floorAt(q.x,-3,q.z); if(q.y<(fy>LV.VOID?fy:-7.2)){ q.t=rand(.6,3.5); if(QUAL===2&&Math.random()<.5) spawnParticles(new V3(q.x,q.y+.05,q.z),'dirt',1); } }
       D_.pos[i*3]=q.x; D_.pos[i*3+1]=q.y; D_.pos[i*3+2]=q.z; } D_.pts.geometry.attributes.position.needsUpdate=true; }
   if(LART.runes&&UART.visible) LART.runes.material.opacity=.55+Math.sin(GT*1.7)*.2; }
