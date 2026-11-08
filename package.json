@@ -151,6 +151,6 @@
   },
   "desktopName": "ashfall-excavation.desktop",
   "dependencies": {
-    "three": "0.186.1"
+    "three": "0.187.0"
   }
 }
